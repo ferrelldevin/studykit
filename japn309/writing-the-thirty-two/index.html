@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Writing the Thirty-Two</title>
+<meta name="description" content="The 32 kanji of Kanji Look and Learn lessons 3 and 4, drilled for handwriting: stroke counts, four characters built from parts you own, and the three pairs that cost marks.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --ground:#F4F2EC; --surface:#FFFFFF; --surface2:#EDEAE1; --ink:#23212A; --ink2:#56525E;
+  --muted:#857F8C; --line:#E3DFD5; --moss:#23302B; --mosstext:#1C5B48; --alert:#A9491F;
+  --alertsoft:#FBF0EA; --code:#23302B; --codetext:#F2F5F3;
+}
+body{background:var(--ground); color:var(--ink); font-family:"Instrument Sans",system-ui,sans-serif;
+  font-size:16px; line-height:1.6; margin:0; padding:20px 16px 72px;}
+main{max-width:640px; margin:0 auto; display:flex; flex-direction:column; gap:14px;}
+.eyebrow{font-family:"Spline Sans Mono",monospace; font-size:11px; letter-spacing:.14em; color:var(--muted); text-transform:uppercase;}
+h1{font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:31px; margin:2px 0 0; letter-spacing:-.01em;}
+h2{font-family:"Bricolage Grotesque",sans-serif; font-weight:600; font-size:14px; letter-spacing:.06em; text-transform:uppercase; color:var(--mosstext); margin:0 0 8px;}
+h3{font-family:"Bricolage Grotesque",sans-serif; font-weight:600; font-size:17px; margin:14px 0 2px;}
+.card{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px 18px;}
+.cap{background:var(--moss); color:#FBFAF7; border:none;}
+.cap h2{color:#E9E5DC;}
+.cap p{margin:0; font-size:17px; font-weight:500; line-height:1.5;}
+.lead p{font-size:17px; line-height:1.65; margin:0;}
+.mono{font-family:"Spline Sans Mono",monospace; font-size:12px; color:var(--muted);}
+code{font-family:"Spline Sans Mono",monospace; font-size:.92em; background:var(--surface2); padding:1px 5px; border-radius:5px;}
+.callout{border-left:3px solid var(--line); background:var(--surface2); border-radius:0 10px 10px 0; padding:10px 14px; margin:10px 0; font-size:14px;}
+.callout .cl-label{font-family:"Spline Sans Mono",monospace; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; display:block; margin-bottom:4px; color:var(--muted);}
+.callout.danger{border-left-color:var(--alert); background:var(--alertsoft);}
+.callout.danger .cl-label{color:var(--alert);}
+.callout.rule{background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--mosstext);}
+.callout.rule .cl-label{color:var(--mosstext);}
+.steps{margin:10px 0;}
+.step{position:relative; padding:0 0 16px 46px;}
+.step:not(:last-child)::before{content:""; position:absolute; left:15px; top:34px; bottom:2px; width:2px; background:var(--line);}
+.stepnum{position:absolute; left:0; top:0; width:32px; height:32px; border:1.5px solid var(--mosstext); border-radius:9px; display:flex; align-items:center; justify-content:center; font-family:"Spline Sans Mono",monospace; font-size:14px; font-weight:600; color:var(--mosstext); background:var(--surface);}
+.step b{display:block; margin-bottom:2px;}
+.step p{margin:0; font-size:14px; color:var(--ink2);}
+.choice{display:flex; align-items:center; gap:10px; border:1px solid var(--line); border-radius:8px; padding:8px 12px; margin:6px 0; font-size:14px; color:var(--ink2);}
+.choice .cdot{width:14px; height:14px; border-radius:999px; border:2px solid var(--muted); flex-shrink:0;}
+.choice.right{border-color:var(--mosstext); color:var(--ink); font-weight:600;}
+.choice.right .cdot{background:var(--mosstext); border-color:var(--mosstext);}
+details{border:1px solid var(--line); border-radius:10px; padding:10px 14px; margin:10px 0; background:var(--surface);}
+details summary{cursor:pointer; font-weight:600; color:var(--mosstext); font-size:14px;}
+details[open] summary{margin-bottom:8px;}
+.q{border-left:3px solid var(--mosstext); padding:2px 0 2px 12px; margin:12px 0; font-weight:500;}
+.ask{background:var(--surface2); border-radius:10px; padding:12px 14px; margin:8px 0;}
+.ask .n{font-family:"Spline Sans Mono",monospace; color:var(--mosstext); font-size:11px; letter-spacing:.1em;}
+.due{background:var(--alertsoft); border:1.5px solid var(--alert); border-radius:10px; padding:10px 14px; font-size:14px;}
+.due b{color:var(--alert);}
+a{color:var(--mosstext); text-decoration-thickness:1px; text-underline-offset:3px;}
+p{margin:8px 0;}
+.fade-tag{font-family:"Spline Sans Mono",monospace; font-size:10.5px; letter-spacing:.12em; color:var(--muted); text-transform:uppercase;}
+:focus-visible{outline:2px solid var(--mosstext); outline-offset:2px; border-radius:4px;}
+@media (prefers-reduced-motion: no-preference){ details{transition:border-color .15s;} details[open]{border-color:var(--mosstext);} }
+.modebtn:focus-visible{outline:2px solid var(--mosstext);outline-offset:2px}
+ruby{ruby-position:over;}
+rt{font-size:.5em; color:var(--mosstext); font-weight:500;}
+.kgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:8px; margin:10px 0;}
+.kcell{border:1px solid var(--line); border-radius:10px; background:var(--surface2); padding:8px 6px; text-align:center;}
+.kcell .ch{font-size:31px; line-height:1.25; display:block;}
+.kcell .en{font-size:11.5px; color:var(--ink2); display:block; line-height:1.3;}
+.kcell .st{font-family:"Spline Sans Mono",monospace; font-size:10px; color:var(--muted); display:block; margin-top:2px;}
+.build{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:10px 0; font-size:29px;}
+.build .op{font-size:18px; color:var(--muted);}
+.build .piece{border:1px solid var(--line); border-radius:9px; padding:5px 13px; background:var(--surface);}
+.build .res{border:1.5px solid var(--mosstext); border-radius:9px; padding:5px 13px; background:var(--surface);}
+.pair{display:flex; gap:10px; align-items:center; flex-wrap:wrap; border:1px solid var(--line); border-radius:10px; padding:10px 13px; margin:8px 0; background:var(--surface2);}
+.pair .two{font-size:29px; letter-spacing:.12em; min-width:88px;}
+.pair .why{font-size:13.5px; color:var(--ink2); flex:1; min-width:190px;}
+</style>
+</head>
+<body>
+<main>
+
+<div>
+  <div class="eyebrow">JAPN 309 · Kanji Look and Learn · lessons 3 and 4</div>
+  <h1>Writing the Thirty-Two</h1>
+  <div class="mono">Kanji Look and Learn <ruby>第三課<rt>だいさんか</rt></ruby> ・ <ruby>第四課<rt>だいよんか</rt></ruby> · 32 characters · production, by hand</div>
+</div>
+
+<div class="card cap">
+  <h2>After this you can</h2>
+  <p>Write all 32 characters of <ruby>第三課<rt>だいさんか</rt></ruby> and <ruby>第四課<rt>だいよんか</rt></ruby> <em>by hand</em>, from an English prompt, with the right number of strokes — and not lose marks on the three pairs that look almost the same.</p>
+</div>
+
+<div class="card lead">
+  <h2>The two minutes — play me in the car</h2>
+  <p>You already know these 32 characters by sight. The practice sheet asks for something different: it says handwrite Lesson 3 and Lesson 4 and hand it to the instructor, and recognising a shape is not the same skill as producing one from a blank page. So this is the production pass. Three things carry most of it. First, four of these characters are just other characters stacked — a man is a rice field with strength under it, and the word for a gap is a gate with the sun showing through — so that is four shapes you never have to memorise as shapes. Second, six of them are eight strokes or more, and those are the ones that come out crooked when you write them at speed; they need the pen, not the eyes. Third, there are exactly three pairs that get marked wrong by people who know both characters perfectly well, and thirty seconds on those three pairs is worth more than another pass over the easy twenty-nine.</p>
+</div>
+
+<div class="card">
+  <h2>How to run this — three moves</h2>
+  <div class="steps">
+    <div class="step"><div class="stepnum">1</div>
+      <b>Fail it cold first</b>
+      <p>Blank paper. Work down the English list below and write each character from memory <em>before</em> you look at anything. What you get wrong is your real study list; what you get right is finished. This takes six minutes and saves an hour.</p></div>
+    <div class="step"><div class="stepnum">2</div>
+      <b>Rebuild only what fell</b>
+      <p>For each miss, find it in the grids below. If it has a build — <ruby>男<rt>おとこ</rt></ruby>, <ruby>間<rt>あいだ</rt></ruby> — learn the build, not the picture. If it doesn't, write it five times, saying the reading out loud each time.</p></div>
+    <div class="step"><div class="stepnum">3</div>
+      <b>Thirty seconds on the three pairs</b>
+      <p>Last, before you put the pen down. They are at the bottom of this page. This is the step people skip and it is the one that costs marks.</p></div>
+  </div>
+  <div class="callout rule"><span class="cl-label">The rule to carry out of the room</span><b>Recognising is not producing.</b> You can read all 32 already — that is why a cold write-out feels unnecessary and is exactly why it works. The sheet grades production, so practise production.</div>
+</div>
+
+<div class="card">
+  <span class="fade-tag">Worked — the full list, one reading each</span>
+  <h3><ruby>第三課<rt>だいさんか</rt></ruby> — where things are</h3>
+  <p>One reading per character, the one that carries most of the words you will meet. The small number is the stroke count — how many separate pen strokes the character takes.</p>
+  <div class="kgrid">
+    <div class="kcell"><span class="ch"><ruby>上<rt>うえ</rt></ruby></span><span class="en">above, up</span><span class="st">3</span></div>
+    <div class="kcell"><span class="ch"><ruby>下<rt>した</rt></ruby></span><span class="en">below, down</span><span class="st">3</span></div>
+    <div class="kcell"><span class="ch"><ruby>中<rt>なか</rt></ruby></span><span class="en">inside, middle</span><span class="st">4</span></div>
+    <div class="kcell"><span class="ch"><ruby>外<rt>そと</rt></ruby></span><span class="en">outside</span><span class="st">5</span></div>
+    <div class="kcell"><span class="ch"><ruby>前<rt>まえ</rt></ruby></span><span class="en">front, before</span><span class="st">9</span></div>
+    <div class="kcell"><span class="ch"><ruby>後<rt>うし</rt></ruby></span><span class="en">behind, after</span><span class="st">9</span></div>
+    <div class="kcell"><span class="ch"><ruby>右<rt>みぎ</rt></ruby></span><span class="en">right</span><span class="st">5</span></div>
+    <div class="kcell"><span class="ch"><ruby>左<rt>ひだり</rt></ruby></span><span class="en">left</span><span class="st">5</span></div>
+    <div class="kcell"><span class="ch"><ruby>東<rt>ひがし</rt></ruby></span><span class="en">east</span><span class="st">8</span></div>
+    <div class="kcell"><span class="ch"><ruby>西<rt>にし</rt></ruby></span><span class="en">west</span><span class="st">6</span></div>
+    <div class="kcell"><span class="ch"><ruby>南<rt>みなみ</rt></ruby></span><span class="en">south</span><span class="st">9</span></div>
+    <div class="kcell"><span class="ch"><ruby>北<rt>きた</rt></ruby></span><span class="en">north</span><span class="st">5</span></div>
+    <div class="kcell"><span class="ch"><ruby>門<rt>もん</rt></ruby></span><span class="en">gate</span><span class="st">8</span></div>
+    <div class="kcell"><span class="ch"><ruby>間<rt>あいだ</rt></ruby></span><span class="en">gap, interval</span><span class="st">12</span></div>
+    <div class="kcell"><span class="ch"><ruby>午<rt>ご</rt></ruby></span><span class="en">noon</span><span class="st">4</span></div>
+    <div class="kcell"><span class="ch"><ruby>工<rt>こう</rt></ruby></span><span class="en">craft, work</span><span class="st">3</span></div>
+  </div>
+  <div class="callout"><span class="cl-label">Two readings worth knowing now</span><ruby>後<rt>うし</rt></ruby> is written <ruby>後<rt>うし</rt></ruby>ろ when it means "behind" — the ろ is written in kana beside it. And <ruby>午<rt>ご</rt></ruby> almost never stands alone: it lives in <ruby>午前<rt>ごぜん</rt></ruby> (a.m.) and <ruby>午後<rt>ごご</rt></ruby> (p.m.), which is where <ruby>後<rt>ご</rt></ruby> picks up its second reading.</div>
+</div>
+
+<div class="card">
+  <h3><ruby>第四課<rt>だいよんか</rt></ruby> — who is in the picture</h3>
+  <div class="kgrid">
+    <div class="kcell"><span class="ch"><ruby>男<rt>おとこ</rt></ruby></span><span class="en">man</span><span class="st">7</span></div>
+    <div class="kcell"><span class="ch"><ruby>女<rt>おんな</rt></ruby></span><span class="en">woman</span><span class="st">3</span></div>
+    <div class="kcell"><span class="ch"><ruby>子<rt>こ</rt></ruby></span><span class="en">child</span><span class="st">3</span></div>
+    <div class="kcell"><span class="ch"><ruby>父<rt>ちち</rt></ruby></span><span class="en">father</span><span class="st">4</span></div>
+    <div class="kcell"><span class="ch"><ruby>母<rt>はは</rt></ruby></span><span class="en">mother</span><span class="st">5</span></div>
+    <div class="kcell"><span class="ch"><ruby>王<rt>おう</rt></ruby></span><span class="en">king</span><span class="st">4</span></div>
+    <div class="kcell"><span class="ch"><ruby>国<rt>くに</rt></ruby></span><span class="en">country</span><span class="st">8</span></div>
+    <div class="kcell"><span class="ch"><ruby>何<rt>なに</rt></ruby></span><span class="en">what</span><span class="st">7</span></div>
+    <div class="kcell"><span class="ch"><ruby>学<rt>がく</rt></ruby></span><span class="en">study</span><span class="st">8</span></div>
+    <div class="kcell"><span class="ch"><ruby>生<rt>せい</rt></ruby></span><span class="en">life, birth</span><span class="st">5</span></div>
+    <div class="kcell"><span class="ch"><ruby>先<rt>せん</rt></ruby></span><span class="en">ahead, previous</span><span class="st">6</span></div>
+    <div class="kcell"><span class="ch"><ruby>年<rt>とし</rt></ruby></span><span class="en">year</span><span class="st">6</span></div>
+    <div class="kcell"><span class="ch"><ruby>去<rt>きょ</rt></ruby></span><span class="en">past, leave</span><span class="st">5</span></div>
+    <div class="kcell"><span class="ch"><ruby>毎<rt>まい</rt></ruby></span><span class="en">every</span><span class="st">6</span></div>
+    <div class="kcell"><span class="ch"><ruby>力<rt>ちから</rt></ruby></span><span class="en">strength</span><span class="st">2</span></div>
+    <div class="kcell"><span class="ch"><ruby>田<rt>た</rt></ruby></span><span class="en">rice field</span><span class="st">5</span></div>
+  </div>
+
+  <div class="q">Retrieval 1 — cover the grids and answer out loud.</div>
+  <details><summary>Which four characters in these two lessons take the most strokes? Name them before you look.</summary>
+    <p><ruby>間<rt>あいだ</rt></ruby> 12 · <ruby>前<rt>まえ</rt></ruby> 9 · <ruby>後<rt>うし</rt></ruby> 9 · <ruby>南<rt>みなみ</rt></ruby> 9. Then <ruby>東<rt>ひがし</rt></ruby>, <ruby>門<rt>もん</rt></ruby>, <ruby>学<rt>がく</rt></ruby> and <ruby>国<rt>くに</rt></ruby> at 8. Those eight are where handwriting goes wrong under time pressure — give them the extra reps, not the two-stroke <ruby>力<rt>ちから</rt></ruby>.</p>
+  </details>
+</div>
+
+<div class="card">
+  <span class="fade-tag">Prompted — the pieces are given, you assemble</span>
+  <h2>Four you don't have to memorise</h2>
+  <p>These are built from characters you already own, which means you can reconstruct them at the desk instead of recalling a picture.</p>
+
+  <div class="build">
+    <span class="piece"><ruby>田<rt>た</rt></ruby></span><span class="op">+</span><span class="piece"><ruby>力<rt>ちから</rt></ruby></span><span class="op">=</span><span class="res"><ruby>男<rt>おとこ</rt></ruby></span>
+  </div>
+  <p class="mono">A rice field with strength underneath it. Field on top, strength below — get the order right and the character writes itself.</p>
+
+  <div class="build">
+    <span class="piece"><ruby>門<rt>もん</rt></ruby></span><span class="op">+</span><span class="piece"><ruby>日<rt>ひ</rt></ruby></span><span class="op">=</span><span class="res"><ruby>間<rt>あいだ</rt></ruby></span>
+  </div>
+  <p class="mono">A gate with the sun showing through the gap. <ruby>日<rt>ひ</rt></ruby> is from Lesson 2 — you have had it for a week. That is the 12-stroke character reduced to two things you already know.</p>
+
+  <div class="build">
+    <span class="piece"><ruby>学<rt>がく</rt></ruby></span><span class="op">+</span><span class="piece"><ruby>生<rt>せい</rt></ruby></span><span class="op">=</span><span class="res"><ruby>学生<rt>がくせい</rt></ruby></span>
+    <span class="op" style="margin-left:6px">·</span>
+    <span class="piece"><ruby>先<rt>せん</rt></ruby></span><span class="op">+</span><span class="piece"><ruby>生<rt>せい</rt></ruby></span><span class="op">=</span><span class="res"><ruby>先生<rt>せんせい</rt></ruby></span>
+  </div>
+  <p class="mono">Study + life = a student. Ahead + life = the one who got there first, which is the word for teacher. Two words, three characters, and <ruby>生<rt>せい</rt></ruby> reads せい in both.</p>
+
+  <div class="build">
+    <span class="piece"><ruby>午<rt>ご</rt></ruby></span><span class="op">+</span><span class="piece"><ruby>前<rt>まえ</rt></ruby></span><span class="op">=</span><span class="res"><ruby>午前<rt>ごぜん</rt></ruby></span>
+    <span class="op" style="margin-left:6px">·</span>
+    <span class="piece"><ruby>午<rt>ご</rt></ruby></span><span class="op">+</span><span class="piece"><ruby>後<rt>ご</rt></ruby></span><span class="op">=</span><span class="res"><ruby>午後<rt>ごご</rt></ruby></span>
+  </div>
+  <p class="mono">Before noon and after noon: a.m. and p.m. Two characters buy you both halves of the clock.</p>
+
+  <div class="q">Retrieval 2 — produce it, don't pick it.</div>
+  <details><summary>Write, by hand, the word for "student" and the word for "teacher." Then say what the shared character means.</summary>
+    <p><ruby>学生<rt>がくせい</rt></ruby> and <ruby>先生<rt>せんせい</rt></ruby>. The shared character is <ruby>生<rt>せい</rt></ruby> — life or birth. A student is study-life; a teacher is ahead-life, the one who arrived first. If you wrote the readings as がくせい and せんせい without hesitating, that pair is done.</p>
+  </details>
+</div>
+
+<div class="card">
+  <h2>The three pairs that cost marks</h2>
+  <p>Every one of these has been marked wrong by somebody who knew both characters perfectly well. Thirty seconds here, every time you study.</p>
+
+  <div class="pair">
+    <span class="two"><ruby>母<rt>はは</rt></ruby> <ruby>毎<rt>まい</rt></ruby></span>
+    <span class="why"><b>mother / every.</b> Both are two dots across a bar. <ruby>毎<rt>まい</rt></ruby> has a lid on top; <ruby>母<rt>はは</rt></ruby> does not. Check the lid before you move on.</span>
+  </div>
+  <div class="pair">
+    <span class="two"><ruby>力<rt>ちから</rt></ruby> <ruby>刀<rt>かたな</rt></ruby></span>
+    <span class="why"><b>strength / sword.</b> <ruby>刀<rt>かたな</rt></ruby> came from Lesson 2, so it can appear on a mixed sheet. The sword leans over; strength stands square.</span>
+  </div>
+  <div class="pair">
+    <span class="two"><ruby>門<rt>もん</rt></ruby> <ruby>間<rt>あいだ</rt></ruby></span>
+    <span class="why"><b>gate / gap.</b> The same gate both times. <ruby>間<rt>あいだ</rt></ruby> has the sun sitting inside it; <ruby>門<rt>もん</rt></ruby> is empty. If the gate is empty it is もん.</span>
+  </div>
+
+  <div class="callout danger"><span class="cl-label">The trap</span>You will not confuse these while reading, because the surrounding words tell you which one it must be. You will confuse them while <em>writing</em>, where nothing corrects you. That is exactly the skill the practice sheet grades.</div>
+
+  <div class="q">Retrieval 3 — decide, then open.</div>
+  <details><summary>You have written a gate shape with something inside it. Which character is it, and what does it mean?</summary>
+    <div class="choice"><span class="cdot"></span><ruby>門<rt>もん</rt></ruby> — gate</div>
+    <div class="choice right"><span class="cdot"></span><ruby>間<rt>あいだ</rt></ruby> — gap, interval (the thing inside is <ruby>日<rt>ひ</rt></ruby>, the sun)</div>
+    <p style="margin-top:8px">An empty gate is <ruby>門<rt>もん</rt></ruby>. A gate with the sun in it is <ruby>間<rt>あいだ</rt></ruby>, and it means a gap — in space or in time.</p>
+  </details>
+</div>
+
+<div class="card">
+  <span class="fade-tag">Cold — no grids, no hints, this is the quiz's shape</span>
+  <h2>Do this tonight</h2>
+  <p class="q">Blank paper. Write the character for each of these, from English only: <b>outside · behind · gate · gap · noon · south · man · mother · every · country · what · year · past · study · strength · rice field.</b> Then check against the grids above, and write only the misses five times each.</p>
+  <p>Sixteen prompts, about seven minutes. Whatever falls tonight is what you drill tomorrow — and what falls twice is what you look at on the way into the quiz.</p>
+</div>
+
+<div class="card">
+  <h2>Where this connects to the recognition pass</h2>
+  <p>The recognition pass takes these same 32 characters and teaches you to <em>read</em> them — read the underlined part of a sentence and say it. That is the right order: recognition first, production second, because recognition is what makes production possible. This sheet flips it. The characters have not changed; the direction has. And the pieces you already know are the reason this is short — <ruby>日<rt>ひ</rt></ruby> from Lesson 2 is what makes <ruby>間<rt>あいだ</rt></ruby> cheap, and <ruby>田<rt>た</rt></ruby> and <ruby>力<rt>ちから</rt></ruby> from this lesson are what make <ruby>男<rt>おとこ</rt></ruby> free.</p>
+</div>
+
+<div class="card">
+  <h2>Three worth asking in class</h2>
+  <div class="ask"><span class="n">Q1</span><p>On the drill sheet, does stroke order get marked, or only whether the finished character is right? (It changes how your practice time is best spent.)</p></div>
+  <div class="ask"><span class="n">Q2</span><p><ruby>後<rt>うし</rt></ruby> reads うし in <ruby>後<rt>うし</rt></ruby>ろ but ご in <ruby>午後<rt>ごご</rt></ruby>. Is there a rule for which reading a character takes in a compound word, or is it word by word at this stage?</p></div>
+  <div class="ask"><span class="n">Q3</span><p>For the Lesson 1–4 quiz, are we asked to <em>write</em> the characters, or only read them? (The answer decides whether the class should be drilling production or recognition in the run-up.)</p></div>
+</div>
+
+<div class="due"><b>What this feeds.</b> The Lesson 3–4 kanji practice sheet asks you to handwrite <ruby>第三課<rt>だいさんか</rt></ruby> and <ruby>第四課<rt>だいよんか</rt></ruby> and submit it to the instructor — check Canvas for your section's due date.<br><br><b>Kanji Quiz 1 — <ruby>漢字小<rt>かんじしょう</rt></ruby>テスト, Lessons 1–4.</b> These 32 characters plus Lessons 1 and 2 make up all 64 of it.</div>
+
+<p class="mono" style="text-align:center">Character lists and the component and look-alike notes follow the Kanji Look and Learn <ruby>第三課<rt>だいさんか</rt></ruby>・<ruby>第四課<rt>だいよんか</rt></ruby> sets as the course assigns them. Every reading and stroke count on this page was re-checked against KANJIDIC2 (© EDRDG, used under the EDRDG licence) — none was typed from memory.</p>
+</main>
+</body>
+</html>

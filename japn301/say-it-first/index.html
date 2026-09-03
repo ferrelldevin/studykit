@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Say It First</title>
+<meta name="description" content="Your whole JAPN 301 Lesson 1 self-introduction written out, with menus of ready-made options, so speaking is reading aloud rather than composing.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* Committed light design. Every colour painted explicitly so the page
+   holds its own ground regardless of the viewer's theme. */
+:root{
+  color-scheme:light;
+  --paper:#F4F2EC; --sheet:#FFFFFF; --tint:#EDEAE1;
+  --ink:#23212A; --ink2:#56525E; --muted:#857F8C;
+  --line:#E3DFD5; --hair:#EDEAE2;
+  --pine:#1C5B48; --pine2:#2A7A61; --pinewash:#EAF3EE; --pineline:#BEDACD;
+  --sienna:#A9491F; --siennawash:#FBF0EA; --siennaline:#E7C9B7;
+  --gold:#B08300;
+  --deep:#23302B;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--paper); color:var(--ink);
+  font-family:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16.5px; line-height:1.62; margin:0; padding:26px 18px 90px;}
+main{max-width:672px; margin:0 auto}
+section{margin:0 0 30px}
+
+/* ---------- type ---------- */
+.kicker{font-family:"Spline Sans Mono",ui-monospace,monospace; font-size:10.5px;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--pine2); font-weight:500}
+h1{font-family:"Bricolage Grotesque","Instrument Sans",sans-serif; font-weight:700;
+  font-size:38px; line-height:1.06; letter-spacing:-.02em; margin:6px 0 0; text-wrap:balance}
+.dek{font-size:18px; line-height:1.55; color:var(--ink2); margin:12px 0 0; max-width:56ch}
+h2{font-family:"Bricolage Grotesque","Instrument Sans",sans-serif; font-weight:700;
+  font-size:22px; line-height:1.2; margin:0 0 4px; letter-spacing:-.01em; text-wrap:balance}
+.rule{display:flex; align-items:baseline; gap:12px; border-bottom:1px solid var(--line);
+  padding-bottom:9px; margin-bottom:18px}
+.rule h2{flex:1; min-width:0}
+.rule .n{font-family:"Spline Sans Mono",ui-monospace,monospace; font-size:11px;
+  color:var(--muted); letter-spacing:.1em; white-space:nowrap}
+@media (max-width:560px){
+  .rule{flex-wrap:wrap; gap:1px 12px}
+  .rule .n{white-space:normal; flex-basis:100%}
+}
+p{margin:11px 0}
+.note{font-family:"Spline Sans Mono",ui-monospace,monospace; font-size:12.5px;
+  line-height:1.55; color:var(--muted)}
+em{font-style:italic}
+
+/* ---------- opening statement ---------- */
+.thesis{background:var(--deep); color:#F2F5F3; border-radius:4px; padding:22px 24px}
+.thesis .kicker{color:#8FCFB4}
+.thesis p{margin:8px 0 0; font-size:18.5px; line-height:1.5; font-weight:500; max-width:52ch}
+
+/* ---------- the say-line: the object the page is built from ---------- */
+.line{padding:18px 0; border-top:1px solid var(--hair)}
+.line:first-of-type{border-top:none; padding-top:4px}
+.tag{font-family:"Spline Sans Mono",ui-monospace,monospace; font-size:10.5px;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--pine2); font-weight:500;
+  display:block; margin-bottom:9px}
+.tag i{color:var(--muted); font-style:normal}
+.jp{font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+  font-size:27px; line-height:2.1; font-weight:500; color:var(--ink); margin:0;
+  overflow-wrap:break-word}
+.jp ruby rt{font-size:.44em; font-weight:400; color:var(--ink2); letter-spacing:.02em}
+.jp .sw{color:var(--sienna); box-shadow:inset 0 -.42em 0 var(--siennawash)}
+.gl{font-size:15px; color:var(--ink2); margin:5px 0 0}
+
+/* ---------- inline asides: marked by a rule, not boxed ---------- */
+.aside{border-left:2px solid var(--siennaline); padding:2px 0 2px 15px; margin:16px 0;
+  font-size:15px; color:var(--ink2)}
+.aside b.lbl{display:block; font-family:"Spline Sans Mono",ui-monospace,monospace;
+  font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--sienna);
+  font-weight:500; margin-bottom:3px}
+.aside .jp{font-size:17px; line-height:1.7; display:inline}
+.src{border-left:2px solid var(--gold); padding:2px 0 2px 15px; margin:16px 0}
+.src b.lbl{display:block; font-family:"Spline Sans Mono",ui-monospace,monospace;
+  font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--gold);
+  font-weight:500; margin-bottom:5px}
+.src .jp{font-size:21px; line-height:1.95}
+.src .gl{font-size:14.5px}
+
+/* ---------- slot menus ---------- */
+.menu{margin:16px 0 4px}
+.menu .lbl{font-family:"Spline Sans Mono",ui-monospace,monospace; font-size:10.5px;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--sienna); font-weight:500;
+  display:block; margin-bottom:10px}
+.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(186px,1fr)); gap:1px;
+  background:var(--line); border:1px solid var(--line); border-radius:4px; overflow:hidden}
+.opt{background:var(--sheet); padding:11px 13px}
+.opt .oj{display:block; font-family:"Noto Sans JP","Hiragino Sans",sans-serif;
+  font-size:19px; line-height:1.9; color:var(--ink)}
+.opt .oj ruby rt{font-size:.44em; color:var(--ink2)}
+.opt .oe{display:block; font-size:12.5px; color:var(--muted)}
+
+/* ---------- the three passes: a sequence, so numbered ---------- */
+.passes{counter-reset:p}
+.pz{display:grid; grid-template-columns:34px 1fr; gap:14px; padding:14px 0;
+  border-top:1px solid var(--hair); align-items:start}
+.pz:first-child{border-top:none}
+.pz::before{counter-increment:p; content:counter(p);
+  font-family:"Spline Sans Mono",ui-monospace,monospace; font-size:20px; font-weight:500;
+  color:var(--pine2); line-height:1.25}
+.pz b{display:block; font-size:16.5px; margin-bottom:1px}
+.pz span{font-size:15px; color:var(--ink2)}
+
+/* ---------- the full read-through: the one lifted panel on the page ---------- */
+.through{background:var(--sheet); border:1px solid var(--pineline); border-radius:4px;
+  padding:22px 24px; box-shadow:0 1px 2px rgba(35,33,42,.04)}
+.through .jp{font-size:25px; line-height:2.15}
+
+/* ---------- stuck lines ---------- */
+.stuck{border-top:1px solid var(--hair); padding:15px 0}
+.stuck:first-of-type{border-top:none}
+.stuck .why{font-family:"Spline Sans Mono",ui-monospace,monospace; font-size:11px;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:0 0 6px}
+.stuck .jp{font-size:22px; line-height:1.95}
+
+ol{margin:12px 0; padding-left:0; list-style:none; counter-reset:s}
+ol li{position:relative; padding-left:30px; margin:9px 0; counter-increment:s}
+ol li::before{content:counter(s); position:absolute; left:0; top:0;
+  font-family:"Spline Sans Mono",ui-monospace,monospace; font-size:13px; color:var(--pine2)}
+
+details{border-top:1px solid var(--line); padding-top:14px; margin-top:6px}
+summary{cursor:pointer; font-weight:600; font-size:16px; color:var(--pine);
+  font-family:"Bricolage Grotesque","Instrument Sans",sans-serif}
+summary:focus-visible{outline:2px solid var(--pine2); outline-offset:4px; border-radius:2px}
+a{color:var(--pine); text-decoration-thickness:1px; text-underline-offset:3px}
+.colophon{border-top:1px solid var(--line); padding-top:16px; margin-top:40px;
+  font-family:"Spline Sans Mono",ui-monospace,monospace; font-size:11.5px;
+  color:var(--muted); line-height:1.7}
+
+@media (max-width:440px){
+  body{padding:20px 15px 70px; font-size:16px}
+  h1{font-size:30px} h2{font-size:19px}
+  .jp{font-size:23px} .through .jp{font-size:22px} .through{padding:18px 17px}
+  .thesis{padding:18px 18px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+
+/* ---------- print: the page doubles as a handout ---------- */
+@media print{
+  @page{margin:14mm 15mm}
+  body{background:#fff; padding:0; font-size:11.5pt}
+  main{max-width:none}
+  section{margin-bottom:16pt; break-inside:avoid}
+  h1{font-size:26pt} h2{font-size:14pt}
+  .dek{font-size:11.5pt}
+  .thesis{background:#fff; color:var(--ink); border:1.5pt solid var(--deep); border-radius:0}
+  .thesis .kicker{color:var(--pine)}
+  .thesis p{font-size:12pt}
+  .jp{font-size:17pt; line-height:1.95}
+  .through{border:1pt solid var(--pine); box-shadow:none; break-inside:avoid}
+  .through .jp{font-size:16pt}
+  .grid{gap:0}
+  .opt{border:.4pt solid var(--line)}
+  details{border-top:1pt solid var(--line)}
+  details summary{font-size:12pt}
+  details[open] > *{display:revert}
+  details:not([open]) > *:not(summary){display:revert}
+  .colophon{margin-top:20pt}
+  a{text-decoration:none; color:var(--ink)}
+  a[href^="http"]::after{content:" (" attr(href) ")"; font-size:8.5pt; color:var(--muted)}
+}
+</style>
+</head>
+<body>
+<main>
+
+<section>
+  <span class="kicker">JAPN 301 · Lesson 1 · Speaking</span>
+  <h1>Say It First</h1>
+  <p class="dek">Your whole self-introduction, written out. Every word is on the page, so there is nothing to remember and nothing to find. Read it aloud until your mouth knows it, then look up.</p>
+</section>
+
+<section class="thesis">
+  <span class="kicker">After this you can</span>
+  <p>Say a complete six-line self-introduction out loud, in Japanese, without stopping to search for a word.</p>
+</section>
+
+<section>
+  <div class="rule"><h2>Why it's written out</h2><span class="n">the idea</span></div>
+  <p>Reading is already your strong side. Speaking is where you stall, and that is a retrieval problem rather than a Japanese problem. Right now you are being asked to find the word, pronounce it, and get the grammar right in the same second. Three jobs at once is one too many.</p>
+  <p>This sheet removes two of them. The word is already chosen. The grammar is already correct. Your only job is to <em>make the sound</em>. You can read Japanese, so you can say Japanese, and the distance between those two is repetition with your eyes open rather than more studying.</p>
+  <p class="note">Everything here comes from Lesson 1's three expressions. Nothing new, nothing extra. If it is not on your instructor's prep sheet, it is not on this page.</p>
+</section>
+
+<section>
+  <div class="rule"><h2>Three passes</h2><span class="n">how to use it</span></div>
+  <div class="passes">
+    <div class="pz"><div><b>Read it looking down.</b><span>Straight off the page, slowly, out loud. Wrong pitch is fine. Getting the sound out of your mouth at all is the whole goal of pass one.</span></div></div>
+    <div class="pz"><div><b>Read it again, faster, twice.</b><span>Same lines, same page, no memorising. You are building muscle, not memory. This is the pass people skip and the one that does the work.</span></div></div>
+    <div class="pz"><div><b>Now look up and say it.</b><span>Eyes off the sheet. When a word goes missing, glance down, take it, keep going. That is using the sheet correctly, not failing.</span></div></div>
+  </div>
+  <p class="note">Every kanji carries its furigana, the same way your textbook and your instructor’s handouts do. If you can read the kana above a character, you can say the word — that is the only decoding this asks of you.</p>
+</section>
+
+<section>
+  <div class="rule"><h2>The script</h2><span class="n">six lines</span></div>
+  <p style="margin-top:0">Words marked in <span style="color:var(--sienna); box-shadow:inset 0 -.42em 0 var(--siennawash)">orange</span> are yours to swap, and a menu of ready-made options sits under each one. Pick one and read it. Don't compose.</p>
+
+  <div class="line">
+    <span class="tag">Line 1 <i>· open</i></span>
+    <p class="jp">はじめまして。<span class="sw">〔なまえ〕</span>です。</p>
+    <p class="gl">“Nice to meet you. I'm ____.”</p>
+
+    <div class="menu">
+      <span class="lbl">Your name in katakana — write it in once, at the top, then read it from there every time</span>
+      <div class="grid">
+        <div class="opt"><span class="oj">マイケル</span><span class="oe">Michael</span></div>
+        <div class="opt"><span class="oj">サラ</span><span class="oe">Sarah</span></div>
+        <div class="opt"><span class="oj">クリス</span><span class="oe">Chris</span></div>
+        <div class="opt"><span class="oj">ジェシカ</span><span class="oe">Jessica</span></div>
+        <div class="opt"><span class="oj">ダニエル</span><span class="oe">Daniel</span></div>
+        <div class="opt"><span class="oj">エミリー</span><span class="oe">Emily</span></div>
+      </div>
+    </div>
+
+    <div class="aside">
+      <b class="lbl">The one word you supply</b>
+      This is the only blank on the sheet, because it is the only word nobody can pre-write for you. Settle the katakana once — ask your instructor if you are unsure — and it stops being something you decide mid-sentence.
+    </div>
+  </div>
+
+  <div class="line">
+    <span class="tag">Line 2 <i>· where you're from — uses という</i></span>
+    <p class="jp"><span class="sw">バージニアビーチ</span>という<ruby>町<rt>まち</rt></ruby>から<ruby>来<rt>き</rt></ruby>ました。</p>
+    <p class="gl">“I come from a town called Virginia Beach.”</p>
+
+    <div class="menu">
+      <span class="lbl">Swap the town</span>
+      <div class="grid">
+        <div class="opt"><span class="oj">バージニアビーチ</span><span class="oe">Virginia Beach</span></div>
+        <div class="opt"><span class="oj">ノーフォーク</span><span class="oe">Norfolk</span></div>
+        <div class="opt"><span class="oj">チェサピーク</span><span class="oe">Chesapeake</span></div>
+        <div class="opt"><span class="oj">ポーツマス</span><span class="oe">Portsmouth</span></div>
+        <div class="opt"><span class="oj">サフォーク</span><span class="oe">Suffolk</span></div>
+        <div class="opt"><span class="oj">ハンプトン</span><span class="oe">Hampton</span></div>
+      </div>
+    </div>
+
+    <div class="aside">
+      <b class="lbl">The trap</b>
+      Nothing goes between <span class="jp">という</span> and <span class="jp"><ruby>町<rt>まち</rt></ruby></span> — no <span class="jp">は</span>, no <span class="jp">が</span>, no pause. Say <span class="jp">というまち</span> as a single word and you cannot get it wrong.
+    </div>
+
+    <div class="src">
+      <b class="lbl">The textbook's own sentence · Irodori A2-2 L.1</b>
+      <p class="jp" style="margin:0">ベトナムのダナンという<ruby>町<rt>まち</rt></ruby>から<ruby>来<rt>き</rt></ruby>ました。</p>
+      <p class="gl">“I came from a town called Da Nang, in Vietnam.” Line 2 is this sentence with your town dropped in. Same shape, nothing invented.</p>
+    </div>
+  </div>
+
+  <div class="line">
+    <span class="tag">Line 3 <i>· what you're doing now — uses 〜ています</i></span>
+    <p class="jp"><ruby>今<rt>いま</rt></ruby>、<ruby>大学<rt>だいがく</rt></ruby>で<ruby>日本語<rt>にほんご</rt></ruby>を<ruby>勉強<rt>べんきょう</rt></ruby>しています。</p>
+    <p class="gl">“Right now I'm studying Japanese at university.”</p>
+  </div>
+
+  <div class="line">
+    <span class="tag">Line 4 <i>· what you used to do — uses 〜ていました</i></span>
+    <p class="jp"><ruby>前<rt>まえ</rt></ruby>は、<span class="sw">カフェ</span>で<ruby>働<rt>はたら</rt></ruby>いていました。</p>
+    <p class="gl">“Before, I was working at a café.”</p>
+
+    <div class="menu">
+      <span class="lbl">Swap the workplace</span>
+      <div class="grid">
+        <div class="opt"><span class="oj">カフェ</span><span class="oe">a café</span></div>
+        <div class="opt"><span class="oj">レストラン</span><span class="oe">a restaurant</span></div>
+        <div class="opt"><span class="oj">スーパー</span><span class="oe">a supermarket</span></div>
+        <div class="opt"><span class="oj"><ruby>店<rt>みせ</rt></ruby></span><span class="oe">a shop</span></div>
+        <div class="opt"><span class="oj"><ruby>病院<rt>びょういん</rt></ruby></span><span class="oe">a hospital</span></div>
+        <div class="opt"><span class="oj"><ruby>会社<rt>かいしゃ</rt></ruby></span><span class="oe">an office</span></div>
+      </div>
+    </div>
+
+    <div class="aside">
+      <b class="lbl">The trap in lines 3 and 4</b>
+      These two are one letter apart. <span class="jp">います</span> means still true this morning; <span class="jp">いました</span> means it is over. And don't reach for <span class="jp"><ruby>働<rt>はたら</rt></ruby>きました</span> — that says you worked there for <em>one day</em>.
+    </div>
+
+    <div class="src">
+      <b class="lbl">The textbook's own sentences · Irodori A2-2 L.1</b>
+      <p class="jp" style="margin:0">ベトナムでは、ホテルで<ruby>働<rt>はたら</rt></ruby>いていました。</p>
+      <p class="jp" style="margin:0">いけばなを<ruby>習<rt>なら</rt></ruby>っています。</p>
+      <p class="gl">A past stretch, then a present one. The exact pair lines 3 and 4 are built on.</p>
+    </div>
+  </div>
+
+  <div class="line">
+    <span class="tag">Line 5 <i>· your hobby — uses <ruby>趣味<rt>しゅみ</rt></ruby>は…ことです</i></span>
+    <p class="jp"><ruby>趣味<rt>しゅみ</rt></ruby>は<span class="sw"><ruby>音楽<rt>おんがく</rt></ruby>を<ruby>聞<rt>き</rt></ruby>く</span>ことです。</p>
+    <p class="gl">“My hobby is listening to music.”</p>
+
+    <div class="menu">
+      <span class="lbl">Swap the hobby — every option is already in dictionary form</span>
+      <div class="grid">
+        <div class="opt"><span class="oj"><ruby>音楽<rt>おんがく</rt></ruby>を<ruby>聞<rt>き</rt></ruby>く</span><span class="oe">listening to music</span></div>
+        <div class="opt"><span class="oj"><ruby>映画<rt>えいが</rt></ruby>を<ruby>見<rt>み</rt></ruby>る</span><span class="oe">watching films</span></div>
+        <div class="opt"><span class="oj"><ruby>本<rt>ほん</rt></ruby>を<ruby>読<rt>よ</rt></ruby>む</span><span class="oe">reading books</span></div>
+        <div class="opt"><span class="oj"><ruby>料理<rt>りょうり</rt></ruby>を<ruby>作<rt>つく</rt></ruby>る</span><span class="oe">cooking</span></div>
+        <div class="opt"><span class="oj"><ruby>写真<rt>しゃしん</rt></ruby>を<ruby>撮<rt>と</rt></ruby>る</span><span class="oe">taking photos</span></div>
+        <div class="opt"><span class="oj">ゲームをする</span><span class="oe">playing games</span></div>
+        <div class="opt"><span class="oj"><ruby>絵<rt>え</rt></ruby>を<ruby>描<rt>か</rt></ruby>く</span><span class="oe">drawing</span></div>
+        <div class="opt"><span class="oj"><ruby>歌<rt>うた</rt></ruby>を<ruby>歌<rt>うた</rt></ruby>う</span><span class="oe">singing</span></div>
+      </div>
+    </div>
+
+    <div class="aside">
+      <b class="lbl">The trap</b>
+      <span class="jp">こと</span> only ever attaches to the plain dictionary form — <span class="jp"><ruby>聞<rt>き</rt></ruby>く</span>こと, never <span class="jp"><ruby>聞<rt>き</rt></ruby>きます</span>こと. Every option above is already in the right form, so reading it as printed makes this mistake impossible.
+    </div>
+
+    <div class="src">
+      <b class="lbl">The textbook's own line · Irodori A2-2 L.1 dialogue</b>
+      <p class="jp" style="margin:0"><ruby>趣味<rt>しゅみ</rt></ruby>？　えっと、<ruby>音楽<rt>おんがく</rt></ruby>を<ruby>聞<rt>き</rt></ruby>くことです。</p>
+      <p class="gl">Note the <span class="jp">えっと</span>. The book prints the hesitation on purpose, because pausing out loud is native rather than a mistake. You're allowed to do it.</p>
+    </div>
+  </div>
+
+  <div class="line">
+    <span class="tag">Line 6 <i>· close</i></span>
+    <p class="jp">どうぞよろしくおねがいします。</p>
+    <p class="gl">“Pleased to meet you.”</p>
+  </div>
+</section>
+
+<section>
+  <div class="rule"><h2>The whole thing, no breaks</h2><span class="n">the version you say out loud</span></div>
+  <p style="margin-top:0">Once the six lines are comfortable one at a time, read this straight through. This is what you say in the VLT session.</p>
+  <div class="through">
+    <p class="jp" style="margin:0">はじめまして。<span class="sw">〔なまえ〕</span>です。<br>
+    バージニアビーチという<ruby>町<rt>まち</rt></ruby>から<ruby>来<rt>き</rt></ruby>ました。<br>
+    <ruby>今<rt>いま</rt></ruby>、<ruby>大学<rt>だいがく</rt></ruby>で<ruby>日本語<rt>にほんご</rt></ruby>を<ruby>勉強<rt>べんきょう</rt></ruby>しています。<br>
+    <ruby>前<rt>まえ</rt></ruby>は、カフェで<ruby>働<rt>はたら</rt></ruby>いていました。<br>
+    <ruby>趣味<rt>しゅみ</rt></ruby>は<ruby>音楽<rt>おんがく</rt></ruby>を<ruby>聞<rt>き</rt></ruby>くことです。<br>
+    どうぞよろしくおねがいします。</p>
+  </div>
+  <p class="note">About 25 seconds at a comfortable pace. Under 15 and you're rushing — the pauses between lines are part of sounding fluent, not gaps to fill.</p>
+</section>
+
+<section>
+  <div class="rule"><h2>When you get stuck mid-sentence</h2><span class="n">say one of these</span></div>
+  <p style="margin-top:0">These buy you time. Say one instead of going quiet, because silence is the only thing that actually stalls a conversation. Read them aloud twice each now, so they become the reflex.</p>
+
+  <div class="stuck">
+    <p class="why">You need it again, slower</p>
+    <p class="jp">すみません、もう<ruby>一度<rt>いちど</rt></ruby>おねがいします。</p>
+  </div>
+  <div class="stuck">
+    <p class="why">You need a second to think</p>
+    <p class="jp">ちょっと<ruby>待<rt>ま</rt></ruby>ってください。</p>
+  </div>
+  <div class="stuck">
+    <p class="why">You don't know the word, so ask for it</p>
+    <p class="jp">それは<ruby>日本語<rt>にほんご</rt></ruby>で<ruby>何<rt>なん</rt></ruby>ですか。</p>
+    <p class="gl">This one turns being stuck into a question, which is a real conversational move rather than a failure.</p>
+  </div>
+  <div class="stuck">
+    <p class="why">You genuinely didn't follow</p>
+    <p class="jp">すみません、わかりませんでした。</p>
+  </div>
+  <div class="stuck">
+    <p class="why">Buying a beat, the way the book does it</p>
+    <p class="jp">えっと…　そうですね…</p>
+    <p class="gl">Both are printed in Irodori. A filled pause reads as fluent; an empty one reads as lost.</p>
+  </div>
+</section>
+
+<section>
+  <div class="rule"><h2>Shadowing</h2><span class="n">the same idea, with the course audio</span></div>
+  <p style="margin-top:0">Reading aloud works better still against a native voice, and Lesson 1 has audio in Canvas — the textbook tracks and the Video Viewing clips.</p>
+  <ol>
+    <li>Play a line. Don't speak, just listen once.</li>
+    <li>Play it again and talk over it, script in front of you, matching the rhythm rather than the speed.</li>
+    <li>Third time, half a beat behind, still reading.</li>
+    <li>Only then try it with the audio off.</li>
+  </ol>
+  <p>Match where the voice rises and falls before you worry about matching speed. Rhythm is what makes a sentence sound Japanese. Pace is just confidence, and it arrives later.</p>
+  <p class="note">Use the course's own audio rather than YouTube, so your ear and your quiz are hearing the same voice.</p>
+</section>
+
+<section>
+  <div class="rule"><h2>One thing to ask in class</h2><span class="n">worth the question</span></div>
+  <div class="src" style="border-left-color:var(--pineline)">
+    <b class="lbl" style="color:var(--pine2)">Worth asking in class</b>
+    <p class="jp" style="margin:0"><ruby>働<rt>はたら</rt></ruby>いていました と <ruby>働<rt>はたら</rt></ruby>きました は <ruby>何<rt>なに</rt></ruby>が<ruby>違<rt>ちが</rt></ruby>いますか。</p>
+    <p class="gl">“What's the difference between <em>hataraite imashita</em> and <em>hatarakimashita</em>?” It's a real ambiguity rather than a softball, and asking it in Japanese is itself speaking practice.</p>
+  </div>
+</section>
+
+<section>
+  <details>
+    <summary>Later, when the script starts to feel boring</summary>
+    <p>Boredom is the signal you have outgrown the sheet. Then, and only then: cover the page and say all six lines from memory, swapping in a different town, workplace and hobby from the menus.</p>
+    <p>Do not start here. Producing from nothing is exactly where you freeze, and doing it before your mouth knows the shapes only rehearses the freezing. The script comes first, and the memory is a side effect of having said it forty times.</p>
+  </details>
+</section>
+
+<p class="colophon">Built from Lesson 1 only · Irodori A2-2 · nothing here sits outside your instructor's prep sheet<br>
+Prints as a handout — use your browser's print view.</p>
+
+</main>
+</body>
+</html>
