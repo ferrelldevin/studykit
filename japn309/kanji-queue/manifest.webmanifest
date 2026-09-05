@@ -1,0 +1,30 @@
+{
+  "name": "Kanji Queue",
+  "short_name": "Kanji Queue",
+  "description": "Spaced repetition for JAPN 309 kanji, lessons 1 to 8. Offline; nothing leaves your browser.",
+  "lang": "en",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f6f9",
+  "theme_color": "#2f4a7d",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
