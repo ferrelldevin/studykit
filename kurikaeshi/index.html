@@ -1200,6 +1200,19 @@ function readExport(text, label) {
  * @param deck     the instructor's own installed deck (packStore.deck()) — the cards to report on
  * @param opts     { now, leechThreshold }
  */
+/** The pack versions a student's reviews were answered under — the latest `v` seen per pack,
+ *  so a record synced through an account answers question 4 the way a file export does. */
+function packsFromEntries(entries) {
+  const latest = new Map();
+  for (const e of entries || []) {
+    if (!e || !e.v) continue;
+    const id = String(e.c).split('/')[0];
+    const cur = latest.get(id);
+    if (!cur || e.t > cur.t) latest.set(id, { t: e.t, version: String(e.v) });
+  }
+  return [...latest].map(([id, x]) => ({ id, version: x.version })).sort((a, b) => a.id.localeCompare(b.id));
+}
+
 function summarizeClass(exports, deck, opts = {}) {
   const now = opts.now ?? Date.now();
   const leechThreshold = opts.leechThreshold ?? 8;
@@ -1326,7 +1339,7 @@ function summarizeClass(exports, deck, opts = {}) {
 const SYNC_KEY = 'bw08.sync.v1';
 const clientId = (e) => `${e.c}|${e.t}`;
 /** A server row back into a log entry — the page's class report folds rows through the same path a file takes. */
-const rowToEntry = (r) => ({ c: r.card, t: Number(r.t), g: r.g, k: r.k, s: r.s, d: r.d, i: r.i, u: r.u == null ? null : Number(r.u), e: r.e });
+const rowToEntry = (r) => ({ c: r.card, t: Number(r.t), g: r.g, k: r.k, s: r.s, d: r.d, i: r.i, u: r.u == null ? null : Number(r.u), e: r.e, ...(r.v ? { v: String(r.v) } : {}) });
 
 function makeSync(store, transport, opts = {}) {
   const batch = opts.batch || 500;
@@ -1336,7 +1349,7 @@ function makeSync(store, transport, opts = {}) {
   const sent = new Set(st.sent);
   const persist = () => { st.sent = [...sent]; adapter.set(SYNC_KEY, JSON.stringify(st)); };
 
-  const toRow = (e) => ({ c: e.c, t: e.t, g: e.g, k: e.k, s: e.s, d: e.d, i: e.i, u: e.u, e: e.e });
+  const toRow = (e) => ({ c: e.c, t: e.t, g: e.g, k: e.k, s: e.s, d: e.d, i: e.i, u: e.u, e: e.e, v: e.v || null });   // v: the pack version the answer was given under
 
   return {
     /** Entries the server has not confirmed. */
@@ -1360,7 +1373,7 @@ function makeSync(store, transport, opts = {}) {
     /** Download rows received after the cursor and merge them as a union. */
     async pull() {
       const filters = st.cursor ? [['received_at', 'gt', st.cursor]] : [];
-      const rows = await transport.select('review_log', { select: 'card,t,g,k,s,d,i,u,e,received_at', order: 'received_at.asc', filters });
+      const rows = await transport.select('review_log', { select: 'card,t,g,k,s,d,i,u,e,v,received_at', order: 'received_at.asc', filters });
       if (!rows.length) return { added: 0, total: store.log.length };
       const res = store.importAll(JSON.stringify({ format: 'bw08-review-log', version: 1, log: rows.map(rowToEntry) }));
       rows.forEach((r) => sent.add(`${r.card}|${Number(r.t)}`));
@@ -1397,7 +1410,7 @@ function makeSync(store, transport, opts = {}) {
     publishClassPack: (classId, pack) => transport.upsert('class_packs', [{ class_id: classId, pack_id: pack.id, version: pack.version, pack, updated_at: new Date().toISOString() }], 'class_id,pack_id'),
     /** Everything the instructor may read, incrementally: the policies filter to her students'
      *  class-pack rows; the client folds them per student for the four questions. */
-    classReviews: (afterCursor) => transport.select('review_log', { select: 'user_id,card,t,g,k,s,d,i,u,e,received_at', order: 'received_at.asc', filters: afterCursor ? [['received_at', 'gt', afterCursor]] : [] }),
+    classReviews: (afterCursor) => transport.select('review_log', { select: 'user_id,card,t,g,k,s,d,i,u,e,v,received_at', order: 'received_at.asc', filters: afterCursor ? [['received_at', 'gt', afterCursor]] : [] }),
 
     /** The review log on the server, gone — and only that; then the local sync state, so the
      *  device's own erase is not undone by the next pull. Own cards, classes, enrollments stay. */
@@ -1481,7 +1494,7 @@ function memoryTransport(server, user) {
           if (!/^[^#\s]+#\d+$/.test(r.c) || r.g < 1 || r.g > 4 || r.k < 0 || r.k > 2) throw new Error('bad row');
           const key = `${user}|${r.c}|${r.t}`;
           if (server.reviews.has(key)) continue;
-          server.reviews.set(key, { user_id: user, card: r.c, t: r.t, g: r.g, k: r.k, s: r.s, d: r.d, i: r.i, u: r.u, e: r.e, received_at: stamp() });
+          server.reviews.set(key, { user_id: user, card: r.c, t: r.t, g: r.g, k: r.k, s: r.s, d: r.d, i: r.i, u: r.u, e: r.e, v: r.v || null, received_at: stamp() });
           n++;
         }
         return n;
@@ -1570,6 +1583,20 @@ function withOwnTypes(pack) {
   return { ...pack, noteTypes: [...own, ...kept] };
 }
 
+/** Which copy of the learner's pack wins when two meet — a sync, or a file import: 'adopt'
+ *  the incoming one, 'keep' the local one, 'same', or 'none' when neither exists. The later
+ *  `updated` stamp wins whole (last write wins, sync.js); a local tombstone — the pack was
+ *  retired on this device at that time — counts as the local stamp, so a retired pack does not
+ *  come back from an older copy. */
+function packVerdict(local, incoming, localTombstone) {
+  if (!local && !incoming) return 'none';
+  const lt = local ? (local.updated || '') : (localTombstone || '');
+  const rt = incoming ? (incoming.updated || '') : '';
+  if (incoming && rt > lt) return 'adopt';
+  if (lt > rt) return 'keep';
+  return 'same';
+}
+
 function bumpVersion(v) {
   const [a, b, c] = String(v).split('.').map((n) => parseInt(n, 10) || 0);
   return `${a}.${b}.${c + 1}`;
@@ -1590,6 +1617,14 @@ function noteProblem(type, fields) {
   return null;
 }
 
+// A retired note is remembered on the pack by guid, type and first field. A card written again
+// with the same first field gets that guid back — and with it every card's history, because the
+// §4.5 plan un-suspends cards that return (external review, round 8: the retire copy promised
+// this, and a fresh guid made it false).
+const firstField = (pack, type) => (pack.noteTypes.find((t) => t.id === type) || { fields: [''] }).fields[0];
+const findRetired = (pack, type, key) => (pack.retired || []).find((r) => r.type === type && r.key === key) || null;
+const dropRetired = (pack, guids) => { const rest = (pack.retired || []).filter((r) => !guids.has(r.guid)); return rest.length ? rest : undefined; };
+
 /** Add or edit a note. Returns a NEW pack at the next version; the input is untouched. */
 function upsertNote(pack0, { guid, type, lesson, fields }) {
   const problem = noteProblem(type, fields);
@@ -1599,11 +1634,12 @@ function upsertNote(pack0, { guid, type, lesson, fields }) {
   if (!nt) throw new Error(`no such card type "${type}"`);
   const clean = {};
   for (const f of nt.fields) clean[f] = String((fields || {})[f] || '').trim();
-  const note = { guid: guid || newGuid(), type, lesson: String(lesson || '').trim(), tags: ['mine'], fields: clean };
+  const back = guid ? null : findRetired(pack, type, clean[nt.fields[0]]);
+  const note = { guid: guid || (back && back.guid) || newGuid(), type, lesson: String(lesson || '').trim(), tags: ['mine'], fields: clean };
   const notes = pack.notes.filter((n) => n.guid !== note.guid);
   const idx = pack.notes.findIndex((n) => n.guid === note.guid);
   if (idx >= 0) notes.splice(idx, 0, note); else notes.push(note);
-  const next = { ...pack, version: bumpVersion(pack.version), updated: new Date().toISOString(), notes };
+  const next = { ...pack, version: bumpVersion(pack.version), updated: new Date().toISOString(), notes, retired: dropRetired(pack, new Set([note.guid])) };
   validatePack(next);
   return next;
 }
@@ -1614,7 +1650,10 @@ function upsertNote(pack0, { guid, type, lesson, fields }) {
 function retireNote(pack0, guid) {
   if (!pack0.notes.some((n) => n.guid === guid)) throw new Error('no such card');
   const pack = withOwnTypes(pack0);
-  return { ...pack, version: bumpVersion(pack.version), updated: new Date().toISOString(), notes: pack.notes.filter((n) => n.guid !== guid) };
+  const note = pack.notes.find((n) => n.guid === guid);
+  const key = String((note.fields || {})[firstField(pack, note.type)] || '').trim();
+  const retired = [...(pack.retired || []).filter((r) => r.guid !== guid), { guid, type: note.type, key }];
+  return { ...pack, version: bumpVersion(pack.version), updated: new Date().toISOString(), notes: pack.notes.filter((n) => n.guid !== guid), retired };
 }
 
 /** What installing `next` over `current` would do — the same plan the update path shows. */
@@ -1642,6 +1681,7 @@ function addNotes(pack0, list) {
     if (!pack.noteTypes.find((t) => t.id === n.type)) throw new Error(`no such card type "${n.type}"`);
   }
   const notes = pack.notes.slice();
+  const revived = new Set();
   let added = 0, updated = 0;
   for (const n of list) {
     const nt = pack.noteTypes.find((t) => t.id === n.type);
@@ -1651,9 +1691,13 @@ function addNotes(pack0, list) {
     const idx = notes.findIndex((x) => x.type === n.type && x.fields[first] === clean[first]);
     const tags = Array.from(new Set(['mine', ...(n.tags || [])]));
     if (idx >= 0) { notes[idx] = { ...notes[idx], lesson: n.lesson ? String(n.lesson).trim() : notes[idx].lesson, tags, fields: clean }; updated++; }
-    else { notes.push({ guid: newGuid(), type: n.type, lesson: String(n.lesson || '').trim(), tags, fields: clean }); added++; }
+    else {
+      const back = findRetired(pack, n.type, clean[first]);
+      if (back) revived.add(back.guid);
+      notes.push({ guid: back ? back.guid : newGuid(), type: n.type, lesson: String(n.lesson || '').trim(), tags, fields: clean }); added++;
+    }
   }
-  const next = { ...pack, version: bumpVersion(pack.version), updated: new Date().toISOString(), notes };
+  const next = { ...pack, version: bumpVersion(pack.version), updated: new Date().toISOString(), notes, retired: dropRetired(pack, revived) };
   validatePack(next);
   return { pack: next, added, updated };
 }
@@ -1832,7 +1876,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 <script>
 (function () {
   'use strict';
-  var APP_VERSION = '0.5.0';
+  var APP_VERSION = '0.5.1';
   // The public address. ADR-007: once a hosted address exists it is the one that goes to
   // people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -1942,6 +1986,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     $('h-legend').textContent = 'New: never seen · Learning: seen, not yet held · Due: scheduled for today · Today is ' +
       new Date().toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
     renderSyncLine();
+    var op = ownPack();
+    $('h-mycards').textContent = op ? 'Your cards · ' + op.notes.length : 'Write your own cards';
 
     var sec = b.budget.secondsPerCard, ratio = b.budget.ratio;
     $('h-budget').innerHTML =
@@ -2192,6 +2238,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var now = Date.now();
     store.append({
       c: current.id,
+      v: (DECK.packs[current.pack] || {}).version || undefined,   // the pack version this answer was given under (class view, question 4)
       t: now,
       g: grade,
       k: st.state === 'new' ? store.KINDS.learn : (grade === 1 ? store.KINDS.relearn : store.KINDS.review),
@@ -2343,11 +2390,14 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   function renderSettings() {
     var p = store.prefs, b = store.intakeBudget();
     var packsHtml = packStore.list().map(function (r) {
-      var pk = DECK.packs[r.id] || {};
+      var pk = DECK.packs[r.id] || {}, own = r.id === OWN_PACK_ID;
       return '<div class="packrow"><div class="t"' + (pk.language ? ' lang="' + esc(pk.language) + '"' : '') + '>' + esc(r.title) + '</div>' +
-        '<div class="m">v' + esc(r.version) + ' · ' + (pk.notes ? pk.notes.length : 0) + ' notes' + (r.url ? ' · ' + esc(r.url) : ' · installed from a file') + '</div>' +
-        (r.url ? '<button class="ghost small" type="button" data-upd="' + esc(r.id) + '">Check for update</button>' : '') +
-        '<button class="ghost small" type="button" data-rm="' + esc(r.id) + '">Remove</button>' +
+        '<div class="m">v' + esc(r.version) + ' · ' + (pk.notes ? pk.notes.length : 0) + ' notes' + (own ? ' · your own cards' : (r.url ? ' · ' + esc(r.url) : ' · installed from a file')) + '</div>' +
+        // The learner's own pack leaves through My cards (retire keeps history and tells other
+        // devices); a plain Remove here would bypass that, so it is not offered.
+        (own ? '<button class="ghost small" type="button" data-cards="1">Open My cards</button>'
+             : (r.url ? '<button class="ghost small" type="button" data-upd="' + esc(r.id) + '">Check for update</button>' : '') +
+               '<button class="ghost small" type="button" data-rm="' + esc(r.id) + '">Remove</button>') +
         '</div>';
     }).join('');
     $('se-body').innerHTML =
@@ -2397,7 +2447,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<p class="note">' + (account.signedIn
         ? 'Everything lives in this browser and is also synced to your account, so another device signed in as you gets the same record. Clearing site data here loses only what has not synced yet. '
         : 'Everything lives in this browser. Nothing is uploaded, and no account exists unless you sign in. That also means clearing site data clears your progress — so export before you switch phones. ') +
-      'Your export is also what you hand to an instructor who asks to see ' +
+      'Your own cards travel in it too, so a new phone gets them back. Your export is also what you hand to an instructor who asks to see ' +
       'your studying; it is a record of what you did, reported by this device.</p>' +
       '<button class="ghost" id="i-export" type="button">Export my review history</button>' +
       '<div id="se-export" class="exportbox" hidden>' +
@@ -2465,6 +2515,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
     $('go-class').addEventListener('click', function () { renderClass(); show('s-class'); });
     $('se-cards').addEventListener('click', function () { renderCards(); show('s-cards'); });
+    Array.prototype.forEach.call($('se-body').querySelectorAll('[data-cards]'), function (b) { b.addEventListener('click', function () { renderCards(); show('s-cards'); }); });
     $('se-account').addEventListener('click', function () { renderAccount(); show('s-account'); });
     var sc = $('se-classes'); if (sc) sc.addEventListener('click', function () { renderClasses(); show('s-classes'); });
     $('i-theme').addEventListener('click', function () {
@@ -2480,7 +2531,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     $('i-export').addEventListener('click', function () {
       // The envelope carries the installed pack versions and nothing about the learner; the
       // instructor's view uses them to answer "did my correction land" (SPEC.md B2, q4).
-      var text = store.exportAll({ packs: packStore.list().map(function (r) { return { id: r.id, version: r.version }; }) });
+      // The export is the way to a new phone without an account (Settings says so), so the
+      // learner's own cards travel in it, whole; a course pack does not — it is the instructor's
+      // file and reinstalls from there.
+      var text = store.exportAll({ packs: packStore.list().map(function (r) { return { id: r.id, version: r.version }; }), ownPack: ownPack() || undefined });
       var box = $('se-export');
       box.hidden = false;
       var ta = box.querySelector('textarea');
@@ -2519,7 +2573,12 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       fr.onload = function () {
         try {
           var res = store.importAll(String(fr.result));
-          alert('Merged ' + res.added + ' new entries. ' + res.total + ' total.');
+          var cards = '';
+          try {
+            var parsed = JSON.parse(String(fr.result));
+            if (parsed.ownPack && parsed.ownPack.id === OWN_PACK_ID) cards = ' ' + adoptOwnPackIfNewer(parsed.ownPack, 'the file');
+          } catch (e2) { cards = ' Your own cards in the file could not be read: ' + e2.message; }
+          alert('Merged ' + res.added + ' new entries. ' + res.total + ' total.' + cards);
           renderHome();
         } catch (e) { alert('That file is not a Kurikaeshi export: ' + e.message); }
       };
@@ -2650,9 +2709,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       // The reason differs by where the exports came from (external review, round 7): a record
       // synced through an account carries no pack version at all; a file export from the current
       // app does, and only an older app's file lacks it.
-      if (!vk.length) h += '<p class="note">' + (loadedExports.every(function (ex) { return !ex.exported; })
-        ? 'Reviews synced through an account carry no pack version, so this question is answered only from file exports.'
-        : 'These exports carry no pack versions (made by an older app).') + '</p>';
+      if (!vk.length) h += '<p class="note">No pack version is recorded in these reviews: an older app made them, or they were synced before each review carried its pack version.</p>';
       else {
         h += '<div class="cv-wrap"><table class="cv-table"><thead><tr><th>Pack</th><th>Version</th><th>Students</th></tr></thead><tbody>';
         vk.forEach(function (id) {
@@ -2830,7 +2887,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<button class="primary" id="mc-save" type="button">' + (note ? 'Save changes' : 'Add card') + '</button>' +
       '<button class="ghost" id="mc-cancel" type="button">Cancel</button>' +
       (note ? '<button class="danger" id="mc-retire" type="button">Retire this card</button>' +
-              '<p class="note">Retiring takes the card out of your queue. Its history is kept, so it comes back with its schedule if you ever add it again.</p>' : '');
+              '<p class="note">Retiring takes the card out of your queue. Its history is kept: write it again with the same front or word and it comes back with its schedule.</p>' : '');
     $('mc-body').innerHTML = h;
     var collect = function () {
       var fields = {}; nt.fields.forEach(function (f) { var el = $('f-' + f); if (el) fields[f] = el.value; });
@@ -3038,19 +3095,24 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     refreshDeck(); indexNotes();
     if (!$('s-cards').hidden) renderCards();
   }
+  /** A copy of the learner's pack from elsewhere — the server, or an export file — adopted only
+   *  if it is the later one (packVerdict, tested). Returns a sentence for the screen. */
+  function adoptOwnPackIfNewer(r, from) {
+    var v = packVerdict(ownPack(), r, account.ownRetiredAt);
+    if (v === 'adopt') { adoptOwnPack(r); return (r.notes && r.notes.length ? 'Your own cards from ' + from + ' are in (' + r.notes.length + ').' : 'Your own cards were retired on ' + from + ' more recently; retired here too.'); }
+    if (v === 'keep') return 'Your own cards here are newer than the ones in ' + from + '; kept.';
+    return v === 'same' ? 'Your own cards match ' + from + '.' : '';
+  }
   function syncPacks() {
     return sync.pullPacks().then(function (remote) {
       var r = remote.filter(function (p) { return p && p.id === OWN_PACK_ID; })[0] || null;
       var l = ownPack();
-      if (!r && !l) return 'none';
-      var lt = l ? (l.updated || '') : (account.ownRetiredAt || '');
-      var rt = r ? (r.updated || '') : '';
-      if (r && rt > lt) { adoptOwnPack(r); return 'pulled'; }
-      if (lt > rt) {
-        var out = l || Object.assign({}, r, { notes: [], version: bumpVersion(r.version), updated: lt });
-        return sync.pushPacks([out]).then(function () { return 'pushed'; });
-      }
-      return 'same';
+      var v = packVerdict(l, r, account.ownRetiredAt);
+      if (v === 'none' || v === 'same') return v;
+      if (v === 'adopt') { adoptOwnPack(r); return 'pulled'; }
+      if (!l && !r) return 'none';
+      var out = l || Object.assign({}, r, { notes: [], version: bumpVersion(r.version), updated: account.ownRetiredAt });
+      return sync.pushPacks([out]).then(function () { return 'pushed'; });
     });
   }
   function pushOwnPack(pack) {
@@ -3176,7 +3238,13 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var qs = location.search || '';
     var jm = qs.match(/[?&]join=([A-Za-z0-9]{6})(?:&|$)/);
     if (jm) pendingJoin = jm[1].toUpperCase();
-    if (!SYNC_READY) { if (jm) history.replaceState({}, '', appUrl()); return; }
+    if (!SYNC_READY) {
+      if (jm) {
+        history.replaceState({}, '', appUrl());
+        var note = $('h-sync'); if (note) { note.hidden = false; note.textContent = 'That link carried a class code, but accounts are not switched on in this build, so it cannot be used here yet.'; }
+      }
+      return;
+    }
     if (/[?&]code=/.test(qs) && /[?&]state=/.test(qs)) {
       // Back from the sign-in page: the provider's SDK finishes the exchange, the address is
       // cleaned, and the learner lands where they were going (SDK README: handleRedirectCallback).
@@ -3315,6 +3383,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     body.innerHTML = '<h2 class="sec">Create a class</h2>' +
       '<p class="note">You get a six-character code to hand out. Students who join with it ask to be on your roster; you approve each one. Their reviews of the packs you publish to the class are then visible to you — those, and nothing else of theirs.</p>' +
       '<label class="field"><span class="lbl">Title</span><span class="hint">as students will see it, e.g. JAPN 212, Spring</span><input type="text" class="textin" id="c-title" maxlength="120" autocomplete="off"></label>' +
+      (account.displayName ? '' : '<label class="field"><span class="lbl">Your name</span><span class="hint">students see it before they consent to join; without it they see "whoever gave you this code"</span><input type="text" class="textin" id="c-name" maxlength="80" autocomplete="name"></label>') +
       '<label class="field"><span class="lbl">Ends on</span><span class="hint">the last day of the term. After it, sharing stops by itself.</span><input type="date" class="textin" id="c-ends" value="' + iso(dflt) + '" min="' + iso(today) + '"></label>' +
       '<div id="cl-status" class="status" hidden></div>' +
       '<button class="primary" id="c-create" type="button">Create</button><button class="ghost" id="c-cancel" type="button">Cancel</button>';
@@ -3324,7 +3393,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       if (!title) { setStatus('cl-status', 'A class needs a title.', true); return; }
       if (!ends) { setStatus('cl-status', 'Pick the day the class ends.', true); return; }
       busy(btn, 'Creating…');
-      sync.createClass(title, ends).then(function (r) {
+      var nameEl = $('c-name'), nm = nameEl ? (nameEl.value || '').trim() : '';
+      (nm ? sync.setDisplayName(nm).then(function () { saveAccount({ displayName: nm }); }) : Promise.resolve()).then(function () { return sync.createClass(title, ends); }).then(function (r) {
         classesView.create = false;
         return sync.myClasses().then(function (list) {
           classesView.open = list.filter(function (c) { return c.id === r.id; })[0] || null; renderClasses();
@@ -3403,8 +3473,13 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       });
       Array.prototype.forEach.call(body.querySelectorAll('[data-set]'), function (btn) {
         btn.addEventListener('click', function () {
+          var to = btn.getAttribute('data-set');
+          if (to === 'removed' && !confirm('Remove this student? Sharing closes now, including what was shared before. You cannot let them back in; they can rejoin with the code.')) return;
           busy(btn, '…');
-          sync.setEnrollment(c.id, btn.getAttribute('data-u'), btn.getAttribute('data-set')).then(function () { renderClassDetail(c); }).catch(fail);
+          sync.setEnrollment(c.id, btn.getAttribute('data-u'), to).then(function (n) {
+            if (!n) setStatus('cl-status', 'The roster did not change: the row may already have moved on (a removed or departed student rejoins with the code).', true);
+            renderClassDetail(c);
+          }).catch(fail);
         });
       });
       Array.prototype.forEach.call(body.querySelectorAll('[data-inst]'), function (btn) {
@@ -3416,7 +3491,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       });
       var lv = $('cd-leave'); if (lv) lv.addEventListener('click', function () {
         if (!confirm('Leave ' + c.title + '? Your instructor’s view of your reviews closes.')) return;
-        sync.leaveClass(c.id).then(function () { classesView.open = null; classesView.msg = 'You left ' + c.title + '.'; renderClasses(); }).catch(fail);
+        sync.leaveClass(c.id).then(function (n) {
+          // The server answers with the rows it changed; zero rows is not a leaving (external review, round 8).
+          if (!n) throw new Error('The class did not record your leaving; nothing changed. Try again, or check the roster status above.');
+          classesView.open = null; classesView.msg = 'You left ' + c.title + '.'; renderClasses();
+        }).catch(fail);
       });
       var rp = $('cd-report'); if (rp) rp.addEventListener('click', function () {
         busy(rp, 'Reading…');
@@ -3432,7 +3511,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
             (byUser[r.user_id] = byUser[r.user_id] || []).push(rowToEntry(r));
           });
           var exports = Object.keys(byUser).map(function (uid) {
-            return readExport(JSON.stringify({ format: 'bw08-review-log', version: 1, log: byUser[uid] }), active[uid] + ' · ' + uid.slice(-4));
+            return readExport(JSON.stringify({ format: 'bw08-review-log', version: 1, packs: packsFromEntries(byUser[uid]), log: byUser[uid] }), active[uid] + ' · ' + uid.slice(-4));
           });
           if (!exports.length) { setStatus('cl-status', 'Nothing to read yet: no approved student has synced a review of this class’s packs.', false); rp.disabled = false; rp.textContent = 'Open the class view'; return; }
           loadedExports = exports;
@@ -3512,6 +3591,18 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
+  // A new service worker takes over (skipWaiting + claim in sw.js) while the OLD page is still
+  // on screen; without this a returning visitor saw the previous version until a second load.
+  // The reload waits for a moment between cards, never during a review; the first-ever install
+  // (no controller before) reloads nothing.
+  var hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', function () {
+    if (!hadController || window.__kurikaeshiReloaded) return;
+    window.__kurikaeshiReloaded = true;
+    var busy = function () { var r = document.getElementById('s-review'); return !!r && !r.hidden; };
+    if (!busy()) { location.reload(); return; }
+    var t = setInterval(function () { if (!busy()) { clearInterval(t); location.reload(); } }, 2000);
+  });
   addEventListener('load', function () {
     navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(function () {});
   });
