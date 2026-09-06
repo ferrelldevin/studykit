@@ -318,7 +318,7 @@ const D_MIN = 1, D_MAX = 10;
 // documented value. A failed card must come back inside the same sitting, and FSRS alone would
 // schedule a newly lapsed card hours out. Anki solves this with learning steps, and its manual
 // DOES state the shipped default — Studying: "By default, there are two steps: 1 minute and
-// 10 minutes" (an earlier version of this comment said otherwise; Gate B round 4 corrected
+// 10 minutes" (an earlier version of this comment said otherwise; external review, round 4 corrected
 // it). This app keeps only the first step: one minute after Again, and the first Hard, Good
 // or Easy graduates on the spot at the FSRS interval shown on the button, rather than through
 // a ten-minute second step. That is the deviation, and it is mine.
@@ -884,7 +884,7 @@ function makePackStore(adapter) {
 
 // A deck from any list of packs: the installed ones, or packs loaded only to read a class's
 // exports against — which an instructor may never want installed on her own device, and which
-// are never written to storage (Gate B, round 2: a class view joined against the reading
+// are never written to storage (external review, round 2: a class view joined against the reading
 // device's installed packs read a full class as "nothing reviewed yet").
 function deckFrom(packs) {
   const notes = [], cards = [], noteTypes = {}, out = {};
@@ -984,7 +984,7 @@ function buildQueue(deck, store, opts = {}) {
   // there's nothing else to study, Anki will show learning cards up to 20 minutes early by
   // default." Without it a card failed on the day's last turn — due again in one minute and
   // inside a step — was invisible to a rebuilt queue, and the done screen called that a clear
-  // queue (Gate B, round 3). Applied only when nothing else is due, as the manual says.
+  // queue (external review, round 3). Applied only when nothing else is due, as the manual says.
   const learnAheadMs = (p.learnAheadMinutes ?? 20) * 60000;
   if (!due.length && !learn.length && !learnInter.length && Math.min(fresh.length, newLeft) === 0) {
     for (const c of pool) {
@@ -1053,7 +1053,7 @@ function lessonProgress(deck, store) {
 // SEEN every card a dated milestone covers before its date. Distinct from the ceiling the
 // minute budget allows. Returns the binding milestone and its floor, or null if none is ahead.
 // `packId` scopes the floor to one pack: a learner studying one course is not told about
-// another course's deadline (Gate B, round 1). Null means every installed pack.
+// another course's deadline (external review, round 1). Null means every installed pack.
 function intakeFloor(deck, store, now = Date.now(), packId = null) {
   const states = store.allStates();
   const isSuspended = typeof store.isSuspended === 'function' ? (id) => store.isSuspended(id) : () => false;
@@ -1153,7 +1153,7 @@ function summarizeClass(exports, deck, opts = {}) {
   const byCard = new Map(deck.cards.map((c) => [c.id, c]));
   const noteOf = new Map(deck.notes.map((n) => [`${n.pack}/${n.guid}`, n]));
   // Packs the exports refer to that this deck lacks. Without them, items and coverage cannot be
-  // named, and the screen must say THAT rather than "nothing reviewed" (Gate B, round 2: an
+  // named, and the screen must say THAT rather than "nothing reviewed" (external review, round 2: an
   // instructor who had not installed the pack read a full class as a quiet one).
   const referenced = new Set();
   for (const ex of exports) {
@@ -1247,7 +1247,7 @@ function summarizeClass(exports, deck, opts = {}) {
 
   /* ── packs and store ───────────────────────────────────────────── */
   // No built-in pack since 0.4.0: the app ships empty and any course's pack installs on a tap.
-  // Gate B, round 1: a bundled JAPN 309 pack that could not be removed entered a JAPN 212
+  // external review, round 1: a bundled JAPN 309 pack that could not be removed entered a JAPN 212
   // student's Start queue, and its quiz deadline was shown to people not in that course.
   var LEGACY_PACK_ID = 'japn309-kll-l1-l8';   // M1's card ids carried no pack prefix
   var PUBLIC_PACK_URL = PUBLIC_URL + 'packs/' + LEGACY_PACK_ID + '.json';
@@ -1335,7 +1335,7 @@ function summarizeClass(exports, deck, opts = {}) {
 
     // The intake FLOOR (SPEC.md B1): a dated milestone in a pack says how many new cards a day
     // you must take to have seen its material in time — distinct from the ceiling above.
-    // Scoped to the chosen pack: another course's deadline is not this learner's (Gate B, round 1).
+    // Scoped to the chosen pack: another course's deadline is not this learner's (external review, round 1).
     var fl = intakeFloor(DECK, store, Date.now(), filter.pack);
     var fh = $('h-floor');
     if (!fl) fh.innerHTML = '';
@@ -1349,7 +1349,7 @@ function summarizeClass(exports, deck, opts = {}) {
     if (!anyPack) {
       // The instructor's file is the first action and the big button; the public pack is the
       // second, in plain style — a student who skips the sentence must not land in another
-      // course (Gate B, round 4).
+      // course (external review, round 4).
       host.innerHTML =
         '<div class="empty"><p>Your instructor’s pack comes as a file.</p>' +
         '<button class="primary" id="h-getfile" type="button">Install the pack your instructor sent</button>' +
@@ -1431,7 +1431,7 @@ function summarizeClass(exports, deck, opts = {}) {
     shownAt = Date.now();
     $('r-left').textContent = (session.total - session.queue.length) + ' / ' + session.total;
     // Undo reaches only answers given in THIS sitting. On a session's first card it used to pop
-    // the previous day's last review and delete a real answer (Gate B, round 2).
+    // the previous day's last review and delete a real answer (external review, round 2).
     $('r-undo').disabled = !(session && session.answered > 0);
     drawCard();
   }
@@ -1565,7 +1565,7 @@ function summarizeClass(exports, deck, opts = {}) {
     show('s-done');
     var t = store.countsToday();
     // Leaving with cards still waiting is not a clear queue, and the heading must not say it
-    // is (Gate B, round 2: a success heading over a remaining queue is a silent success).
+    // is (external review, round 2: a success heading over a remaining queue is a silent success).
     var left = b.queue.length;
     $('d-title').textContent = left ? 'Stopped for now' : 'Queue clear';
     $('d-body').innerHTML = t.reviews + (t.reviews === 1 ? ' card' : ' cards') + ' today in ' +
@@ -1807,7 +1807,7 @@ function summarizeClass(exports, deck, opts = {}) {
       copy.textContent = 'Copy to clipboard';
       copy.onclick = function () {
         // "Copied" only when a copy happened; otherwise the text is selected and the button says
-        // so (Gate B, round 4).
+        // so (external review, round 4).
         var done = function () { copy.textContent = 'Copied'; };
         var fallback = function () {
           ta.select();
@@ -1852,7 +1852,7 @@ function summarizeClass(exports, deck, opts = {}) {
   var loadedExports = [];
   // Packs loaded on this screen only to READ the exports against — the instructor need not
   // install the course pack on her own device, and these are never written to storage
-  // (Gate B, round 2). The deck the class is read against is installed packs plus these.
+  // (external review, round 2). The deck the class is read against is installed packs plus these.
   var loadedPacks = [];
   function classDeck() {
     var installed = Object.keys(DECK.packs).map(function (k) { return DECK.packs[k]; });
@@ -2008,7 +2008,7 @@ function summarizeClass(exports, deck, opts = {}) {
     var cp = $('cv-copy'); if (cp) cp.addEventListener('click', function () {
       var r = summarizeClass(loadedExports, classDeck(), { now: Date.now(), leechThreshold: store.prefs.leechThreshold });
       var text = JSON.stringify(r, null, 1);
-      // A failed copy must not say "Copied" (Gate B, round 3): it says so, and offers the text.
+      // A failed copy must not say "Copied" (external review, round 3): it says so, and offers the text.
       var done = function () { cp.textContent = 'Copied'; };
       var failed = function () {
         cp.textContent = 'Could not copy — the report is shown below to select';
