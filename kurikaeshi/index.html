@@ -1883,7 +1883,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // The account service's PUBLIC identifiers, injected at build from config.json. Placeholders
   // (a square bracket anywhere) mean accounts are off: the page then never touches the network
   // except to install a pack on the learner's tap. Nothing here is a secret by design.
-  var CONFIG = {"auth0":{"domain":"[AUTH0_DOMAIN].us.auth0.com","clientId":"[AUTH0_CLIENT_ID]","audience":"https://kurikaeshi/api"},"dataApi":"https://[NEON_DATA_API_HOST]/rest/v1","contact":""};
+  var CONFIG = {"auth0":{"domain":"dev-rxe3mje4y1suwccw.us.auth0.com","clientId":"EpM3qKZqHIjpumcmmsuXUUaxSHibqXi3","audience":"https://kurikaeshi/api"},"dataApi":"https://ep-shiny-union-ay3o428i.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1","contact":""};
   var SYNC_READY = !!(CONFIG && CONFIG.auth0 && CONFIG.dataApi && !/\[/.test(JSON.stringify(CONFIG)));
   var $ = function (id) { return document.getElementById(id); };
   // Everything interpolated into markup from a pack goes through this. Packs are trusted and
@@ -3064,6 +3064,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var m = (e && e.message) || String(e);
     if (/Failed to fetch|NetworkError|Load failed|Timeout|network/i.test(m)) return 'No connection. Your progress is safe here and syncs when you are back online.';
     if (/login_required|missing_refresh_token|invalid_grant|Login required/i.test(m)) return 'Your sign-in expired. Sign in again to keep syncing.';
+    // The token was accepted but the database ran the request as a role with no rights: the site's
+    // sign-in setup is missing the role claim (live checkpoint, 2026-09-06). Not the learner's to fix.
+    if (/permission denied for (function|table|schema)|not signed in/i.test(m)) return 'The server refused this account: the sign-in setup on the site’s side is incomplete. Nothing is lost here; whoever runs this site has to finish it.';
     return m;
   }
   function relTime(t) {
