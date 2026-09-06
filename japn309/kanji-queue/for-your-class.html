@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kanji Queue for your class</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;600&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --paper:#f6f6f9; --surface:#ffffff; --ink:#1b1d2a; --ink-soft:#4a4d60; --ink-mute:#6f7288;
+  --rule:#d8dae4; --indigo:#2f4a7d; --indigo-lo:#dfe5f2;
+  color-scheme: light;
+}
+/* Single-mode light, declared: a document people forward and print, where dark reads as
+   broken (operator, 2026-09-04). No dark block, on purpose. */
+* { box-sizing: border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:"Source Sans 3",ui-sans-serif,system-ui,-apple-system,sans-serif; font-size:17px; line-height:1.55; -webkit-font-smoothing:antialiased; }
+main { max-width:38rem; margin:0 auto; padding:2rem 1.25rem 3rem; }
+h1 { font-family:Spectral,Georgia,serif; font-weight:600; font-size:1.7rem; line-height:1.2; letter-spacing:-.01em; margin:0 0 .5rem; text-wrap:balance; }
+h2 { font-family:Spectral,Georgia,serif; font-weight:600; font-size:1.25rem; margin:1.6rem 0 .6rem; text-wrap:balance; color:var(--indigo); }
+p { margin:0 0 .9rem; }
+.standfirst { color:var(--ink-soft); font-style:italic; margin-bottom:1.2rem; }
+hr { border:0; border-top:1px solid var(--rule); margin:1.4rem 0; }
+ol { padding-left:1.4rem; margin:0 0 .9rem; }
+li { margin:0 0 .45rem; }
+li::marker { color:var(--indigo); font-weight:600; }
+strong { font-weight:600; }
+code { font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; font-size:.9em; background:var(--indigo-lo); padding:.05em .3em; border-radius:3px; }
+a { color:var(--indigo); font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; font-size:.92em; word-break:break-all; }
+a:focus-visible { outline:2px solid var(--indigo); outline-offset:2px; }
+@media print {
+  :root { --paper:#fff; --surface:#fff; --ink:#111; --ink-soft:#333; --ink-mute:#555; --rule:#bbb; --indigo:#2f4a7d; --indigo-lo:#eef1f7; }
+  @page { margin:16mm; }
+  body { font-size:11pt; }
+  main { max-width:none; padding:0; }
+  h2 { break-after:avoid; }
+  a { color:inherit; }
+}
+</style>
+</head>
+<body>
+<main>
+<h1>Kanji Queue for your class</h1>
+<p class="standfirst">For the instructor. Written to be forwarded to students as-is; the first half is theirs.</p>
+<hr>
+<h2>For students</h2>
+<p><strong>What it is.</strong> A flashcard app that decides <em>when</em> to show you each word — sooner if you are forgetting it, later if you know it. Five to fifteen minutes a day. It works with no signal and keeps everything on your own phone.</p>
+<p><strong>Set it up once.</strong></p>
+<ol><li>Open <strong><a href="https://ferrelldevin.github.io/studykit/japn309/kanji-queue/">https://ferrelldevin.github.io/studykit/japn309/kanji-queue/</a></strong> on your phone.</li><li>Add it to your home screen — <em>Share → Add to Home Screen</em> on iPhone, the browser menu on Android. It then opens like an app, full screen, offline.</li><li>Your instructor will send you a file ending in <code>.json</code>. In the app: <strong>Settings → Install from a file</strong>, choose it. The course's cards appear on the home screen, grouped by lesson.</li></ol>
+<p><strong>Every day.</strong> Open it, tap <strong>Start today's cards</strong>, answer honestly — <em>Again</em> if you did not know it, <em>Good</em> if you did. Stop when it says the queue is clear. It will not give you more; that is on purpose.</p>
+<p><strong>When your instructor asks to see your studying.</strong> <strong>Settings → Export my review history → Copy</strong> (or <em>save as a file</em> on Android). Send that to your instructor the way they ask. It contains only what you reviewed and when — no name, no account, nothing else.</p>
+<p><strong>Things worth knowing.</strong> Set the minutes you have, not a card count; the app works out the rest. Do not reset it to "start over" — that throws away everything you already know. If you switch phones, export first.</p>
+<hr>
+<h2>For the instructor</h2>
+<p><strong>Getting the cards in.</strong> Send me your vocabulary as a spreadsheet, one row per word, with a header row: <code>word</code>, <code>reading</code> (blank if the word is already kana), <code>meaning</code>, <code>lesson</code>. I turn it into a pack file and send it back; you send that file to the class. When you correct a word or add a lesson, I send a new version of the same file — students install it and keep all their progress. Your name is not in the file.</p>
+<p><strong>Seeing what the class did.</strong> Ask students to send you their exports. Then, in the app on any device: <strong>Settings → For whoever teaches the course → Open the class view → Load export files</strong>, choose them all. You get four things:</p>
+<ol><li><strong>Which items the class is failing</strong> — ranked by how often a word was wrong on first sight, then how often it keeps being forgotten. This is the list to bring to class.</li><li><strong>Whether the class is on pace</strong> — per lesson, how many students have seen none, some, most, or all of it. Shown as a spread, not an average, because an average hides the half of the room that has not started.</li><li><strong>Who has stopped</strong> — reviews in the last seven days and the date each export last shows activity. Dates only.</li><li><strong>Whether your correction landed</strong> — which version of the pack each export came from.</li></ol>
+<p>Nothing leaves your device. The app keeps none of it after you leave that screen.</p>
+<p><strong>What the numbers can and cannot tell you.</strong> An export is a record made by the student's own phone and handed to you by the student — treat it like a submitted worksheet. It shows what was studied, when, and how it went. It does not prove anything about how, and it is not a grade. Nothing in the app detects dishonesty, and I would not build it to claim otherwise.</p>
+<p><strong>If a student has a problem.</strong> The two that come up: they cleared their browser data (their progress is gone unless they exported — nothing can recover it), or they installed the pack twice under two versions (it updates in place; that is fine). Anything else, send it to me.</p>
+<hr>
+<p class="standfirst">Built from the course list you supply and a licensed dictionary; every reading is checked against a named source rather than typed from memory. Sources and licences are shown in the app's footer.</p>
+</main>
+</body>
+</html>
