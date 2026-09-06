@@ -28,6 +28,24 @@ strong { font-weight:600; }
 code { font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; font-size:.9em; background:var(--indigo-lo); padding:.05em .3em; border-radius:3px; }
 a { color:var(--indigo); font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; font-size:.92em; word-break:break-all; }
 a:focus-visible { outline:2px solid var(--indigo); outline-offset:2px; }
+h3 { font-family:Spectral,Georgia,serif; font-weight:600; font-size:1.05rem; margin:1.2rem 0 .4rem; }
+ul { padding-left:1.2rem; margin:0 0 .9rem; }
+blockquote { margin:0 0 .9rem; padding:.5rem .9rem; border-left:3px solid var(--indigo); background:var(--surface); color:var(--ink-soft); }
+.tbl { overflow-x:auto; margin:0 0 1rem; }
+table { border-collapse:collapse; width:100%; font-size:.92rem; background:var(--surface); border:1px solid var(--rule); }
+th, td { text-align:left; vertical-align:top; padding:.45rem .6rem; border-bottom:1px solid var(--rule); }
+th { font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; font-size:.7rem; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-mute); background:var(--indigo-lo); }
+tr:last-child td { border-bottom:0; }
+@media (max-width: 40rem) {
+  /* A row becomes a card; each cell names its column. Nothing scrolls sideways on a phone. */
+  table, thead, tbody, tr, th, td { display:block; }
+  thead { position:absolute; left:-9999px; }
+  tr { border-bottom:2px solid var(--rule); padding:.35rem 0; }
+  tr:last-child { border-bottom:0; }
+  td { border:0; padding:.2rem .6rem; }
+  td::before { content:attr(data-label); display:block; font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; font-size:.66rem; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-mute); }
+  td:empty { display:none; }
+}
 @media print {
   :root { --paper:#fff; --surface:#fff; --ink:#111; --ink-soft:#333; --ink-mute:#555; --rule:#bbb; --indigo:#2f4a7d; --indigo-lo:#eef1f7; }
   @page { margin:16mm; }
