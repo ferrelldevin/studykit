@@ -1,7 +1,7 @@
 {
-  "name": "Kanji Queue",
-  "short_name": "Kanji Queue",
-  "description": "Spaced repetition for JAPN 309 kanji, lessons 1 to 8. Offline; nothing leaves your browser.",
+  "name": "Kurikaeshi",
+  "short_name": "Kurikaeshi",
+  "description": "Spaced-repetition study cards for any course. Offline; nothing leaves your browser.",
   "lang": "en",
   "start_url": "./",
   "scope": "./",

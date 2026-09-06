@@ -1,0 +1,2092 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Spaced-repetition study cards for any course. Runs on your phone, works offline, keeps nothing anywhere but your own browser.">
+<meta name="theme-color" content="#2f4a7d" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111320" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Kurikaeshi">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Kurikaeshi</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;600&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* Same palette as the specification page — 藍 indigo — so the two read as one product.
+   This one is a UI, not a document: fixed regions, state encoded in form, thumb-first. */
+:root {
+  --paper:#f6f6f9; --surface:#ffffff; --surface-2:#eceef4;
+  --ink:#1b1d2a; --ink-soft:#4a4d60; --ink-mute:#6f7288;
+  --rule:#d8dae4; --indigo:#2f4a7d; --indigo-lo:#dfe5f2; --indigo-ink:#ffffff;
+  --again:#a8402a; --again-lo:#f6e3de;
+  --hard:#8a6d3b;  --hard-lo:#f5ecdc;
+  --good:#2f4a7d;  --good-lo:#dfe5f2;
+  --easy:#46664b;  --easy-lo:#e0ebe1;
+  --shadow:0 1px 2px rgba(27,29,42,.06), 0 10px 28px -14px rgba(27,29,42,.25);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#111320; --surface:#191c2b; --surface-2:#212537;
+    --ink:#e6e7ef; --ink-soft:#b3b6c8; --ink-mute:#878ba4;
+    --rule:#2f3448; --indigo:#9db3dd; --indigo-lo:#23304c; --indigo-ink:#0f1220;
+    --again:#e08a72; --again-lo:#3a2119;
+    --hard:#d6b077;  --hard-lo:#332818;
+    --good:#9db3dd;  --good-lo:#23304c;
+    --easy:#9cc0a2;  --easy-lo:#1e2c21;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#111320; --surface:#191c2b; --surface-2:#212537;
+  --ink:#e6e7ef; --ink-soft:#b3b6c8; --ink-mute:#878ba4;
+  --rule:#2f3448; --indigo:#9db3dd; --indigo-lo:#23304c; --indigo-ink:#0f1220;
+  --again:#e08a72; --again-lo:#3a2119;
+  --hard:#d6b077;  --hard-lo:#332818;
+  --good:#9db3dd;  --good-lo:#23304c;
+  --easy:#9cc0a2;  --easy-lo:#1e2c21;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+}
+*,*::before,*::after{box-sizing:border-box}
+/* Load-bearing, not boilerplate. `.screen` sets display:flex, which beats the UA stylesheet's
+   display:none for [hidden] — so without this rule every screen renders at once, stacked. The
+   artifact host happens to ship this reset; a plain file and GitHub Pages do not, which is
+   exactly where this app has to run. */
+[hidden]{display:none!important}
+html,body{height:100%}
+body { background:var(--paper); color:var(--ink); font-family:"Source Sans 3",ui-sans-serif,system-ui,-apple-system,sans-serif; font-size:17px; line-height:1.55; margin:0; -webkit-font-smoothing:antialiased; overflow:hidden; }
+/* Fonts follow the PACK's language, declared on the card, not a class the app hard-codes. */
+[lang^="ja"]{font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+:focus-visible{outline:2px solid var(--indigo);outline-offset:2px;border-radius:4px}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+
+#app{height:100%;max-width:34rem;margin:0 auto;display:flex;flex-direction:column;position:relative}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden}
+.scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;padding:0 1.1rem 2rem}
+
+/* ── Top bar ─────────────────────────────────────────────────────────── */
+.bar{display:flex;align-items:center;gap:.6rem;padding:.65rem 1.1rem;border-bottom:1px solid var(--rule);background:var(--surface);flex:none}
+.bar h1{font-family:Spectral,Georgia,serif;font-size:1.05rem;font-weight:600;margin:0;letter-spacing:-.01em}
+.bar h1 small{font-size:.85em;font-weight:500;color:var(--ink-soft);margin-left:.3em}
+.bar .sp{margin-left:auto}
+.iconbtn{padding:.35rem .6rem;border-radius:999px;border:1px solid var(--rule);font-size:.78rem;color:var(--ink-soft);background:var(--surface)}
+.iconbtn:hover{border-color:var(--indigo);color:var(--indigo)}
+
+/* ── Counts ──────────────────────────────────────────────────────────── */
+.counts{display:flex;gap:.4rem;flex:none;padding:.55rem 1.1rem;border-bottom:1px solid var(--rule);background:var(--surface)}
+.count{flex:1;text-align:center;padding:.3rem .2rem;border-radius:6px;background:var(--surface-2)}
+.count b{display:block;font-family:"IBM Plex Mono",monospace;font-size:1.15rem;font-variant-numeric:tabular-nums;line-height:1.2}
+.count span{font-size:.68rem;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-mute)}
+.count.new b{color:var(--indigo)} .count.due b{color:var(--easy)} .count.lrn b{color:var(--hard)}
+
+/* ── Home ────────────────────────────────────────────────────────────── */
+.lede{font-family:Spectral,Georgia,serif;font-size:1.02rem;color:var(--ink-soft);margin:1rem 0 .4rem}
+.legend{font-size:.76rem;color:var(--ink-mute);margin:.5rem 0 0;line-height:1.4}
+.empty{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:1rem;margin:.6rem 0}
+.empty p{margin:0 0 .8rem}
+.primary{display:block;width:100%;padding:.95rem 1rem;border-radius:10px;background:var(--indigo);color:var(--indigo-ink);font-weight:700;font-size:1.02rem;text-align:center;box-shadow:var(--shadow);margin:.9rem 0 .3rem;min-height:48px}
+.primary[disabled]{opacity:.45;cursor:default;box-shadow:none}
+.floor{border-left:3px solid var(--hard);background:var(--surface);padding:.55rem .8rem;margin:.6rem 0;font-size:.88rem;border-radius:0 6px 6px 0}
+.floor.ok{border-left-color:var(--easy)}
+.packhdr{display:flex;align-items:baseline;gap:.6rem;width:100%;padding:.55rem .2rem .3rem;text-align:left;border-bottom:1px solid var(--rule);margin-top:1rem}
+.packhdr h2{font-family:Spectral,Georgia,serif;font-size:1.1rem;margin:0;font-weight:600;flex:1;min-width:0}
+.packhdr .v{font-family:"IBM Plex Mono",monospace;font-size:.7rem;color:var(--ink-mute);white-space:nowrap}
+.packhdr[aria-pressed="true"] h2{color:var(--indigo)}
+.lessons{display:flex;flex-direction:column;gap:.4rem;margin:.6rem 0 .2rem}
+.lesson{display:flex;align-items:center;gap:.7rem;width:100%;padding:.65rem .8rem;border:1px solid var(--rule);border-radius:8px;background:var(--surface);text-align:left;min-height:48px}
+.lesson:hover{border-color:var(--indigo)}
+.lesson .nm{font-weight:600;min-width:2.6rem;font-family:"IBM Plex Mono",monospace;font-size:.85rem;white-space:nowrap}
+.lesson .bars{flex:1;display:flex;height:7px;border-radius:4px;overflow:hidden;background:var(--surface-2);min-width:0}
+.lesson .bars i{display:block}
+.lesson .bars .b-new{background:var(--indigo-lo)}
+.lesson .bars .b-lrn{background:var(--hard)}
+.lesson .bars .b-rev{background:var(--easy)}
+.lesson .tally{font-family:"IBM Plex Mono",monospace;font-size:.74rem;color:var(--ink-mute);font-variant-numeric:tabular-nums;white-space:nowrap}
+.lesson[aria-pressed="true"]{border-color:var(--indigo);background:var(--indigo-lo)}
+
+/* ── Review ──────────────────────────────────────────────────────────── */
+/* The card region is a fixed box and does NOT resize when the answer appears; a layout that
+   reflows on reveal causes mis-taps, and a mis-tap is a corrupted review (SPEC.md 7.2). */
+.cardwrap{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:1rem 1.1rem;overflow-y:auto;text-align:center;gap:.5rem}
+.tag{font-family:"IBM Plex Mono",monospace;font-size:.68rem;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-mute)}
+/* Roles, not subjects: the pack says which field is which (PACK-FORMAT.md). */
+.r-glyph{font-size:clamp(5rem,26vw,8.5rem);line-height:1.05;font-weight:500}
+.r-glyph.long{font-size:clamp(2.4rem,12vw,3.6rem);line-height:1.2}
+.r-headline{font-family:Spectral,Georgia,serif;font-size:clamp(1.4rem,7vw,2rem);line-height:1.25;max-width:22ch}
+.ans .r-headline{font-size:clamp(1.6rem,8vw,2.2rem);line-height:1.2;font-weight:600}
+.ans .r-glyph{font-size:clamp(2rem,10vw,3rem);font-weight:500;line-height:1.2}
+.r-text{font-family:Spectral,Georgia,serif;font-size:1.15rem;color:var(--ink);max-width:26ch}
+.r-also{font-size:.85rem;color:var(--ink-mute);max-width:30ch;line-height:1.35}
+.r-meta{font-size:.78rem;color:var(--ink-mute)}
+.divider{width:2.2rem;height:1px;background:var(--rule);margin:.5rem 0}
+.ans{display:flex;flex-direction:column;gap:.35rem;align-items:center}
+.chips{display:flex;flex-wrap:wrap;gap:.3rem;justify-content:center;margin-top:.2rem}
+.chip{font-size:1rem;padding:.25rem .6rem;border-radius:4px;background:var(--surface-2);color:var(--ink-soft)}
+.chip b{font-family:"IBM Plex Mono",monospace;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-mute);margin-right:.4rem;font-weight:500}
+.chip b[lang]{font-family:"Noto Sans JP",sans-serif;text-transform:none}
+.leechflag{font-family:"IBM Plex Mono",monospace;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--again);border:1px solid var(--again);padding:.1rem .4rem;border-radius:3px}
+
+/* The answer band is a fixed-height region. "Show answer" and the four grades occupy the
+   same band, so nothing above them moves between the two states. */
+.band{flex:none;padding:.7rem 1.1rem calc(.9rem + env(safe-area-inset-bottom,0px));border-top:1px solid var(--rule);background:var(--surface);min-height:5.6rem;display:flex;align-items:stretch;gap:.4rem}
+.reveal{flex:1;border-radius:10px;background:var(--indigo);color:var(--indigo-ink);font-weight:700;font-size:1rem;min-height:56px;box-shadow:var(--shadow)}
+.grades{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem}
+.grade{border-radius:10px;border:1px solid var(--rule);background:var(--surface-2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.1rem;min-height:56px;padding:.3rem .1rem}
+.grade .g{font-weight:700;font-size:.92rem}
+.grade .i{font-family:"IBM Plex Mono",monospace;font-size:.68rem;color:var(--ink-mute);font-variant-numeric:tabular-nums}
+.glegend{font-size:.7rem;color:var(--ink-mute);text-align:center;margin:.35rem 0 0;line-height:1.3}
+.grade[data-g="1"]{background:var(--again-lo);border-color:var(--again)} .grade[data-g="1"] .g{color:var(--again)}
+.grade[data-g="2"]{background:var(--hard-lo);border-color:var(--hard)}   .grade[data-g="2"] .g{color:var(--hard)}
+.grade[data-g="3"]{background:var(--good-lo);border-color:var(--good)}   .grade[data-g="3"] .g{color:var(--good)}
+.grade[data-g="4"]{background:var(--easy-lo);border-color:var(--easy)}   .grade[data-g="4"] .g{color:var(--easy)}
+
+/* ── Done / empty ────────────────────────────────────────────────────── */
+.done{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem 1.4rem;gap:.5rem}
+.done h2{font-family:Spectral,Georgia,serif;font-size:1.8rem;margin:0;font-weight:600}
+.done p{color:var(--ink-soft);margin:.2rem 0;max-width:30ch}
+
+/* ── Settings / stats ────────────────────────────────────────────────── */
+h2.sec{font-family:Spectral,Georgia,serif;font-size:1.3rem;margin:1.4rem 0 .3rem;font-weight:600}
+.field{display:block;margin:1rem 0}
+.field .lbl{font-weight:600;display:block}
+.field .hint{font-size:.85rem;color:var(--ink-mute);margin-top:.1rem}
+.field input[type=range]{width:100%;margin-top:.5rem;accent-color:var(--indigo);min-height:32px}
+.field .val{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;color:var(--indigo);font-weight:500}
+.rows{border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--surface);margin:.7rem 0}
+.row{display:flex;justify-content:space-between;gap:1rem;padding:.55rem .8rem;border-bottom:1px solid var(--rule);font-size:.92rem}
+.row:last-child{border-bottom:0}
+.row .k{color:var(--ink-soft)} .row .v{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;text-align:right}
+.tagchip{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:.64rem;letter-spacing:.05em;padding:.05rem .35rem;border-radius:3px;border:1px solid var(--rule);color:var(--ink-mute);margin-left:.3rem;vertical-align:middle}
+.tagchip.meas{color:var(--easy);border-color:var(--easy)}
+.tagchip.seed{color:var(--hard);border-color:var(--hard)}
+.note{font-size:.85rem;color:var(--ink-mute);margin:.7rem 0}
+.danger{border:1px solid var(--again);color:var(--again);border-radius:8px;padding:.6rem 1rem;width:100%;min-height:44px;margin-top:.4rem;font-weight:600;background:var(--surface)}
+.ghost{border:1px solid var(--rule);border-radius:8px;padding:.6rem 1rem;width:100%;min-height:44px;margin-top:.4rem;background:var(--surface);color:var(--ink-soft);font-weight:600}
+.ghost:hover{border-color:var(--indigo);color:var(--indigo)}
+.ghost.small{width:auto;min-height:38px;padding:.4rem .8rem;font-size:.85rem;font-weight:600;margin:.2rem .3rem .2rem 0}
+.textin{width:100%;font:inherit;font-size:.95rem;padding:.55rem .7rem;border:1px solid var(--rule);border-radius:8px;background:var(--surface);color:var(--ink);margin-top:.4rem;min-height:44px}
+textarea.textin{font-family:"IBM Plex Mono",monospace;font-size:.75rem;min-height:5rem}
+.status{font-size:.85rem;margin:.4rem 0;padding:.45rem .7rem;border-radius:6px;background:var(--surface-2);color:var(--ink-soft)}
+.status.bad{background:var(--again-lo);color:var(--again)}
+.packrow{border:1px solid var(--rule);border-radius:8px;padding:.7rem .8rem;margin:.5rem 0;background:var(--surface)}
+.packrow .t{font-weight:600}
+.packrow .m{font-family:"IBM Plex Mono",monospace;font-size:.72rem;color:var(--ink-mute);margin:.15rem 0 .4rem;word-break:break-all}
+.exportbox{border:1px solid var(--rule);border-radius:8px;padding:.7rem;margin:.5rem 0;background:var(--surface);display:flex;flex-direction:column;gap:.45rem}
+.exportbox .cnt{font-family:"IBM Plex Mono",monospace;font-size:.72rem;color:var(--ink-mute)}
+.exportbox textarea{width:100%;font-family:"IBM Plex Mono",monospace;font-size:.7rem;border:1px solid var(--rule);border-radius:6px;padding:.5rem;background:var(--surface-2);color:var(--ink-soft);resize:vertical}
+.exportbox .dl{font-size:.8rem;color:var(--ink-mute);text-align:center}
+/* ── Class view ──────────────────────────────────────────────────────── */
+.caveat{border-left:3px solid var(--hard);background:var(--surface);padding:.7rem .9rem;margin:1rem 0;font-size:.9rem;border-radius:0 6px 6px 0}
+.cv-table{width:100%;border-collapse:collapse;font-size:.88rem;background:var(--surface);border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+.cv-table th{font-family:"IBM Plex Mono",monospace;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-mute);text-align:left;padding:.45rem .6rem;border-bottom:1px solid var(--rule);background:var(--surface-2)}
+.cv-table td{padding:.45rem .6rem;border-bottom:1px solid var(--rule);vertical-align:top}
+.cv-table tr:last-child td{border-bottom:0}
+.cv-table td.n{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.cv-table td.bad{color:var(--again);font-weight:600}
+.cv-table td.warn{color:var(--hard)}
+.cv-wrap{overflow-x:auto;margin:.5rem 0 1rem}
+.cv-table tr.grp td{font-family:Spectral,Georgia,serif;font-weight:600;font-size:.92rem;background:var(--surface-2)}
+.cv-table th br+*{font-weight:400}
+.cv-items td:first-child{white-space:nowrap}
+.bkt{display:inline-flex;height:10px;border-radius:4px;overflow:hidden;width:100%;background:var(--surface-2)}
+.bkt i{display:block;height:100%}
+.bkt .b0{background:var(--again)} .bkt .b1{background:var(--hard)} .bkt .b2{background:var(--indigo)} .bkt .b3{background:var(--easy)}
+.legend{font-family:"IBM Plex Mono",monospace;font-size:.66rem;color:var(--ink-mute);margin:.2rem 0 .8rem}
+.legend i{display:inline-block;width:.7rem;height:.7rem;border-radius:2px;vertical-align:-1px;margin:0 .2rem 0 .6rem}
+footer.attr{flex:none;padding:.6rem 1.1rem calc(.7rem + env(safe-area-inset-bottom,0px));border-top:1px solid var(--rule);font-size:.7rem;color:var(--ink-mute);line-height:1.4;background:var(--surface)}
+footer.attr a{color:var(--ink-mute)}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ── HOME ──────────────────────────────────────────────────────── -->
+  <section class="screen" id="s-home">
+    <div class="bar">
+      <h1>Kurikaeshi <small lang="ja">繰り返し</small></h1>
+      <span class="sp"></span>
+      <button class="iconbtn" id="go-stats" type="button">Progress</button>
+      <button class="iconbtn" id="go-settings" type="button">Settings</button>
+    </div>
+    <div class="counts">
+      <div class="count new"><b id="h-new">0</b><span>New</span></div>
+      <div class="count lrn"><b id="h-lrn">0</b><span>Learning</span></div>
+      <div class="count due"><b id="h-due">0</b><span>Due</span></div>
+    </div>
+    <div class="scroll">
+      <p class="legend" id="h-legend"></p>
+      <p class="lede" id="h-lede">Loading your queue…</p>
+      <button class="primary" id="start" type="button">Start</button>
+      <p class="note" id="h-budget"></p>
+      <div id="h-floor"></div>
+      <div id="h-packs"></div>
+      <p class="note">Tap a pack or a lesson to study it alone. Otherwise the daily cap is global
+        across everything, which is the honest way to hold a time budget.</p>
+    </div>
+    <footer class="attr" id="attr"></footer>
+  </section>
+
+  <!-- ── REVIEW ────────────────────────────────────────────────────── -->
+  <section class="screen" id="s-review" hidden>
+    <div class="bar">
+      <button class="iconbtn" id="r-back" type="button">Done for now</button>
+      <span class="sp"></span>
+      <button class="iconbtn" id="r-undo" type="button" disabled>Undo</button>
+      <span class="tag" id="r-left"></span>
+    </div>
+    <div class="cardwrap" id="r-card" aria-live="polite" aria-atomic="true"></div>
+    <div class="band" id="r-band"></div>
+  </section>
+
+  <!-- ── DONE ──────────────────────────────────────────────────────── -->
+  <section class="screen" id="s-done" hidden>
+    <div class="bar"><h1>Kurikaeshi <small lang="ja">繰り返し</small></h1></div>
+    <div class="done">
+      <h2 id="d-title">Queue clear</h2>
+      <p id="d-body"></p>
+      <div style="width:100%;max-width:22rem">
+        <button class="primary" id="d-home" type="button">Back to packs</button>
+        <button class="ghost" id="d-more" type="button" hidden>Study ahead anyway</button>
+      </div>
+    </div>
+    <footer class="attr" id="attr2"></footer>
+  </section>
+
+  <!-- ── STATS ─────────────────────────────────────────────────────── -->
+  <section class="screen" id="s-stats" hidden>
+    <div class="bar"><button class="iconbtn" id="st-back" type="button">Back</button><span class="sp"></span><h1>Progress</h1></div>
+    <div class="scroll" id="st-body"></div>
+  </section>
+
+  <!-- ── SETTINGS ──────────────────────────────────────────────────── -->
+  <section class="screen" id="s-settings" hidden>
+    <div class="bar"><button class="iconbtn" id="se-back" type="button">Back</button><span class="sp"></span><h1>Settings</h1></div>
+    <div class="scroll" id="se-body"></div>
+  </section>
+
+  <!-- ── CLASS VIEW — for whoever teaches the course ──────────────── -->
+  <section class="screen" id="s-class" hidden>
+    <div class="bar"><button class="iconbtn" id="cv-back" type="button">Back</button><span class="sp"></span><h1>Class view</h1></div>
+    <div class="scroll" id="cv-body"></div>
+  </section>
+
+</div>
+
+<script>
+// fsrs.js — FSRS-6, implemented from the algorithm's published specification.
+// NO DOM, NO browser globals. This file and store.js are what survives a move to React Native.
+//
+// PROVENANCE, because a scheduler that is quietly wrong is the worst failure this app can have.
+// Every formula below is transcribed from the Open Spaced Repetition project's own algorithm
+// documentation, read at the issuer 2026-09-05:
+//   https://github.com/open-spaced-repetition/awesome-fsrs/wiki/The-Algorithm
+// NO third-party source code was copied. ts-fsrs (MIT, v5.4.2) implements the same algorithm
+// and a UMD build exists on jsDelivr, but loading it would put the network on the cold-start
+// path — and offline correctness is SPEC.md's top-ranked quality attribute. Implementing the
+// published formulas keeps the page working with the network gone. The licence was checked
+// anyway, so the choice is a design call and not an accident: ts-fsrs is MIT and could be used.
+//
+// VERSION. FSRS-6, 21 parameters. The issuer's own benchmark repo names an FSRS-7 as newer —
+// "FSRS-7 has been designed to work with fractional interval lengths" — but no prose
+// specification and no JavaScript implementation of it exists at the issuer as of this date.
+// FSRS-6 is what is fully specified and therefore what is implemented. FSRS-7 is a known
+// future migration, recorded rather than guessed at.
+//
+// VERIFICATION. test-engine.mjs checks this against the authors' own published first-review
+// vector: for a brand-new card, the four possible first ratings must produce stability
+// [0.212, 1.2931, 2.3065, 8.2956] and difficulty [6.4133, 5.11217071, 2.11810397, 1].
+
+// Default parameters, FSRS-6. Identical across three issuer sources (the algorithm wiki,
+// ts-fsrs constant.ts, fsrs-rs inference.rs), read 2026-09-05. w[20] is the trainable decay,
+// which is the headline change of FSRS-6 — earlier versions fixed it as a constant.
+const W = [
+  0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001, 1.8722, 0.1666,
+  0.796, 1.4835, 0.0614, 0.2629, 1.6483, 0.6014, 1.8729, 0.5425, 0.0912, 0.0658, 0.1542,
+];
+
+// Stability bounds, from the issuer's implementations.
+const S_MIN = 0.001, S_MAX = 36500;
+const D_MIN = 1, D_MAX = 10;
+
+// UNBACKED — my judgment, not the issuer's. The single constant in this file that no source
+// supports as written, tagged so the gate can find it and so nobody mistakes it for a
+// documented value. A failed card must come back inside the same sitting, and FSRS alone would
+// schedule a newly lapsed card hours out. Anki solves this with learning steps, and its manual
+// DOES state the shipped default — Studying: "By default, there are two steps: 1 minute and
+// 10 minutes" (an earlier version of this comment said otherwise; Gate B round 4 corrected
+// it). This app keeps only the first step: one minute after Again, and the first Hard, Good
+// or Easy graduates on the spot at the FSRS interval shown on the button, rather than through
+// a ten-minute second step. That is the deviation, and it is mine.
+const AGAIN_STEP_DAYS = 1 / 1440;
+
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const decay = (w) => -w[20];
+// factor is defined so that R(S, S) = 0.9 — a card is due when it has decayed to the 90%
+// the stability is measured against.
+const factorOf = (w) => Math.pow(0.9, -1 / w[20]) - 1;
+
+// R(t,S) = (1 + factor · t/S) ^ (−w20)
+function retrievability(elapsedDays, stability, w = W) {
+  if (!(stability > 0)) return 0;
+  return Math.pow(1 + (factorOf(w) * elapsedDays) / stability, decay(w));
+}
+
+// I(r,S) = (S / factor) · (r ^ (1/DECAY) − 1), which yields I = S exactly at r = 0.9.
+function intervalFor(retention, stability, w = W) {
+  return (stability / factorOf(w)) * (Math.pow(retention, 1 / decay(w)) - 1);
+}
+
+// How much more work a retention target costs relative to the 90% default. Reviews scale as
+// the inverse of the interval, so this is I(0.9)/I(r) — and it is exactly 1 at 0.9.
+function relativeLoad(retention, w = W) {
+  return intervalFor(0.9, 1, w) / intervalFor(retention, 1, w);
+}
+
+// S_0(G) = w[G-1], floored at 0.1 as the reference SCHEDULER does (ts-fsrs init_stability:
+// `Math.max(this.param.w[g - 1], 0.1)`, read at the issuer 2026-09-05). The reference algorithm
+// crate applies no runtime floor and clips the parameter at training time instead; this is a
+// scheduler, so it follows the scheduler. Moot for the default parameters, which all exceed 0.1.
+const initialStability = (g, w) => clamp(Math.max(w[g - 1], 0.1), S_MIN, S_MAX);
+// D_0(G) = w4 − e^(w5·(G−1)) + 1
+const initialDifficulty = (g, w) => clamp(w[4] - Math.exp(w[5] * (g - 1)) + 1, D_MIN, D_MAX);
+
+// ΔD(G) = −w6·(G−3);  D' = D + ΔD·(10−D)/9;  D'' = w7·D_0(4) + (1−w7)·D'
+// The (10−D)/9 term is FSRS-5's linear damping; the mean-reversion target is D_0(4), which
+// changed from D_0(3) in earlier versions.
+function nextDifficulty(d, g, w) {
+  const deltaD = -w[6] * (g - 3);
+  const damped = d + deltaD * ((10 - d) / 9);
+  return clamp(w[7] * initialDifficulty(4, w) + (1 - w[7]) * damped, D_MIN, D_MAX);
+}
+
+// S'_r = S · (e^w8 · (11−D) · S^(−w9) · (e^(w10·(1−R)) − 1) · w15[if Hard] · w16[if Easy] + 1)
+function stabilityOnSuccess(d, s, r, g, w) {
+  const hard = g === 2 ? w[15] : 1;
+  const easy = g === 4 ? w[16] : 1;
+  const inc = Math.exp(w[8]) * (11 - d) * Math.pow(s, -w[9]) * (Math.exp(w[10] * (1 - r)) - 1) * hard * easy;
+  return clamp(s * (inc + 1), S_MIN, S_MAX);
+}
+
+// S'_f = w11 · D^(−w12) · ((S+1)^w13 − 1) · e^(w14·(1−R)), then CEILINGED at S / e^(w17·w18).
+// The ceiling is not in the published formula; it lives one level up in both reference
+// dispatchers — ts-fsrs: `next_s_min = s / Math.exp(w_17 * w_18)` then
+// `clamp(next_s_min, S_MIN, s_after_fail)`; fsrs-rs: `new_s.min(last_s / (w[17]*w[18]).exp())`
+// — read at the issuer 2026-09-05. A from-spec build that implements w11–w14 alone diverges
+// whenever the raw formula would exceed ~95% of the prior stability. The first version of this
+// file used a plain min(sf, s), which is looser than the reference; corrected on review.
+function stabilityOnFailure(d, s, r, w) {
+  const sf = w[11] * Math.pow(d, -w[12]) * (Math.pow(s + 1, w[13]) - 1) * Math.exp(w[14] * (1 - r));
+  const ceiling = s / Math.exp(w[17] * w[18]);
+  return clamp(Math.min(sf, ceiling), S_MIN, S_MAX);
+}
+
+// S' = S · e^(w17·(G−3+w18)) · S^(−w19) — the same-day path, changed in FSRS-6 by the S^(−w19)
+// term. For Hard/Good/Easy the multiplier is floored at 1 in both references
+// (ts-fsrs: `g >= Rating.Hard ? Math.max(sinc, 1.0) : sinc`; fsrs-rs: `sinc.max(1.0)` for
+// rating >= 2), so a same-day repeat that was not a failure can never LOWER stability. Only a
+// same-day Again can.
+function stabilityShortTerm(s, g, w) {
+  let sinc = Math.exp(w[17] * (g - 3 + w[18])) * Math.pow(s, -w[19]);
+  if (g >= 2) sinc = Math.max(sinc, 1);
+  return clamp(s * sinc, S_MIN, S_MAX);
+}
+
+/**
+ * What each of the four buttons would do, so the UI can show the intervals before the learner
+ * commits. Returns { 1:{s,d,ivl}, 2:…, 3:…, 4:… } with ivl in days.
+ *
+ * memory      null for a card never seen, else { s, d }
+ * elapsedDays days since the last review (0 for a new card). FSRS-6 works in WHOLE days —
+ *             the reference passes an integer `t` from a calendar-date difference, and dispatches
+ *             the same-day path on `t === 0` exactly. Fractional input is floored here so a
+ *             caller cannot accidentally hand the long-term formulas a gap of 0.8 days. (FSRS-7
+ *             moves to fractional intervals; that is the version this file does not implement.)
+ */
+function nextStates(memory, elapsedDays, desiredRetention, maximumInterval = S_MAX, w = W) {
+  const out = {};
+  const isNew = !memory || memory.s == null;
+  const t = Math.max(0, Math.floor(elapsedDays || 0));
+  const r = isNew ? 0 : retrievability(t, memory.s, w);
+
+  for (let g = 1; g <= 4; g++) {
+    let s, d;
+    if (isNew) {
+      s = initialStability(g, w);
+      d = initialDifficulty(g, w);
+    } else {
+      d = nextDifficulty(memory.d, g, w);
+      if (t === 0) {
+        // Same calendar day: the reference dispatches on `t === 0` (ts-fsrs next_state) and
+        // `delta_t == 0.0` (fsrs-rs step). Card state does not choose the formula; elapsed time
+        // does — a Review card repeated the same day takes this path too.
+        s = stabilityShortTerm(memory.s, g, w);
+      } else {
+        s = g === 1 ? stabilityOnFailure(memory.d, memory.s, r, w)
+                    : stabilityOnSuccess(memory.d, memory.s, r, g, w);
+      }
+    }
+
+    let ivl;
+    if (g === 1) {
+      ivl = AGAIN_STEP_DAYS;                       // back inside this sitting
+    } else {
+      ivl = intervalFor(desiredRetention, s, w);
+      ivl = clamp(Math.round(ivl), 1, maximumInterval);  // whole days; the cap is enforced here
+    }
+    out[g] = { s, d, ivl };
+  }
+  return out;
+}
+
+// The authors' own published first-review vector, from ts-fsrs's FSRS-6 test suite, read at the
+// issuer 2026-09-05. A brand-new card taking each of the four possible first ratings.
+const TEST_VECTORS = [
+  { name: 'first review, Again', memory: null, elapsedDays: 0, grade: 1, expect: { s: 0.212, d: 6.4133 }, tol: 1e-5 },
+  { name: 'first review, Hard',  memory: null, elapsedDays: 0, grade: 2, expect: { s: 1.2931, d: 5.11217071 }, tol: 1e-5 },
+  { name: 'first review, Good',  memory: null, elapsedDays: 0, grade: 3, expect: { s: 2.3065, d: 2.11810397 }, tol: 1e-5 },
+  { name: 'first review, Easy',  memory: null, elapsedDays: 0, grade: 4, expect: { s: 8.2956, d: 1 }, tol: 1e-5 },
+];
+
+const FSRS = { W, nextStates, retrievability, intervalFor, relativeLoad, TEST_VECTORS, AGAIN_STEP_DAYS };
+
+// store.js — the review log and the state derived from it. NO DOM, NO browser globals.
+//
+// This file and fsrs.js are the two pieces that survive a move to React Native. Everything
+// that touches a screen lives in app.template.html and is expected to be rewritten; this is
+// not. That is why persistence goes through an injected adapter rather than calling
+// localStorage directly — on the web the adapter wraps localStorage, on a phone it wraps
+// AsyncStorage or SQLite, and nothing below changes.
+//
+// SPEC.md invariant 2: history is append-only, state is DERIVED. deriveState is a real fold
+// over the log, not a lookup of a cached row, so the invariant is testable rather than
+// asserted. That is also what makes the offline merge in SPEC.md 5.4 a set union later: two
+// devices produce disjoint entries, you concatenate and re-fold.
+
+const LOG_KEY = 'bw08.log.v1';
+const PREFS_KEY = 'bw08.prefs.v1';
+const SUSPENDED_KEY = 'bw08.suspended.v1';
+
+// Compact on purpose: one entry per review, kept forever, in a 5 MB budget.
+//   c card id · t epoch ms (client clock) · g grade 1..4 · k kind
+//   s/d/i state AFTER this review: stability, difficulty, interval in days
+//   u due epoch ms after this review · e elapsed ms the learner spent
+const KINDS = { learn: 0, review: 1, relearn: 2 };
+
+const DEFAULT_PREFS = {
+  minutesPerDay: 15,
+  // UNBACKED — my seed. Anki's manual publishes no shipped numeric default for this; the
+  // figure comes from its rule of thumb that 20 new cards a day lands near 200 reviews a day,
+  // which the manual itself states without derivation. A ceiling, not a target.
+  maxReviewsPerDay: 200,
+  desiredRetention: 0.9,
+  // SPEC.md A6, backed: the review limit also caps new cards. It is the only automatic brake
+  // on runaway load, so it ships on and is not offered as a toggle in the normal path.
+  newCardsIgnoreReviewLimit: false,
+  burySiblings: true,
+  // Anki's manual, Deck Options "Learning steps": "If there's nothing else to study, Anki will
+  // show learning cards up to 20 minutes early by default."
+  learnAheadMinutes: 20,
+  leechThreshold: 8,       // Anki's documented default
+  leechAction: 'tag',      // graded corpus: never suspend, never delete (SPEC.md A9)
+  maximumInterval: 36500,  // 100 years, Anki's documented default
+  theme: null,
+};
+
+function makeStore(adapter) {
+  let log = [];
+  let prefs = { ...DEFAULT_PREFS };
+  // Suspension is a TERMINAL SAFE STATE, not a queue (SPEC.md A9): a suspended card costs
+  // nothing, blocks nothing, keeps its history. A pack update suspends the cards of a removed
+  // note and un-suspends them if the note returns (§4.5). Never deleted.
+  let suspended = new Set();
+  const byCard = new Map();
+
+  const index = () => {
+    byCard.clear();
+    for (const e of log) {
+      let a = byCard.get(e.c);
+      if (!a) { a = []; byCard.set(e.c, a); }
+      a.push(e);
+    }
+    for (const a of byCard.values()) a.sort((x, y) => x.t - y.t);
+  };
+
+  /**
+   * opts.legacyPackId — the pack that M1's cards belonged to before packs existed. Card ids
+   * were `<guid>#<ord>`; they are now `<pack>/<guid>#<ord>`. Entries without a pack prefix are
+   * rewritten once, here, so nobody's first week of reviews is orphaned by the pack layer.
+   */
+  const load = (opts = {}) => {
+    try { const raw = adapter.get(LOG_KEY); log = raw ? JSON.parse(raw) : []; }
+    catch { log = []; }
+    if (!Array.isArray(log)) log = [];
+    try { const raw = adapter.get(PREFS_KEY); prefs = { ...DEFAULT_PREFS, ...(raw ? JSON.parse(raw) : {}) }; }
+    catch { prefs = { ...DEFAULT_PREFS }; }
+    try { const raw = adapter.get(SUSPENDED_KEY); suspended = new Set(raw ? JSON.parse(raw) : []); }
+    catch { suspended = new Set(); }
+    if (opts.legacyPackId) {
+      let migrated = 0;
+      for (const e of log) if (typeof e.c === 'string' && !e.c.includes('/')) { e.c = `${opts.legacyPackId}/${e.c}`; migrated++; }
+      if (migrated) persist();
+    }
+    index();
+  };
+
+  const persist = () => adapter.set(LOG_KEY, JSON.stringify(log));
+  const persistSuspended = () => adapter.set(SUSPENDED_KEY, JSON.stringify([...suspended]));
+
+  // The fold. Given a card's entries in time order, the current state is what replaying them
+  // produces. reps and lapses are COUNTED here rather than stored, so they cannot drift from
+  // the history that justifies them.
+  const foldCard = (entries) => {
+    if (!entries || entries.length === 0) {
+      return { state: 'new', s: null, d: null, ivl: 0, due: null, reps: 0, lapses: 0, leech: false, last: null };
+    }
+    // The state machine, counted from history. A lapse is Again while in REVIEW; Again on a
+    // card that has never graduated is still learning, not relearning — the distinction is what
+    // keeps the lapse count honest and what the scheduler dispatches on.
+    let reps = 0, lapses = 0, prevState = 'new';
+    for (const e of entries) {
+      reps++;
+      const wasGraduated = prevState === 'review' || prevState === 'relearning';
+      if (e.g === 1 && prevState === 'review') lapses++;
+      if (e.g === 1) prevState = wasGraduated ? 'relearning' : 'learning';
+      else prevState = e.i >= 1 ? 'review' : (wasGraduated ? 'relearning' : 'learning');
+    }
+    const last = entries[entries.length - 1];
+    return {
+      state: prevState, s: last.s, d: last.d, ivl: last.i, due: last.u,
+      reps, lapses, leech: lapses >= prefs.leechThreshold, last,
+    };
+  };
+
+  const dayKey = (ms, cutoffHour = 4) => {
+    // A study day rolls over at 04:00 local, not midnight: a session at 01:00 belongs to the
+    // day the learner thinks it does. Anki uses the same idea for its next-day-starts-at hour.
+    const d = new Date(ms - cutoffHour * 3600e3);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  return {
+    load,
+    get prefs() { return prefs; },
+    setPrefs(patch) { prefs = { ...prefs, ...patch }; adapter.set(PREFS_KEY, JSON.stringify(prefs)); return prefs; },
+
+    state(cardId) { return foldCard(byCard.get(cardId)); },
+    allStates() {
+      const out = new Map();
+      for (const [c, entries] of byCard) out.set(c, foldCard(entries));
+      return out;
+    },
+
+    // Append-only. Nothing in this module ever rewrites or removes an entry; undo appends
+    // nothing and instead drops the last entry, which is the one case where the log shrinks —
+    // see undoLast, and note it is bounded to the most recent entry within the session.
+    append(entry) {
+      log.push(entry);
+      let a = byCard.get(entry.c);
+      if (!a) { a = []; byCard.set(entry.c, a); }
+      a.push(entry);
+      persist();
+      return entry;
+    },
+
+    // SPEC.md 7.2: an undo that reaches the last answer, always, one tap, no confirm. A
+    // mis-tap is a corrupted review and it must be removable, so this is the single
+    // deliberate exception to append-only. It removes exactly one entry, the newest.
+    undoLast() {
+      if (log.length === 0) return null;
+      const e = log.pop();
+      const a = byCard.get(e.c);
+      if (a) { const i = a.lastIndexOf(e); if (i >= 0) a.splice(i, 1); }
+      persist();
+      return e;
+    },
+
+    countsToday(now = Date.now()) {
+      const k = dayKey(now);
+      let reviews = 0, newCards = 0, ms = 0;
+      const seenNew = new Set();
+      for (const e of log) {
+        if (dayKey(e.t) !== k) continue;
+        reviews++;
+        ms += e.e || 0;
+        if (e.k === KINDS.learn && !seenNew.has(e.c)) { seenNew.add(e.c); newCards++; }
+      }
+      return { reviews, newCards, ms };
+    },
+
+    // MC-68's formula, and its honesty requirement: BOTH denominators are measured, never
+    // assumed. Until there is enough history the seeds are used and are LABELLED as seeds —
+    // the earlier version of that method card shipped an invented constant as a fact and was
+    // wrong by a wide margin.
+    intakeBudget(now = Date.now()) {
+      const secondsPerCard = this.measuredSecondsPerCard();
+      const ratio = this.measuredReviewsPerNewCard();
+      const seconds = prefs.minutesPerDay * 60;
+      const perDay = Math.max(1, Math.round(seconds / (secondsPerCard.value * ratio.value)));
+      return { perDay, secondsPerCard, ratio };
+    },
+
+    measuredSecondsPerCard() {
+      const times = log.map((e) => e.e).filter((v) => typeof v === 'number' && v > 500 && v < 120000);
+      if (times.length < 30) return { value: 10, measured: false, n: times.length };
+      times.sort((a, b) => a - b);
+      return { value: times[Math.floor(times.length / 2)] / 1000, measured: true, n: times.length };
+    },
+
+    measuredReviewsPerNewCard() {
+      // The Anki manual's 20-new -> ~200-reviews rule of thumb is a stated-without-derivation
+      // figure from the SM-2 era, and the manual publishes no FSRS equivalent. It is the seed
+      // and nothing more; the learner's own ratio replaces it as soon as there is one.
+      const introduced = new Set(log.filter((e) => e.k === KINDS.learn).map((e) => e.c)).size;
+      if (introduced < 20 || log.length < 100) return { value: 10, measured: false, n: introduced };
+      return { value: Math.max(1, log.length / introduced), measured: true, n: introduced };
+    },
+
+    trueRetention() {
+      // Only review-state answers count. Grading a card during learning says nothing about
+      // whether the schedule is working, and folding it in flatters the number.
+      let seen = 0, kept = 0;
+      for (const entries of byCard.values()) {
+        let prev = 'new';
+        for (const e of entries) {
+          if (prev === 'review') { seen++; if (e.g > 1) kept++; }
+          prev = e.g === 1 ? 'relearning' : (e.i >= 1 ? 'review' : 'learning');
+        }
+      }
+      return { seen, kept, rate: seen ? kept / seen : null };
+    },
+
+    exportAll(extra = {}) {
+      // SPEC.md 8.4: the learner can take everything, on demand, in a documented open format,
+      // with no request queue. It is their history. `extra` lets the app add what the store
+      // does not own — the installed pack versions — so an instructor's view can answer "which
+      // version is each student on" (SPEC.md B2, question 4). The envelope carries no name and
+      // no identifier of the learner; whoever receives it labels it.
+      return JSON.stringify({ format: 'bw08-review-log', version: 1, exported: new Date().toISOString(), ...extra, prefs, log }, null, 1);
+    },
+
+    importAll(text) {
+      const parsed = JSON.parse(text);
+      if (parsed.format !== 'bw08-review-log' || !Array.isArray(parsed.log)) throw new Error('not a BW-08 export');
+      // A file is untrusted input. Every entry must have the shape the fold expects, or one
+      // malformed row corrupts every derived state that follows it. The id check is the
+      // STRUCTURAL contract only — `note#ord`, which burying splits on — not this deck's naming
+      // scheme; the store is deck-agnostic and will hold other decks.
+      const valid = (e) => e && typeof e.c === 'string' && /^[^#\s]+#\d+$/.test(e.c)
+        && Number.isFinite(e.t) && Number.isInteger(e.g) && e.g >= 1 && e.g <= 4
+        && Number.isFinite(e.i) && Number.isFinite(e.u);
+      const rejected = parsed.log.filter((e) => !valid(e)).length;
+      if (rejected) throw new Error(`${rejected} entries are malformed — nothing was imported`);
+      // Union by (card, timestamp): re-importing the same file twice is a no-op, which is the
+      // idempotency SPEC.md 5.4 gives the client-generated id. Merge, never overwrite.
+      const key = (e) => `${e.c}|${e.t}`;
+      const have = new Set(log.map(key));
+      let added = 0;
+      for (const e of parsed.log) if (!have.has(key(e))) { log.push(e); have.add(key(e)); added++; }
+      log.sort((a, b) => a.t - b.t);
+      persist(); index();
+      return { added, total: log.length };
+    },
+
+    suspend(ids) { for (const id of ids) suspended.add(id); persistSuspended(); },
+    unsuspend(ids) { for (const id of ids) suspended.delete(id); persistSuspended(); },
+    isSuspended(id) { return suspended.has(id); },
+    get suspendedCount() { return suspended.size; },
+
+    reset() { log = []; byCard.clear(); suspended = new Set(); persist(); persistSuspended(); },
+    get log() { return log; },
+    KINDS,
+    dayKey,
+  };
+}
+
+
+// packs.js — packs as first-class objects. NO DOM, NO browser globals.
+//
+// SPEC.md B1: a pack is versioned, licensed, instructor-owned, and updates without costing the
+// learner their history (§4.5). This module owns the format check, the derivation of cards
+// from notes × templates (A1 — cards are never shipped), the install/update merge, and the
+// registry of what is installed. Transport is injected: today a file or a URL; later the
+// class server's pack endpoint, with this file unchanged.
+
+const FORMAT = 'kurikaeshi-pack';
+// The name the format carried before 0.3.0, when the app was still called Kanji Queue. Files
+// written under it install unchanged — a rename must never orphan a pack a student already has.
+const FORMAT_LEGACY = 'kanji-queue-pack';
+const FORMAT_VERSION = 1;
+const PACKS_KEY = 'bw08.packs.v1';
+
+// One to sixty-four characters. A one-character id is legitimate; the first version demanded
+// two and the class-view fixtures found it.
+const ID_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
+const SEMVER_RE = /^\d+\.\d+\.\d+$/;
+
+// What a field can be, to a renderer that does not know the subject:
+//   glyph     one large symbol or short token — a kanji, a formula, a musical interval
+//   headline  the main answer, large text
+//   text      ordinary prose
+//   also      secondary, small and muted (other meanings, a note)
+//   chip      a short labelled value, several per line (readings, units, parts of speech)
+//   meta      the smallest line (stroke count, source, date)
+//   hidden    stored on the note, never shown on a card (an id, a sort key)
+const DISPLAY_ROLES = ['glyph', 'headline', 'text', 'also', 'chip', 'meta', 'hidden'];
+
+/** Throws with a plain reason if the object is not a pack this app can hold. */
+function validatePack(p) {
+  const bad = (m) => { throw new Error(`not a usable pack: ${m}`); };
+  if (!p || typeof p !== 'object') bad('not an object');
+  if (p.format !== FORMAT && p.format !== FORMAT_LEGACY) bad(`format is "${p.format}", expected "${FORMAT}"`);
+  if (!Number.isInteger(p.formatVersion) || p.formatVersion > FORMAT_VERSION) bad(`formatVersion ${p.formatVersion} is newer than this app understands (${FORMAT_VERSION})`);
+  if (typeof p.id !== 'string' || !ID_RE.test(p.id)) bad('id must be lowercase letters, digits and hyphens');
+  if (typeof p.version !== 'string' || !SEMVER_RE.test(p.version)) bad('version must be semver like 1.2.0');
+  if (typeof p.title !== 'string' || !p.title.trim()) bad('title is required');
+  if (!Array.isArray(p.noteTypes) || !p.noteTypes.length) bad('noteTypes must be a non-empty array');
+  if (!Array.isArray(p.notes) || !p.notes.length) bad('notes must be a non-empty array');
+  const types = new Map();
+  for (const t of p.noteTypes) {
+    if (!t || typeof t.id !== 'string' || !Array.isArray(t.fields) || !Array.isArray(t.templates) || !t.templates.length) bad(`noteType "${t && t.id}" needs id, fields[], templates[]`);
+    for (const tp of t.templates) {
+      if (!Number.isInteger(tp.ord) || typeof tp.prompt !== 'string' || typeof tp.answer !== 'string') bad(`template in "${t.id}" needs ord, prompt, answer`);
+      if (!t.fields.includes(tp.prompt) || !t.fields.includes(tp.answer)) bad(`template ${tp.ord} in "${t.id}" names a field the type does not have`);
+    }
+    // Display hints are how a pack tells a subject-agnostic renderer what each field IS. The
+    // app knows nothing about kanji; the Japanese pack says "character is the glyph, meaning is
+    // the headline, on and kun are chips". A chemistry pack says something else. Optional; an
+    // unhinted field renders as plain text.
+    if (t.display != null) {
+      if (typeof t.display !== 'object') bad(`display in "${t.id}" must be an object of field → role`);
+      for (const [f, role] of Object.entries(t.display)) {
+        if (!t.fields.includes(f)) bad(`display in "${t.id}" names unknown field "${f}"`);
+        if (!DISPLAY_ROLES.includes(role)) bad(`display role "${role}" for "${f}" is not one of ${DISPLAY_ROLES.join(', ')}`);
+      }
+    }
+    if (t.labels != null) {
+      if (typeof t.labels !== 'object') bad(`labels in "${t.id}" must be an object of field → label`);
+      for (const f of Object.keys(t.labels)) if (!t.fields.includes(f)) bad(`labels in "${t.id}" names unknown field "${f}"`);
+    }
+    types.set(t.id, t);
+  }
+  const guids = new Set();
+  for (const n of p.notes) {
+    if (!n || typeof n.guid !== 'string' || !n.guid || /[\s#/]/.test(n.guid)) bad('every note needs a guid without spaces, "#" or "/"');
+    if (guids.has(n.guid)) bad(`duplicate guid ${n.guid}`);
+    guids.add(n.guid);
+    if (!types.has(n.type)) bad(`note ${n.guid} has unknown type "${n.type}"`);
+    if (!n.fields || typeof n.fields !== 'object') bad(`note ${n.guid} has no fields`);
+  }
+  if (p.milestones) {
+    if (!Array.isArray(p.milestones)) bad('milestones must be an array');
+    for (const m of p.milestones) if (!m || typeof m.id !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(m.due || '')) bad('every milestone needs an id and an ISO due date');
+  }
+  return true;
+}
+
+function compareVersions(a, b) {
+  const pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
+  for (let i = 0; i < 3; i++) { if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) < (pb[i] || 0) ? -1 : 1; }
+  return 0;
+}
+
+const cardId = (packId, guid, ord) => `${packId}/${guid}#${ord}`;
+
+/** Cards = notes × templates. Derived, never stored in a pack. Deck path is
+ *  `<pack title>::<lesson>::<type>` so Anki's `::` nesting (A3) still reads right. */
+function deriveCards(pack) {
+  const byType = new Map(pack.noteTypes.map((t) => [t.id, t]));
+  const cards = [];
+  for (const n of pack.notes) {
+    const t = byType.get(n.type);
+    for (const tp of t.templates) {
+      cards.push({ id: cardId(pack.id, n.guid, tp.ord), pack: pack.id, guid: n.guid, ord: tp.ord,
+                   lesson: n.lesson || '', deck: `${pack.id}::${n.lesson || '—'}::${n.type}` });
+    }
+  }
+  return cards;
+}
+
+/**
+ * The §4.5 merge, as data: given the installed pack and a candidate, say what an update would
+ * do. Pure, so the UI can show it BEFORE applying and the tests can assert it.
+ *   { apply: bool, reason, changed, added, removed, suspend: [cardId], unsuspend: [cardId] }
+ */
+function planUpdate(installed, candidate) {
+  validatePack(candidate);
+  if (!installed) return { apply: true, reason: 'install', changed: 0, added: candidate.notes.length, removed: 0, suspend: [], unsuspend: deriveCards(candidate).map((c) => c.id) };
+  if (installed.id !== candidate.id) return { apply: false, reason: 'different pack id — installs beside, does not replace', changed: 0, added: 0, removed: 0, suspend: [], unsuspend: [] };
+  if (compareVersions(candidate.version, installed.version) <= 0) return { apply: false, reason: `installed ${installed.version} is not older than ${candidate.version}`, changed: 0, added: 0, removed: 0, suspend: [], unsuspend: [] };
+
+  const oldCards = new Set(deriveCards(installed).map((c) => c.id));
+  const newCards = new Set(deriveCards(candidate).map((c) => c.id));
+  const oldNotes = new Map(installed.notes.map((n) => [n.guid, n]));
+  let changed = 0, added = 0, removed = 0;
+  for (const n of candidate.notes) {
+    const o = oldNotes.get(n.guid);
+    if (!o) { added++; continue; }
+    if (JSON.stringify(o.fields) !== JSON.stringify(n.fields) || o.type !== n.type) changed++;
+  }
+  const newGuids = new Set(candidate.notes.map((n) => n.guid));
+  for (const g of oldNotes.keys()) if (!newGuids.has(g)) removed++;
+
+  // Cards that exist now and not after: suspend — history kept, never deleted (A9, §4.5).
+  // Cards that exist after and not now (new notes, new templates, or a returning guid): make
+  // sure they are NOT suspended, so a note that comes back comes back with its history.
+  const suspend = [...oldCards].filter((id) => !newCards.has(id));
+  const unsuspend = [...newCards].filter((id) => !oldCards.has(id));
+  return { apply: true, reason: 'update', changed, added, removed, suspend, unsuspend };
+}
+
+/** Registry + data, behind the same adapter the store uses. */
+function makePackStore(adapter) {
+  let state = { installed: [], data: {} };
+  const persist = () => adapter.set(PACKS_KEY, JSON.stringify(state));
+
+  return {
+    load() {
+      try { const raw = adapter.get(PACKS_KEY); if (raw) state = JSON.parse(raw); } catch { state = { installed: [], data: {} }; }
+      if (!state || !Array.isArray(state.installed) || typeof state.data !== 'object') state = { installed: [], data: {} };
+    },
+    list() { return state.installed.slice(); },
+    get(id) { return state.data[id] || null; },
+    has(id) { return !!state.data[id]; },
+
+    /** Install or update. Returns the plan that was applied (with suspend/unsuspend lists for
+     *  the caller to hand to the review store). Throws on an unusable pack. */
+    install(pack, meta = {}) {
+      const plan = planUpdate(this.get(pack.id), pack);
+      if (!plan.apply) return plan;
+      const now = meta.now || Date.now();
+      const row = state.installed.find((r) => r.id === pack.id);
+      const entry = { id: pack.id, version: pack.version, title: pack.title, url: pack.url || meta.url || null,
+                      installedAt: row ? row.installedAt : now, updatedAt: now, language: pack.language || null };
+      if (row) Object.assign(row, entry); else state.installed.push(entry);
+      state.data[pack.id] = pack;
+      persist();
+      return plan;
+    },
+
+    remove(id) {
+      state.installed = state.installed.filter((r) => r.id !== id);
+      delete state.data[id];
+      persist();
+    },
+
+    /** Everything the queue needs, across all installed packs: notes with their pack, cards. */
+    deck() { return deckFrom(state.installed.map((r) => state.data[r.id])); },
+  };
+}
+
+// A deck from any list of packs: the installed ones, or packs loaded only to read a class's
+// exports against — which an instructor may never want installed on her own device, and which
+// are never written to storage (Gate B, round 2: a class view joined against the reading
+// device's installed packs read a full class as "nothing reviewed yet").
+function deckFrom(packs) {
+  const notes = [], cards = [], noteTypes = {}, out = {};
+  for (const p of packs) {
+    if (!p) continue;
+    out[p.id] = p;
+    for (const t of p.noteTypes) noteTypes[`${p.id}/${t.id}`] = t;
+    for (const n of p.notes) notes.push({ ...n, pack: p.id, packGuid: `${p.id}/${n.guid}` });
+    for (const c of deriveCards(p)) cards.push(c);
+  }
+  return { notes, cards, noteTypes, packs: out };
+}
+
+
+// queue.js — what to show today, and in what order. NO DOM, NO browser globals.
+//
+// Extracted from the page on the review pass because it is engine, not view: the daily
+// limits, the review-limit-caps-new-cards brake, sibling burying and the intake spread are
+// rules a learner is scheduled by, and rules that live only inside a UI file are rules nobody
+// tests. This is the third module that survives a move to React Native, beside fsrs.js and
+// store.js.
+//
+// Every rule here names where it comes from. The one that matters most is A6: Anki's manual,
+// quoted in SPEC.md, says "By default, the review limit also applies to new cards, and no new
+// cards will be shown when the review limit has been reached." That is the only automatic
+// brake on runaway load, and it is enforced here, not documented.
+
+/**
+ * @param deck   { cards:[{id,guid,ord,deck}], notes:[{guid,lesson,type}] }
+ * @param store  a store from store.js (allStates, countsToday, prefs, intakeBudget, log, dayKey)
+ * @param opts   { lesson?: string|null, now?: number, ahead?: number }
+ *   ahead — study-ahead mode: ignore the daily caps and take up to `ahead` new cards. Never the
+ *   default; the empty queue is the success state (SPEC.md 7.9). Even here siblings are deduped.
+ */
+function buildQueue(deck, store, opts = {}) {
+  const now = opts.now ?? Date.now();
+  const lesson = opts.lesson ?? null;
+  const pack = opts.pack ?? null;
+  const p = store.prefs;
+  const states = store.allStates();
+  const today = store.countsToday(now);
+  const budget = store.intakeBudget(now);
+
+  // Cards carry their pack and lesson (derived in packs.js). A suspended card is out of every
+  // queue — terminal safe state — but keeps its history and its place in the pack.
+  const isSuspended = typeof store.isSuspended === 'function' ? (id) => store.isSuspended(id) : () => false;
+  const pool = deck.cards.filter((c) =>
+    (!pack || c.pack === pack) && (!lesson || c.lesson === lesson) && !isSuspended(c.id));
+
+  let reviewsLeft = Math.max(0, p.maxReviewsPerDay - today.reviews);
+  let newLeft = Math.max(0, budget.perDay - today.newCards);
+  // A6 — the brake. Kept on; the override is not surfaced in the normal settings path because
+  // guides routinely tell people to switch it off "to make progress", and doing so removes it.
+  if (!p.newCardsIgnoreReviewLimit && reviewsLeft <= 0) newLeft = 0;
+  if (opts.ahead) { newLeft = opts.ahead; reviewsLeft = 0; }
+
+  // Burying: a note whose OTHER card was answered today does not show its siblings again
+  // today. Anki exposes three switches (new / review / interday-learning siblings); this app
+  // ships one, on, covering all three — the two kanji cards of one note should not test the
+  // same thing twice in one sitting.
+  // Keyed by CARD, then checked against the note minus the card itself. The first version
+  // keyed by note and so buried a card on the strength of its own earlier answer — a card
+  // returning from a one-minute Again step would vanish until tomorrow if the learner left the
+  // session in between. A sibling is another card of the same note, never the card itself.
+  const cardsAnsweredToday = new Set();
+  if (p.burySiblings) {
+    const k = store.dayKey(now);
+    for (const e of store.log) if (store.dayKey(e.t) === k) cardsAnsweredToday.add(e.c);
+  }
+  // A note is identified by pack AND guid. Two packs can legitimately carry the same guid —
+  // both derived from the same corpus, or one a fork of the other — and keying on guid alone
+  // made them siblings of each other. Found by the pack suite on its first run.
+  const noteKey = (c) => `${c.pack || ''}/${c.guid}`;
+  const siblingsOf = new Map();
+  for (const c of deck.cards) {
+    const k = noteKey(c);
+    let a = siblingsOf.get(k); if (!a) { a = []; siblingsOf.set(k, a); } a.push(c.id);
+  }
+  const unburied = (c) => !p.burySiblings ||
+    !(siblingsOf.get(noteKey(c)) || []).some((id) => id !== c.id && cardsAnsweredToday.has(id));
+
+  // Three kinds of waiting card. Anki's manual (Deck Options, "Maximum reviews/day"): "Anki
+  // includes any learning cards that have crossed the day boundary (interday learning cards)
+  // in the review count, so those learning cards will be subject to the review limit." So a
+  // card inside TODAY's steps (answered today, due again today) is not capped by that limit;
+  // one that crossed the day boundary is, with the reviews.
+  const due = [], learn = [], learnInter = [], fresh = [];
+  const todayK = store.dayKey(now);
+  for (const c of pool) {
+    const s = states.get(c.id) || { state: 'new' };
+    if (s.state === 'new') { fresh.push(c); continue; }
+    if (s.due == null || s.due > now) continue;
+    if (s.state === 'review') due.push({ c, due: s.due });
+    else (s.last && store.dayKey(s.last.t) === todayK ? learn : learnInter).push({ c, due: s.due });
+  }
+  // Anki's learn-ahead rule, quoted from the manual (Deck Options, "Learning steps"): "If
+  // there's nothing else to study, Anki will show learning cards up to 20 minutes early by
+  // default." Without it a card failed on the day's last turn — due again in one minute and
+  // inside a step — was invisible to a rebuilt queue, and the done screen called that a clear
+  // queue (Gate B, round 3). Applied only when nothing else is due, as the manual says.
+  const learnAheadMs = (p.learnAheadMinutes ?? 20) * 60000;
+  if (!due.length && !learn.length && !learnInter.length && Math.min(fresh.length, newLeft) === 0) {
+    for (const c of pool) {
+      const s = states.get(c.id);
+      if (!s || s.state === 'new' || s.state === 'review') continue;
+      if (s.due != null && s.due > now && s.due <= now + learnAheadMs) learn.push({ c, due: s.due });
+    }
+  }
+  due.sort((a, b) => a.due - b.due);
+  learn.sort((a, b) => a.due - b.due);
+
+  // Within ONE session, at most one card per note. The earlier at-build check only covers
+  // siblings answered on a previous visit today; this covers two siblings both due right now.
+  const seenNote = new Set();
+  const oncePerNote = (c) => { const k = noteKey(c); if (seenNote.has(k)) return false; seenNote.add(k); return true; };
+
+  // Learning cards first (they are inside a step and waiting), then reviews by due date. The
+  // review limit slices interday learning cards and reviews; today's own steps are never cut.
+  learnInter.sort((a, b) => a.due - b.due);
+  const capped = learnInter.map((x) => x.c).concat(due.map((x) => x.c))
+    .filter(unburied).filter(oncePerNote).slice(0, reviewsLeft);
+  const dueQ = learn.map((x) => x.c).filter(unburied).filter(oncePerNote).concat(capped);
+  const freshQ = fresh.filter(unburied).filter(oncePerNote).slice(0, newLeft);
+
+  // Spread new cards through the reviews rather than front-loading them: a session that opens
+  // with nine unfamiliar cards in a row is the one that gets abandoned.
+  const out = [];
+  const gap = freshQ.length ? Math.max(1, Math.floor(dueQ.length / freshQ.length)) : 0;
+  let di = 0, ni = 0;
+  while (di < dueQ.length || ni < freshQ.length) {
+    for (let i = 0; i < gap && di < dueQ.length; i++) out.push(dueQ[di++]);
+    if (ni < freshQ.length) out.push(freshQ[ni++]);
+    if (!gap) while (di < dueQ.length) out.push(dueQ[di++]);
+  }
+
+  return {
+    queue: out,
+    newLeft, reviewsLeft, budget,
+    counts: { fresh: fresh.length, due: due.length, learn: learn.length + learnInter.length },
+  };
+}
+
+// Per-pack, per-lesson progress for the home screen. Pure, so it is tested with the rest.
+// Suspended cards are counted separately rather than hidden: a learner should be able to see
+// that a pack update retired cards, not wonder where they went.
+function lessonProgress(deck, store) {
+  const states = store.allStates();
+  const isSuspended = typeof store.isSuspended === 'function' ? (id) => store.isSuspended(id) : () => false;
+  const rows = new Map();
+  for (const c of deck.cards) {
+    const key = `${c.pack}|${c.lesson}`;
+    let r = rows.get(key);
+    if (!r) { r = { pack: c.pack, lesson: c.lesson, total: 0, fresh: 0, learning: 0, review: 0, suspended: 0 }; rows.set(key, r); }
+    if (isSuspended(c.id)) { r.suspended++; continue; }
+    r.total++;
+    const s = states.get(c.id);
+    if (!s || s.state === 'new') r.fresh++;
+    else if (s.state === 'review') r.review++;
+    else r.learning++;
+  }
+  return [...rows.values()].sort((a, b) =>
+    a.pack.localeCompare(b.pack) || a.lesson.localeCompare(b.lesson, undefined, { numeric: true }));
+}
+
+// The intake FLOOR from a pack's milestones (SPEC.md B1): the new cards a day needed to have
+// SEEN every card a dated milestone covers before its date. Distinct from the ceiling the
+// minute budget allows. Returns the binding milestone and its floor, or null if none is ahead.
+// `packId` scopes the floor to one pack: a learner studying one course is not told about
+// another course's deadline (Gate B, round 1). Null means every installed pack.
+function intakeFloor(deck, store, now = Date.now(), packId = null) {
+  const states = store.allStates();
+  const isSuspended = typeof store.isSuspended === 'function' ? (id) => store.isSuspended(id) : () => false;
+  const today = new Date(store.dayKey(now));
+  let binding = null;
+  for (const [id, pack] of Object.entries(deck.packs || {})) {
+    if (packId && id !== packId) continue;
+    for (const m of pack.milestones || []) {
+      const due = new Date(m.due);
+      const daysLeft = Math.round((due - today) / 86400e3);
+      if (daysLeft < 0) continue;
+      const covered = deck.cards.filter((c) => c.pack === pack.id && (m.lessons || []).includes(c.lesson) && !isSuspended(c.id));
+      const unseen = covered.filter((c) => { const s = states.get(c.id); return !s || s.state === 'new'; }).length;
+      const floor = daysLeft === 0 ? unseen : Math.ceil(unseen / daysLeft);
+      const row = { pack: pack.id, packTitle: pack.title, milestone: m, daysLeft, covered: covered.length, unseen, floor };
+      if (!binding || row.floor > binding.floor) binding = row;
+    }
+  }
+  return binding;
+}
+
+// classview.js — the instructor's view, computed from students' exports. NO DOM.
+//
+// SPEC.md B2, in its first form: no accounts, no server. Each student exports; the instructor
+// imports the exports; this module answers the four questions and nothing else:
+//   1. Which items is this class failing?
+//   2. Is the class on pace for the next milestone?
+//   3. Who is not studying?
+//   4. Did my correction land — which pack version is each student on?
+//
+// What it can honestly claim is decided by MC-84 before a line of UI: an export is a record
+// of what a device reports, like a handed-in worksheet — notice and evidence, not proof. The
+// CAVEAT below is exported so the UI prints the same sentence the tests check for. It also
+// respects the FERPA finding in SPEC.md §2.B2: aggregation does not anonymise data from the
+// instructor of that class, so this module does not pretend it does; it simply holds no name.
+//
+// Reuses the store's fold for every student, so "state", "lapses" and "leech" mean exactly
+// what they mean on the student's own screen.
+
+
+const CAVEAT =
+  'Reported by each student’s own device, from a file they chose to hand you. Treat it as you ' +
+  'would a submitted worksheet: evidence of what was done, not proof. Nothing here detects ' +
+  'dishonesty and nothing here is a grade.';
+
+const mem = () => { const m = new Map(); return { get: (k) => (m.has(k) ? m.get(k) : null), set: (k, v) => { m.set(k, v); return true; } }; };
+const DAY = 86400e3;
+
+/** Parse one export. Throws on anything that is not a BW-08 export. */
+function readExport(text, label) {
+  const parsed = typeof text === 'string' ? JSON.parse(text) : text;
+  if (!parsed || parsed.format !== 'bw08-review-log' || !Array.isArray(parsed.log)) throw new Error(`${label || 'file'}: not a BW-08 export`);
+  const store = makeStore(mem()); store.load();
+  const res = store.importAll(JSON.stringify(parsed));   // validates every entry's shape
+  return { label: label || 'export', store, log: store.log, packs: Array.isArray(parsed.packs) ? parsed.packs : [], exported: parsed.exported || null, entries: res.total };
+}
+
+/**
+ * @param exports  [{ label, store, log, packs }] from readExport
+ * @param deck     the instructor's own installed deck (packStore.deck()) — the cards to report on
+ * @param opts     { now, leechThreshold }
+ */
+function summarizeClass(exports, deck, opts = {}) {
+  const now = opts.now ?? Date.now();
+  const leechThreshold = opts.leechThreshold ?? 8;
+  const dayKey = (ms) => exports[0] ? exports[0].store.dayKey(ms) : new Date(ms).toISOString().slice(0, 10);
+  const todayKey = dayKey(now);
+  const sevenAgo = now - 7 * DAY;
+
+  // ---- 3. who is studying ----
+  const students = exports.map((ex, i) => {
+    const log = ex.log;
+    const days = new Set(), days7 = new Set();
+    let reviews7 = 0, ms = 0, first = null, last = null;
+    const introduced = new Set();
+    for (const e of log) {
+      const k = dayKey(e.t); days.add(k);
+      if (e.t >= sevenAgo) { reviews7++; days7.add(k); }
+      ms += e.e || 0;
+      if (e.k === 0) introduced.add(e.c);
+      if (first == null || e.t < first) first = e.t;
+      if (last == null || e.t > last) last = e.t;
+    }
+    return {
+      index: i, label: ex.label,
+      reviews: log.length, reviews7d: reviews7, daysActive: days.size, daysActive7d: days7.size,
+      cardsIntroduced: introduced.size, minutes: Math.round(ms / 60000),
+      // DATE precision on purpose (SPEC.md §8.3): an instructor needs to know a student has
+      // stopped, not when they studied at 2 a.m.
+      firstActiveOn: first == null ? null : dayKey(first), lastActiveOn: last == null ? null : dayKey(last),
+      stoppedDays: last == null ? null : Math.max(0, Math.round((new Date(todayKey) - new Date(dayKey(last))) / DAY)),
+      packs: ex.packs,
+    };
+  });
+
+  // ---- 1. which items ----
+  const byCard = new Map(deck.cards.map((c) => [c.id, c]));
+  const noteOf = new Map(deck.notes.map((n) => [`${n.pack}/${n.guid}`, n]));
+  // Packs the exports refer to that this deck lacks. Without them, items and coverage cannot be
+  // named, and the screen must say THAT rather than "nothing reviewed" (Gate B, round 2: an
+  // instructor who had not installed the pack read a full class as a quiet one).
+  const referenced = new Set();
+  for (const ex of exports) {
+    for (const p of ex.packs || []) if (p && p.id) referenced.add(p.id);
+    for (const e of ex.log || []) { const s = String(e.c), i = s.indexOf('/'); if (i > 0) referenced.add(s.slice(0, i)); }
+  }
+  const missingPacks = [...referenced].filter((id) => !(deck.packs && deck.packs[id]));
+  let unmatchedReviews = 0;
+  const acc = new Map(); // cardId -> { seen, firstAgain, lapses[], leech }
+  for (const ex of exports) {
+    const states = ex.store.allStates();
+    // first grade per card, from the log in time order
+    const firstGrade = new Map();
+    for (const e of [...ex.log].sort((a, b) => a.t - b.t)) if (!firstGrade.has(e.c)) firstGrade.set(e.c, e.g);
+    for (const [cardId, st] of states) {
+      if (st.reps === 0) continue;
+      if (!byCard.has(cardId)) { unmatchedReviews += st.reps; continue; }
+      let a = acc.get(cardId);
+      if (!a) { a = { seen: 0, firstAgain: 0, reviews: 0, lapses: [], leeches: 0 }; acc.set(cardId, a); }
+      a.seen++; a.reviews += st.reps; a.lapses.push(st.lapses);
+      if (firstGrade.get(cardId) === 1) a.firstAgain++;
+      if (st.lapses >= leechThreshold) a.leeches++;
+    }
+  }
+  const items = [...acc.entries()].map(([cardId, a]) => {
+    const c = byCard.get(cardId), n = noteOf.get(`${c.pack}/${c.guid}`) || { fields: {} };
+    return {
+      cardId, pack: c.pack, guid: c.guid, ord: c.ord, lesson: c.lesson, fields: n.fields, type: n.type,
+      nStudents: a.seen, nReviews: a.reviews,
+      firstAgainRate: a.seen ? a.firstAgain / a.seen : 0,
+      meanLapses: a.lapses.reduce((s, x) => s + x, 0) / a.lapses.length,
+      pctLeech: a.seen ? a.leeches / a.seen : 0,
+    };
+  });
+  // Ranked by what an instructor acts on: how often the class did not know it on first sight,
+  // then how often it keeps being forgotten. Ties broken toward more students, so a card one
+  // student failed does not outrank one the whole class failed.
+  items.sort((x, y) => (y.firstAgainRate - x.firstAgainRate) || (y.meanLapses - x.meanLapses) || (y.nStudents - x.nStudents));
+
+  // ---- 2. pace / coverage, per pack+lesson, as a DISTRIBUTION not a mean ----
+  const lessons = new Map();
+  for (const c of deck.cards) {
+    const k = `${c.pack}|${c.lesson}`;
+    let L = lessons.get(k); if (!L) { L = { pack: c.pack, lesson: c.lesson, cards: 0, ids: [] }; lessons.set(k, L); }
+    L.cards++; L.ids.push(c.id);
+  }
+  const coverage = [...lessons.values()].map((L) => {
+    const perStudent = exports.map((ex) => {
+      const states = ex.store.allStates();
+      const seen = L.ids.filter((id) => { const s = states.get(id); return s && s.reps > 0; }).length;
+      return L.cards ? seen / L.cards : 0;
+    });
+    const buckets = { none: 0, some: 0, most: 0, all: 0 };
+    for (const f of perStudent) { if (f === 0) buckets.none++; else if (f < 0.5) buckets.some++; else if (f < 1) buckets.most++; else buckets.all++; }
+    return { pack: L.pack, lesson: L.lesson, cards: L.cards, students: exports.length, buckets, perStudent };
+  }).sort((a, b) => a.pack.localeCompare(b.pack) || a.lesson.localeCompare(b.lesson, undefined, { numeric: true }));
+
+  // ---- 4. versions ----
+  const versions = {};
+  for (const ex of exports) for (const p of ex.packs || []) {
+    versions[p.id] = versions[p.id] || {};
+    versions[p.id][p.version] = (versions[p.id][p.version] || 0) + 1;
+  }
+
+  return { generatedAt: now, students: students.length, caveat: CAVEAT, studentsList: students, items, coverage, versions, missingPacks, unmatchedReviews };
+}
+
+/* no built-in pack since 0.4.0 — packs install on the learner's tap */
+</script>
+<script>
+(function () {
+  'use strict';
+  var APP_VERSION = '0.4.0';
+  // The public address. ADR-007: once a hosted address exists it is the one that goes to
+  // people, and every artifact points at it so a saved review link is never a dead end.
+  var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
+  var $ = function (id) { return document.getElementById(id); };
+  // Everything interpolated into markup from a pack goes through this. Packs are trusted and
+  // generated, and that is exactly why escaping is cheap insurance rather than a reaction.
+  var esc = function (s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  };
+
+  // localStorage can throw outright in a private window or a thumbnailer, so every access is
+  // guarded and the app renders correctly with nothing stored.
+  var adapter = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+  };
+
+  /* ── packs and store ───────────────────────────────────────────── */
+  // No built-in pack since 0.4.0: the app ships empty and any course's pack installs on a tap.
+  // Gate B, round 1: a bundled JAPN 309 pack that could not be removed entered a JAPN 212
+  // student's Start queue, and its quiz deadline was shown to people not in that course.
+  var LEGACY_PACK_ID = 'japn309-kll-l1-l8';   // M1's card ids carried no pack prefix
+  var PUBLIC_PACK_URL = PUBLIC_URL + 'packs/' + LEGACY_PACK_ID + '.json';
+  var store = makeStore(adapter);
+  store.load({ legacyPackId: LEGACY_PACK_ID });   // M1 card ids gain their pack prefix, once
+  var packStore = makePackStore(adapter);
+  packStore.load();
+  function applyPlan(plan) {
+    if (!plan || !plan.apply) return plan;
+    if (plan.suspend.length) store.suspend(plan.suspend);
+    if (plan.unsuspend.length) store.unsuspend(plan.unsuspend);
+    return plan;
+  }
+  var DECK = packStore.deck();
+  function refreshDeck() { DECK = packStore.deck(); }
+
+  var typeOf = function (note) { return DECK.noteTypes[note.pack + '/' + note.type]; };
+  var noteById = {};
+  function indexNotes() { noteById = {}; DECK.notes.forEach(function (n) { noteById[n.pack + '/' + n.guid] = n; }); }
+  indexNotes();
+
+  var session = null;
+  var filter = { pack: null, lesson: null };
+
+  /* ── theme ─────────────────────────────────────────────────────── */
+  var root = document.documentElement;
+  // Light is the default regardless of the system theme; a saved choice wins. The attribute
+  // is always set, because unset lets prefers-color-scheme decide (operator, 2026-09-04).
+  root.setAttribute('data-theme', store.prefs.theme || 'light');
+  root.style.colorScheme = store.prefs.theme || 'light';
+
+  /* ── queue — the rules live in queue.js, tested in node; this is the thin call ─ */
+  function queueFor(f, ahead) {
+    return buildQueue(DECK, store, { pack: f.pack, lesson: f.lesson, ahead: ahead || 0 });
+  }
+
+  /* ── rendering ─────────────────────────────────────────────────── */
+  function show(id) {
+    ['s-home', 's-review', 's-done', 's-stats', 's-settings', 's-class'].forEach(function (s) {
+      $(s).hidden = (s !== id);
+    });
+  }
+
+  function fmtIvl(days) {
+    if (days == null) return '';
+    if (days < 1) {
+      var m = Math.max(1, Math.round(days * 24 * 60));
+      return m < 60 ? m + 'm' : Math.round(m / 60) + 'h';
+    }
+    if (days < 30) return Math.round(days) + 'd';
+    if (days < 365) return (days / 30.4).toFixed(days < 60 ? 1 : 0) + 'mo';
+    return (days / 365).toFixed(1) + 'y';
+  }
+
+  function renderHome() {
+    var b = queueFor(filter);
+    $('h-new').textContent = Math.min(b.counts.fresh, b.newLeft);
+    $('h-lrn').textContent = b.counts.learn;
+    $('h-due').textContent = b.counts.due;
+
+    var total = b.queue.length;
+    var where = filter.lesson ? ' · ' + filter.lesson : (filter.pack ? ' · ' + (DECK.packs[filter.pack] || {}).title : '');
+    $('start').disabled = total === 0;
+    var anyPack = packStore.list().length > 0;
+    $('start').textContent = total
+      ? 'Start today’s ' + total + (total === 1 ? ' card' : ' cards') + esc(where)
+      : (anyPack ? 'Nothing due right now' : 'Install a pack to begin');
+    $('h-lede').textContent = total
+      ? 'Everything below is scheduled for today. Finishing it is the whole job.'
+      : (anyPack ? 'Queue clear. Coming back tomorrow is the point — the schedule does the rest.'
+                 : 'No packs yet. A pack is one course’s cards — install the one your instructor sent, or the public one below.');
+    // What the three numbers mean, on the screen that shows them; and today's date, so a
+    // phone whose clock is wrong is visibly wrong rather than silently rescheduling everything.
+    $('h-legend').textContent = 'New: never seen · Learning: seen, not yet held · Due: scheduled for today · Today is ' +
+      new Date().toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+
+    var sec = b.budget.secondsPerCard, ratio = b.budget.ratio;
+    $('h-budget').innerHTML =
+      store.prefs.minutesPerDay + ' minutes a day → <b>' + (sec.measured && ratio.measured ? '' : 'about ') + b.budget.perDay + ' new cards</b>. ' +
+      'From your own pace: ' + sec.value.toFixed(1) + 's per card' +
+      (sec.measured ? '<span class="tagchip meas">measured</span>' : '<span class="tagchip seed">seed</span>') +
+      ' and ' + ratio.value.toFixed(1) + ' reviews per new card' +
+      (ratio.measured ? '<span class="tagchip meas">measured</span>' : '<span class="tagchip seed">seed</span>') +
+      (sec.measured && ratio.measured ? '' : ' <span class="hint">A seed is a starting guess until your own pace has been measured.</span>');
+
+    // The intake FLOOR (SPEC.md B1): a dated milestone in a pack says how many new cards a day
+    // you must take to have seen its material in time — distinct from the ceiling above.
+    // Scoped to the chosen pack: another course's deadline is not this learner's (Gate B, round 1).
+    var fl = intakeFloor(DECK, store, Date.now(), filter.pack);
+    var fh = $('h-floor');
+    if (!fl) fh.innerHTML = '';
+    else if (fl.unseen === 0) fh.innerHTML = '<div class="floor ok"><b>' + esc(fl.milestone.label) + '</b> in ' + fl.daysLeft + ' day' + (fl.daysLeft === 1 ? '' : 's') + ' — every card it covers has been seen.</div>';
+    else if (fl.floor <= b.budget.perDay) fh.innerHTML = '<div class="floor ok"><b>' + esc(fl.milestone.label) + '</b> in ' + fl.daysLeft + ' day' + (fl.daysLeft === 1 ? '' : 's') + ' covers ' + fl.unseen + ' cards you have not seen: ' + fl.floor + ' new a day reaches them, inside your ' + b.budget.perDay + '.</div>';
+    else fh.innerHTML = '<div class="floor"><b>' + esc(fl.milestone.label) + '</b> in ' + fl.daysLeft + ' day' + (fl.daysLeft === 1 ? '' : 's') + ' covers ' + fl.unseen + ' cards you have not seen. That needs <b>' + fl.floor + ' new a day</b>, above your ' + b.budget.perDay + '. More minutes, lower retention on this pack, or accept not seeing all of it — the app will not silently under-serve.</div>';
+
+    // Packs, then their lessons. One card per note per day; the cap is global unless filtered.
+    var host = $('h-packs');
+    host.innerHTML = '';
+    if (!anyPack) {
+      // The instructor's file is the first action and the big button; the public pack is the
+      // second, in plain style — a student who skips the sentence must not land in another
+      // course (Gate B, round 4).
+      host.innerHTML =
+        '<div class="empty"><p>Your instructor’s pack comes as a file.</p>' +
+        '<button class="primary" id="h-getfile" type="button">Install the pack your instructor sent</button>' +
+        '<p class="note">No file? The public JAPN 309 kanji pack (Kanji Look and Learn, lessons 1–8) is one tap, and can be removed later.</p>' +
+        '<button class="ghost" id="h-getpublic" type="button">Install the public JAPN 309 pack</button></div>';
+      $('h-getfile').addEventListener('click', function () {
+        renderSettings(); show('s-settings');
+        $('pk-file').click();
+      });
+      $('h-getpublic').addEventListener('click', function () {
+        renderSettings(); show('s-settings');
+        $('pk-url').value = PUBLIC_PACK_URL;
+        $('pk-fetch').click();   // the one user-initiated fetch, on the learner's tap
+      });
+    }
+    var rows = lessonProgress(DECK, store);
+    packStore.list().forEach(function (p) {
+      var hdr = document.createElement('button');
+      hdr.className = 'packhdr'; hdr.type = 'button';
+      hdr.setAttribute('aria-pressed', filter.pack === p.id && !filter.lesson ? 'true' : 'false');
+      var pk = DECK.packs[p.id] || {};
+      hdr.innerHTML = '<h2' + (pk.language ? ' lang="' + esc(pk.language) + '"' : '') + '>' + esc(p.title) + '</h2><span class="v">v' + esc(p.version) + '</span>';
+      hdr.addEventListener('click', function () {
+        filter = (filter.pack === p.id && !filter.lesson) ? { pack: null, lesson: null } : { pack: p.id, lesson: null };
+        renderHome();
+      });
+      host.appendChild(hdr);
+      var list = document.createElement('div'); list.className = 'lessons';
+      rows.filter(function (r) { return r.pack === p.id; }).forEach(function (row) {
+        var L = row.lesson || '—', tot = row.total || 1;
+        var el = document.createElement('button');
+        el.className = 'lesson'; el.type = 'button';
+        var on = filter.pack === p.id && filter.lesson === row.lesson;
+        el.setAttribute('aria-pressed', on ? 'true' : 'false');
+        el.setAttribute('aria-label', L + ': ' + (tot - row.fresh) + ' of ' + tot + ' cards started' + (row.suspended ? ', ' + row.suspended + ' retired' : ''));
+        el.innerHTML =
+          '<span class="nm">' + esc(L) + '</span>' +
+          '<span class="bars">' +
+            '<i class="b-rev" style="width:' + (row.review / tot * 100) + '%"></i>' +
+            '<i class="b-lrn" style="width:' + (row.learning / tot * 100) + '%"></i>' +
+            '<i class="b-new" style="width:' + (row.fresh / tot * 100) + '%"></i>' +
+          '</span>' +
+          '<span class="tally">' + (tot - row.fresh) + '/' + tot + (row.suspended ? ' <small>+' + row.suspended + ' retired</small>' : '') + '</span>';
+        el.addEventListener('click', function () {
+          filter = on ? { pack: p.id, lesson: null } : { pack: p.id, lesson: row.lesson };
+          renderHome();
+        });
+        list.appendChild(el);
+      });
+      host.appendChild(list);
+    });
+
+    // Attribution is per pack — whatever each installed pack declares, nothing the app adds.
+    var attrs = packStore.list().map(function (p) { var pk = DECK.packs[p.id]; return pk && pk.attribution ? esc(pk.attribution) : ''; }).filter(Boolean);
+    var attr = attrs.join(' ') + (attrs.length ? ' ' : '') +
+      'This app schedules reviews; it does not grade you and sends nothing anywhere. ' +
+      'v' + APP_VERSION + '.';
+    var here = (location.href || '').indexOf(PUBLIC_URL) === 0;
+    var link = here ? '' : ' <a href="' + PUBLIC_URL + '">Install-ready copy →</a>';
+    $('attr').innerHTML = attr + link;
+    $('attr2').innerHTML = attr + link;
+  }
+
+  /* ── review ────────────────────────────────────────────────────── */
+  var current = null, shownAt = 0, revealed = false, previews = null;
+
+  function startSession() {
+    var b = queueFor(filter);
+    if (!b.queue.length) return;
+    session = { queue: b.queue, done: 0, total: b.queue.length };
+    show('s-review');
+    nextCard();
+  }
+
+  function nextCard() {
+    if (!session || !session.queue.length) return finish();
+    current = session.queue.shift();
+    revealed = false;
+    shownAt = Date.now();
+    $('r-left').textContent = (session.total - session.queue.length) + ' / ' + session.total;
+    // Undo reaches only answers given in THIS sitting. On a session's first card it used to pop
+    // the previous day's last review and delete a real answer (Gate B, round 2).
+    $('r-undo').disabled = !(session && session.answered > 0);
+    drawCard();
+  }
+
+  function noteOf(card) { return noteById[card.pack + '/' + card.guid]; }
+
+  // A field rendered by ROLE. The renderer knows six roles and no subjects; the pack's note
+  // type says which field is which (PACK-FORMAT.md). A kanji, a formula and a musical interval
+  // are all "glyph"; what differs is the text and the language attribute the pack declares.
+  function renderField(nt, name, value, lang, onAnswer) {
+    var role = (nt.display && nt.display[name]) || 'text';
+    if (role === 'hidden' || value == null || String(value) === '') return '';
+    var label = nt.labels && nt.labels[name];
+    var L = lang ? ' lang="' + esc(lang) + '"' : '';
+    var v = esc(value);
+    switch (role) {
+      case 'glyph': return '<div class="r-glyph' + (String(value).length > 2 ? ' long' : '') + '"' + L + '>' + v + '</div>';
+      case 'headline': return '<div class="r-headline"' + (onAnswer ? '' : L) + '>' + v + '</div>';
+      case 'also': return '<div class="r-also">' + (label ? esc(label) + ': ' : 'also: ') + v + '</div>';
+      case 'meta': {
+        // A meta label may carry a plural: "stroke|strokes" picks by the value. Subject-neutral,
+        // declared by the pack, so "1 strokes" cannot come back.
+        var lab = label || '';
+        if (lab.indexOf('|') >= 0) { var parts = lab.split('|'); lab = String(value) === '1' ? parts[0] : parts[1]; }
+        return '<div class="r-meta">' + v + (lab ? ' ' + esc(lab) : '') + '</div>';
+      }
+      case 'chip': return '<span class="chip"' + L + '>' + (label ? '<b' + (/[^\x00-\x7f]/.test(label) ? L : '') + '>' + esc(label) + '</b>' : '') + v + '</span>';
+      default: return '<div class="r-text"' + L + '>' + v + '</div>';
+    }
+  }
+
+  function drawCard() {
+    var n = noteOf(current), f = n.fields, st = store.state(current.id);
+    var nt = typeOf(n), tmpl = nt.templates[current.ord];
+    var pk = DECK.packs[n.pack] || {}, lang = pk.language || '';
+    var host = $('r-card');
+    var h = '';
+    var leech = st.leech ? '<span class="leechflag">needs reformulating</span>' : '';
+    h += '<div class="tag">' + esc(n.lesson || pk.title) + ' · ' + esc(nt.name) + ' · ' + esc(tmpl.name) + ' ' + leech + '</div>';
+
+    // The prompt is the template's prompt field and nothing else — a reading shown beside a
+    // word is the answer (SPEC.md 7.3; MC-65: one unknown per card, readings hidden on the ask).
+    h += renderField(nt, tmpl.prompt, f[tmpl.prompt], lang, false);
+
+    if (revealed) {
+      h += '<div class="divider"></div><div class="ans">';
+      // The answer field first, then every other non-hidden field in the type's own order,
+      // chips gathered onto one row. The prompt field is not repeated.
+      h += renderField(nt, tmpl.answer, f[tmpl.answer], lang, true);
+      var chips = '', rest = '';
+      nt.fields.forEach(function (name) {
+        if (name === tmpl.prompt || name === tmpl.answer) return;
+        var role = (nt.display && nt.display[name]) || 'text';
+        var piece = renderField(nt, name, f[name], lang, true);
+        if (role === 'chip') chips += piece; else rest += piece;
+      });
+      h += rest.replace(/(<div class="r-also">)/, '$1');
+      if (chips) h += '<div class="chips">' + chips + '</div>';
+      if (st.reps) h += '<div class="r-meta">seen ' + st.reps + '×' + (st.lapses ? ' · ' + st.lapses + ' lapses' : '') + '</div>';
+      h += '</div>';
+    }
+    host.innerHTML = h;
+    drawBand();
+  }
+
+  function drawBand() {
+    var band = $('r-band');
+    if (!revealed) {
+      band.innerHTML = '<button class="reveal" id="reveal" type="button">Show answer</button>';
+      $('reveal').addEventListener('click', reveal);
+      return;
+    }
+    var labels = { 1: 'Again', 2: 'Hard', 3: 'Good', 4: 'Easy' };
+    var h = '<div class="grades">';
+    for (var g = 1; g <= 4; g++) {
+      h += '<button class="grade" type="button" data-g="' + g + '" aria-label="' + labels[g] +
+           ', next in ' + fmtIvl(previews[g].ivl) + '">' +
+           '<span class="g">' + labels[g] + '</span>' +
+           '<span class="i">' + fmtIvl(previews[g].ivl) + '</span></button>';
+    }
+    // The four grades, defined where they are pressed. Anki manual, "Studying": Again = forgot;
+    // Hard = recalled with serious difficulty; Good = with some effort; Easy = easily.
+    band.innerHTML = h + '</div><p class="glegend">Again forgot · Hard barely · Good with effort · Easy at once — timing, not a score</p>';
+    Array.prototype.forEach.call(band.querySelectorAll('.grade'), function (b) {
+      b.addEventListener('click', function () { answer(parseInt(b.getAttribute('data-g'), 10)); });
+    });
+  }
+
+  function reveal() {
+    revealed = true;
+    var st = store.state(current.id);
+    // Whole days between the last review's study-day and today's, the way the reference
+    // computes `t` — a calendar-date difference, not a fraction of 24 hours.
+    var elapsedDays = 0;
+    if (st.last) {
+      var a = new Date(store.dayKey(st.last.t)), b = new Date(store.dayKey(Date.now()));
+      elapsedDays = Math.max(0, Math.round((b - a) / 86400e3));
+    }
+    previews = FSRS.nextStates(
+      st.s == null ? null : { s: st.s, d: st.d },
+      elapsedDays,
+      store.prefs.desiredRetention,
+      store.prefs.maximumInterval
+    );
+    drawCard();
+  }
+
+  function answer(grade) {
+    var st = store.state(current.id);
+    var next = previews[grade];
+    var now = Date.now();
+    store.append({
+      c: current.id,
+      t: now,
+      g: grade,
+      k: st.state === 'new' ? store.KINDS.learn : (grade === 1 ? store.KINDS.relearn : store.KINDS.review),
+      s: next.s, d: next.d, i: next.ivl,
+      u: now + Math.round(next.ivl * 86400e3),
+      e: Math.min(120000, now - shownAt)
+    });
+    session.done++;
+    session.answered = (session.answered || 0) + 1;
+    // A lapsed card comes back in the same sitting rather than tomorrow — that is what the
+    // learning steps are for, and dropping it to tomorrow wastes the failure.
+    if (next.ivl < 1) session.queue.push(current);
+    nextCard();
+  }
+
+  function finish() {
+    var b = queueFor(filter);
+    show('s-done');
+    var t = store.countsToday();
+    // Leaving with cards still waiting is not a clear queue, and the heading must not say it
+    // is (Gate B, round 2: a success heading over a remaining queue is a silent success).
+    var left = b.queue.length;
+    $('d-title').textContent = left ? 'Stopped for now' : 'Queue clear';
+    $('d-body').innerHTML = t.reviews + (t.reviews === 1 ? ' card' : ' cards') + ' today in ' +
+      Math.max(1, Math.round(t.ms / 60000)) + ' minutes' +
+      (t.newCards ? ', ' + t.newCards + ' of them new' : '') + '.<br>' +
+      (left
+        ? left + (left === 1 ? ' card is' : ' cards are') + ' still waiting today. The schedule keeps them; come back when you can.'
+        : (b.counts.due + b.counts.learn > 0
+          ? 'More is due later today.'
+          : 'Nothing else is due. Stopping here is correct — the schedule brings it back.'));
+    $('d-more').hidden = !(b.counts.fresh > 0);
+    renderHome();
+  }
+
+  /* ── stats ─────────────────────────────────────────────────────── */
+  function renderStats() {
+    var states = store.allStates(), tr = store.trueRetention();
+    var n = 0, l = 0, r = 0, mature = 0, leeches = 0, susp = 0;
+    DECK.cards.forEach(function (c) {
+      if (store.isSuspended(c.id)) { susp++; return; }
+      var s = states.get(c.id);
+      if (!s || s.state === 'new') { n++; return; }
+      if (s.state === 'review') r++; else l++;
+      if (s.ivl >= 21) mature++;
+      if (s.leech) leeches++;
+    });
+    var sec = store.measuredSecondsPerCard(), ratio = store.measuredReviewsPerNewCard();
+    var t = store.countsToday();
+    $('st-body').innerHTML =
+      '<h2 class="sec">Today</h2><div class="rows">' +
+      row('Cards answered', t.reviews) + row('New introduced', t.newCards) +
+      row('Time', Math.round(t.ms / 60000) + ' min') + '</div>' +
+      '<h2 class="sec">The collection</h2><div class="rows">' +
+      row('Packs installed', packStore.list().length) +
+      row('Cards total', DECK.cards.length) +
+      row('Not started', n) + row('Learning', l) + row('In review', r) +
+      row('Mature (21d+)', mature) +
+      row('Flagged for reformulating', leeches) +
+      row('Retired by a pack update', susp) + '</div>' +
+      '<h2 class="sec">True retention</h2>' +
+      '<p class="note">Only cards answered in review state count. Learning answers say nothing ' +
+      'about whether the schedule is working, and counting them flatters the number.</p>' +
+      '<div class="rows">' +
+      row('Reviews judged', tr.seen) +
+      // A rate from a handful of reviews is noise; it is said so, and shown whole, never to a tenth.
+      row('Recalled', tr.seen < 30 ? (tr.seen ? 'too few to say yet (' + tr.seen + ' of 30)' : '—') : Math.round(tr.rate * 100) + '%') +
+      row('Target', (store.prefs.desiredRetention * 100).toFixed(0) + '%') + '</div>' +
+      '<h2 class="sec">Your measured pace</h2>' +
+      '<div class="rows">' +
+      row('Seconds per card', sec.value.toFixed(1) + (sec.measured ? '' : ' (seed)'), sec.measured ? 'meas' : 'seed') +
+      row('Reviews per new card', ratio.value.toFixed(1) + (ratio.measured ? '' : ' (seed)'), ratio.measured ? 'meas' : 'seed') +
+      '</div>' +
+      '<p class="note">A seed is a starting guess, not a fact about you. Both are replaced by ' +
+      'your own numbers once there is enough history — seconds per card after 30 answers, ' +
+      'the ratio after 20 new cards. The starting ratio of 10 comes from a rule of thumb in ' +
+      'Anki’s manual that is stated without derivation and predates the current scheduler, ' +
+      'so treat it as a placeholder that expires.</p>';
+    show('s-stats');
+  }
+  function row(k, v, chip) {
+    return '<div class="row"><span class="k">' + k + '</span><span class="v">' + v +
+      (chip ? '<span class="tagchip ' + chip + '">' + (chip === 'meas' ? 'measured' : 'seed') + '</span>' : '') +
+      '</span></div>';
+  }
+
+  /* ── packs: install / update / remove ─────────────────────────── */
+  // Returns { ok, msg } and touches no DOM. The caller re-renders the settings panel (the pack
+  // list changed) and THEN writes the message — the first version wrote the message first and
+  // the re-render wiped it, so a student installing a pack saw nothing confirm it.
+  function installPackObject(obj, meta) {
+    var plan;
+    try { plan = packStore.install(obj, meta || {}); }
+    catch (e) { return { ok: false, msg: e.message }; }
+    if (!plan.apply) return { ok: true, msg: 'Nothing to do: ' + plan.reason + '.' };
+    applyPlan(plan);
+    refreshDeck(); indexNotes();
+    return { ok: true, msg: (plan.reason === 'install' ? 'Installed ' : 'Updated ') + obj.title + ' v' + obj.version +
+      (plan.reason === 'update' ? ' — ' + plan.changed + ' changed, ' + plan.added + ' added, ' + plan.removed + ' retired (history kept).' : ' — ' + plan.added + ' notes. It is on your home screen.') };
+  }
+  // Write a status line into the CURRENT settings panel, after any re-render.
+  function flash(res) {
+    var st = $('pk-status'); if (!st) return;
+    st.hidden = false; st.className = res.ok ? 'status' : 'status bad'; st.textContent = res.msg;
+  }
+  function installAndShow(obj, meta) {
+    var res = installPackObject(obj, meta);
+    renderSettings(); renderHome(); flash(res);
+    return res;
+  }
+
+  function installFromUrl(url) {
+    flash({ ok: true, msg: 'Fetching…' });
+    // The ONE network call in the app, on the learner's tap, never on the load path. The
+    // marker is the contract the assembler and the gate check for.
+    /* network: user-initiated */ fetch(url, { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('That address answered ' + r.status + '.'); return r.json(); })
+      .then(function (obj) { installAndShow(obj, { url: url }); })
+      .catch(function (e) { flash({ ok: false, msg: 'Could not install from that address: ' + e.message }); });
+  }
+
+  /* ── settings ──────────────────────────────────────────────────── */
+  function renderSettings() {
+    var p = store.prefs, b = store.intakeBudget();
+    var packsHtml = packStore.list().map(function (r) {
+      var pk = DECK.packs[r.id] || {};
+      return '<div class="packrow"><div class="t"' + (pk.language ? ' lang="' + esc(pk.language) + '"' : '') + '>' + esc(r.title) + '</div>' +
+        '<div class="m">v' + esc(r.version) + ' · ' + (pk.notes ? pk.notes.length : 0) + ' notes' + (r.url ? ' · ' + esc(r.url) : ' · installed from a file') + '</div>' +
+        (r.url ? '<button class="ghost small" type="button" data-upd="' + esc(r.id) + '">Check for update</button>' : '') +
+        '<button class="ghost small" type="button" data-rm="' + esc(r.id) + '">Remove</button>' +
+        '</div>';
+    }).join('');
+    $('se-body').innerHTML =
+      '<label class="field"><span class="lbl">Minutes a day: <span class="val" id="v-min">' + p.minutesPerDay + '</span></span>' +
+      '<span class="hint">Set the time, not the card count. Review load is a lagging consequence ' +
+      'of intake weeks earlier, and minutes are the thing you can actually feel.</span>' +
+      '<input type="range" id="i-min" min="5" max="90" step="5" value="' + p.minutesPerDay + '"></label>' +
+      '<p class="note" id="v-derived">→ ' + b.perDay + ' new cards a day at your current pace.</p>' +
+
+      '<label class="field"><span class="lbl">Desired retention: <span class="val" id="v-ret">' +
+      (p.desiredRetention * 100).toFixed(0) + '%</span></span>' +
+      '<span class="hint">A workload dial, not a quality dial. Anki’s manual: above 90% the ' +
+      'workload increases very quickly, and above 97% it can be overwhelming.</span>' +
+      '<input type="range" id="i-ret" min="80" max="97" step="1" value="' + (p.desiredRetention * 100) + '"></label>' +
+      '<p class="note" id="v-retcost"></p>' +
+
+      '<h2 class="sec">Packs</h2>' +
+      '<p class="note">A pack is a course’s cards, published by whoever teaches it. Install one ' +
+      'from a file they sent you or from an address; updates keep your history.</p>' +
+      packsHtml +
+      '<div id="pk-status" class="status" hidden></div>' +
+      '<input type="text" class="textin" id="pk-url" placeholder="https://…/pack.json" inputmode="url" autocapitalize="off" spellcheck="false">' +
+      '<button class="ghost" id="pk-fetch" type="button">Install from address</button>' +
+      '<button class="ghost" id="pk-filebtn" type="button">Install from a file</button>' +
+      '<input type="file" id="pk-file" accept="application/json,.json" hidden>' +
+      '<textarea class="textin" id="pk-paste" placeholder="…or paste a pack’s JSON here"></textarea>' +
+      '<button class="ghost" id="pk-pastebtn" type="button">Install pasted pack</button>' +
+
+      '<h2 class="sec">For whoever teaches the course</h2>' +
+      '<p class="note">Students hand you their exports; this reads them together and answers four ' +
+      'questions. It runs here, on this device, and sends nothing anywhere.</p>' +
+      '<button class="ghost" id="go-class" type="button">Open the class view</button>' +
+
+      '<h2 class="sec">Theme</h2>' +
+      '<button class="ghost" id="i-theme" type="button">Switch to ' +
+        (currentTheme() === 'dark' ? 'light' : 'dark') + '</button>' +
+
+      '<h2 class="sec">Your data</h2>' +
+      '<p class="note">Everything lives in this browser. Nothing is uploaded, and no account ' +
+      'exists. That also means clearing site data clears your progress — so export before ' +
+      'you switch phones. Your export is also what you hand to an instructor who asks to see ' +
+      'your studying; it is a record of what you did, reported by this device.</p>' +
+      '<button class="ghost" id="i-export" type="button">Export my review history</button>' +
+      '<div id="se-export" class="exportbox" hidden>' +
+        '<div class="cnt"></div>' +
+        '<textarea readonly rows="4" spellcheck="false"></textarea>' +
+        '<button class="ghost copybtn" type="button">Copy to clipboard</button>' +
+        '<a class="dl" download hidden>or save as a file</a>' +
+      '</div>' +
+      '<button class="ghost" id="i-import" type="button">Import a history file</button>' +
+      '<input type="file" id="i-file" accept="application/json" hidden>' +
+      '<button class="danger" id="i-reset" type="button">Erase my progress</button>' +
+      '<p class="note">There is deliberately no “reset the deck” button that keeps your ' +
+      'history but wipes the schedule. Resetting destroys the intervals of every card you ' +
+      'actually know, and it is the single thing practitioners agree you should never do.</p>';
+
+    var min = $('i-min'), ret = $('i-ret');
+    min.addEventListener('input', function () {
+      $('v-min').textContent = min.value;
+      store.setPrefs({ minutesPerDay: parseInt(min.value, 10) });
+      $('v-derived').textContent = '→ ' + store.intakeBudget().perDay + ' new cards a day at your current pace.';
+    });
+    ret.addEventListener('input', function () {
+      $('v-ret').textContent = ret.value + '%';
+      store.setPrefs({ desiredRetention: parseInt(ret.value, 10) / 100 });
+      retCost();
+    });
+    retCost();
+
+    $('pk-fetch').addEventListener('click', function () {
+      var u = ($('pk-url').value || '').trim();
+      if (!/^https?:\/\//.test(u)) { flash({ ok: false, msg: 'That is not a web address.' }); return; }
+      installFromUrl(u);
+    });
+    $('pk-filebtn').addEventListener('click', function () { $('pk-file').click(); });
+    $('pk-file').addEventListener('change', function (ev) {
+      var f = ev.target.files && ev.target.files[0]; if (!f) return;
+      var fr = new FileReader();
+      fr.onload = function () {
+        var obj;
+        try { obj = JSON.parse(String(fr.result)); } catch (e) { flash({ ok: false, msg: 'That file is not JSON.' }); return; }
+        installAndShow(obj, {});
+      };
+      fr.readAsText(f);
+    });
+    $('pk-pastebtn').addEventListener('click', function () {
+      var obj;
+      try { obj = JSON.parse($('pk-paste').value); } catch (e) { flash({ ok: false, msg: 'That is not JSON.' }); return; }
+      installAndShow(obj, {});
+    });
+    Array.prototype.forEach.call($('se-body').querySelectorAll('[data-upd]'), function (btn) {
+      btn.addEventListener('click', function () {
+        var r = packStore.list().filter(function (x) { return x.id === btn.getAttribute('data-upd'); })[0];
+        if (r && r.url) installFromUrl(r.url);
+      });
+    });
+    Array.prototype.forEach.call($('se-body').querySelectorAll('[data-rm]'), function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-rm');
+        if (!confirm('Remove this pack from the app? Your review history for its cards is kept, so re-installing it later resumes where you were.')) return;
+        packStore.remove(id); refreshDeck(); indexNotes();
+        if (filter.pack === id) filter = { pack: null, lesson: null };
+        renderSettings(); renderHome();
+      });
+    });
+
+    $('go-class').addEventListener('click', function () { renderClass(); show('s-class'); });
+    $('i-theme').addEventListener('click', function () {
+      var next = currentTheme() === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      root.style.colorScheme = next;
+      store.setPrefs({ theme: next });
+      renderSettings();
+    });
+    // Export is COPY-FIRST, deliberately. A download link is inert inside the artifact viewer,
+    // which never grants pages download permission; copy works on both surfaces this app runs
+    // on. The file link is shown only where it can work — a framed page hides it.
+    $('i-export').addEventListener('click', function () {
+      // The envelope carries the installed pack versions and nothing about the learner; the
+      // instructor's view uses them to answer "did my correction land" (SPEC.md B2, q4).
+      var text = store.exportAll({ packs: packStore.list().map(function (r) { return { id: r.id, version: r.version }; }) });
+      var box = $('se-export');
+      box.hidden = false;
+      var ta = box.querySelector('textarea');
+      ta.value = text;
+      ta.focus(); ta.select();
+      box.querySelector('.cnt').textContent =
+        JSON.parse(text).log.length + ' reviews · ' + (text.length / 1024).toFixed(0) + ' KB';
+      var copy = box.querySelector('.copybtn');
+      copy.textContent = 'Copy to clipboard';
+      copy.onclick = function () {
+        // "Copied" only when a copy happened; otherwise the text is selected and the button says
+        // so (Gate B, round 4).
+        var done = function () { copy.textContent = 'Copied'; };
+        var fallback = function () {
+          ta.select();
+          var ok = false; try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+          copy.textContent = ok ? 'Copied' : 'Could not copy — the text is selected, copy it by hand';
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
+        else fallback();
+      };
+      var a = box.querySelector('.dl');
+      var framed = true;
+      try { framed = window.self !== window.top; } catch (e) { framed = true; }
+      if (framed) { a.hidden = true; }
+      else {
+        try { a.hidden = false; a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = 'kurikaeshi-history.json'; }
+        catch (e) { a.hidden = true; }
+      }
+    });
+    $('i-import').addEventListener('click', function () { $('i-file').click(); });
+    $('i-file').addEventListener('change', function (ev) {
+      var f = ev.target.files && ev.target.files[0];
+      if (!f) return;
+      var fr = new FileReader();
+      fr.onload = function () {
+        try {
+          var res = store.importAll(String(fr.result));
+          alert('Merged ' + res.added + ' new entries. ' + res.total + ' total.');
+          renderHome();
+        } catch (e) { alert('That file is not a Kurikaeshi export: ' + e.message); }
+      };
+      fr.readAsText(f);
+    });
+    $('i-reset').addEventListener('click', function () {
+      if (!confirm('Erase every review you have done? This cannot be undone, and export first if you might want it.')) return;
+      store.reset(); renderHome(); show('s-home');
+    });
+    show('s-settings');
+  }
+  /* ── class view — SPEC.md B2 in its file-based form; the numbers come from classview.js ── */
+  // Exports loaded this visit. Held in memory only: an instructor's students' data is never
+  // written to this device's storage by the app — close the screen and it is gone.
+  var loadedExports = [];
+  // Packs loaded on this screen only to READ the exports against — the instructor need not
+  // install the course pack on her own device, and these are never written to storage
+  // (Gate B, round 2). The deck the class is read against is installed packs plus these.
+  var loadedPacks = [];
+  function classDeck() {
+    var installed = Object.keys(DECK.packs).map(function (k) { return DECK.packs[k]; });
+    return deckFrom(installed.concat(loadedPacks));
+  }
+  function missingNotice(r, cd) {
+    if (!r.missingPacks.length) return '';
+    var names = r.missingPacks.map(function (id) {
+      var vs = Object.keys(r.versions[id] || {});
+      return esc(id) + (vs.length ? ' v' + esc(vs.join(', v')) : '');
+    }).join('; ');
+    return '<p class="status bad">These exports refer to a pack this device does not have: <b>' + names + '</b>. ' +
+      'Load that pack file above — the same file you sent the class — to see items and coverage. ' +
+      r.unmatchedReviews + ' review' + (r.unmatchedReviews === 1 ? '' : 's') + ' in the exports belong to it.</p>';
+  }
+  function renderClass() {
+    var body = $('cv-body');
+    var h = '';
+    h += '<div class="caveat"><b>What this is.</b> ' + esc(CAVEAT) + '</div>';
+    h += '<p class="note">Two loads. First the course pack — the same file you sent the class; the view needs it to name the items and it is read, not installed. ' +
+         'Then the export files your students handed you. Their file names are the only labels shown — the app adds no names and keeps nothing after you leave this screen.</p>';
+    h += '<button class="ghost" id="cv-addpack" type="button">Load the course pack…</button>' +
+         '<input type="file" id="cv-packfiles" accept="application/json,.json" multiple hidden>' +
+         (loadedPacks.length ? '<p class="note">Pack' + (loadedPacks.length === 1 ? '' : 's') + ' loaded for reading: ' + loadedPacks.map(function (p) { return esc(p.title) + ' v' + esc(p.version); }).join('; ') + '.</p>' : '') +
+         '<button class="ghost" id="cv-add" type="button">Load export files…</button>' +
+         '<input type="file" id="cv-files" accept="application/json,.json" multiple hidden>' +
+         '<div id="cv-status" class="status" hidden></div>';
+    if (loadedExports.length) {
+      var cd = classDeck();
+      h += '<p class="note">' + loadedExports.length + ' export' + (loadedExports.length === 1 ? '' : 's') + ' loaded: ' +
+           loadedExports.map(function (e) { return esc(e.label); }).join(', ') + '.</p>' +
+           '<button class="ghost small" id="cv-clear" type="button">Clear</button>';
+      var r = summarizeClass(loadedExports, cd, { now: Date.now(), leechThreshold: store.prefs.leechThreshold });
+      h += missingNotice(r, cd);
+
+      // 1. Which items is the class failing?
+      h += '<h2 class="sec">1 · Which items is the class failing?</h2>' +
+           '<p class="note">Ranked by how often it was wrong on first sight, then how often it keeps being forgotten. Only items at least one student has seen.</p>';
+      var top = r.items.filter(function (it) { return it.nStudents > 0; }).slice(0, 25);
+      if (!top.length) h += '<p class="note">' + (r.missingPacks.length ? 'Items cannot be named until the pack above is loaded.' : 'No item has been reviewed by anyone yet.') + '</p>';
+      else {
+        h += '<div class="cv-wrap"><table class="cv-table cv-items"><thead><tr><th>Item</th><th>Lesson</th><th>Seen by</th><th>Wrong first</th><th>Lapses</th><th>Leech</th></tr></thead><tbody>';
+        top.forEach(function (it) {
+          var nt = cd.noteTypes[it.pack + '/' + it.type] || { fields: [] };   // the reading deck, not the installed one
+          var promptField = (nt.templates && nt.templates[it.ord] && nt.templates[it.ord].prompt) || nt.fields[0];
+          var lang = (cd.packs[it.pack] || {}).language || '';
+          var face = it.fields[promptField] != null ? it.fields[promptField] : it.guid;
+          h += '<tr><td' + (lang ? ' lang="' + esc(lang) + '"' : '') + '>' + esc(face) + '</td>' +
+               '<td>' + esc(it.lesson || '—') + '</td>' +
+               '<td class="n">' + it.nStudents + '</td>' +
+               '<td class="n' + (it.firstAgainRate >= 0.5 ? ' bad' : (it.firstAgainRate > 0 ? ' warn' : '')) + '">' + Math.round(it.firstAgainRate * 100) + '%</td>' +
+               '<td class="n">' + it.meanLapses.toFixed(1) + '</td>' +
+               '<td class="n' + (it.pctLeech > 0 ? ' warn' : '') + '">' + Math.round(it.pctLeech * 100) + '%</td></tr>';
+        });
+        h += '</tbody></table></div>';
+      }
+
+      // 2. Pace — coverage per lesson as a distribution, never a mean
+      h += '<h2 class="sec">2 · Is the class on pace?</h2>' +
+           '<p class="note">For each lesson, how many students have seen none, some, most, or all of its cards. A distribution, because an average hides the half of the room that has not started.</p>' +
+           '<div class="legend"><i class="b0" style="background:var(--again)"></i>none <i style="background:var(--hard)"></i>under half <i style="background:var(--indigo)"></i>most <i style="background:var(--easy)"></i>all</div>';
+      h += '<div class="cv-wrap"><table class="cv-table"><thead><tr><th>Lesson</th><th>Cards</th><th style="width:45%">Students</th><th>All</th></tr></thead><tbody>';
+      var lastPack = null;
+      r.coverage.forEach(function (c) {
+        var n = c.students || 1, b = c.buckets;
+        // One header row per pack; the lesson cell carries only the lesson. The title in
+        // every row wrapped to five lines at phone width and buried the numbers.
+        if (c.pack !== lastPack) { h += '<tr class="grp"><td colspan="4">' + esc((cd.packs[c.pack] || {}).title || c.pack) + '</td></tr>'; lastPack = c.pack; }
+        h += '<tr><td>' + esc(c.lesson || '—') + '</td>' +
+             '<td class="n">' + c.cards + '</td>' +
+             '<td><span class="bkt"><i class="b0" style="width:' + (b.none / n * 100) + '%"></i><i class="b1" style="width:' + (b.some / n * 100) + '%"></i><i class="b2" style="width:' + (b.most / n * 100) + '%"></i><i class="b3" style="width:' + (b.all / n * 100) + '%"></i></span></td>' +
+             '<td class="n">' + b.all + '/' + c.students + '</td></tr>';
+      });
+      h += '</tbody></table></div>';
+
+      // 3. Who is not studying — coarse on purpose (§8.3)
+      h += '<h2 class="sec">3 · Who has stopped?</h2>' +
+           '<p class="note">Days active and reviews in the last seven days, and the date each export last shows activity. Dates, not times — nobody needs to know who studied at 2 a.m.</p>';
+      // Four columns, so the verdict — stopped, and for how long — is on screen at phone
+      // width instead of behind a scrollbar. It rides the last-active date, coloured.
+      h += '<div class="cv-wrap"><table class="cv-table"><thead><tr><th>Export</th><th>Reviews<br>7 d / all</th><th>Days active<br>of 7</th><th>Last active</th></tr></thead><tbody>';
+      r.studentsList.slice().sort(function (a, b) { return (b.stoppedDays == null ? 9999 : b.stoppedDays) - (a.stoppedDays == null ? 9999 : a.stoppedDays); }).forEach(function (s) {
+        var stopped = s.stoppedDays == null ? 'never started' : (s.stoppedDays === 0 ? 'today' : s.stoppedDays + ' d ago');
+        var cls = s.stoppedDays == null || s.stoppedDays >= 7 ? ' bad' : (s.stoppedDays >= 3 ? ' warn' : '');
+        h += '<tr><td>' + esc(s.label) + '</td><td class="n">' + s.reviews7d + ' / ' + s.reviews + '</td><td class="n">' + s.daysActive7d + '</td>' +
+             '<td class="n' + cls + '">' + (s.lastActiveOn ? esc(s.lastActiveOn) + '<br>' : '') + stopped + '</td></tr>';
+      });
+      h += '</tbody></table></div>';
+
+      // 4. Versions
+      h += '<h2 class="sec">4 · Did my correction land?</h2>' +
+           '<p class="note">Which version of each pack every export was made from. A student on an old version has not received your fix.</p>';
+      var vk = Object.keys(r.versions);
+      if (!vk.length) h += '<p class="note">These exports carry no pack versions (made by an older app).</p>';
+      else {
+        h += '<div class="cv-wrap"><table class="cv-table"><thead><tr><th>Pack</th><th>Version</th><th>Students</th></tr></thead><tbody>';
+        vk.forEach(function (id) {
+          var title = (cd.packs[id] || {}).title || id, mine = (cd.packs[id] || {}).version;
+          Object.keys(r.versions[id]).sort().forEach(function (v) {
+            h += '<tr><td>' + esc(title) + '</td><td class="n' + (mine && v !== mine ? ' warn' : '') + '">' + esc(v) + (mine && v !== mine ? ' (yours: ' + esc(mine) + ')' : '') + '</td><td class="n">' + r.versions[id][v] + '</td></tr>';
+          });
+        });
+        h += '</tbody></table></div>';
+      }
+      h += '<button class="ghost" id="cv-copy" type="button">Copy this report as JSON</button>';
+    }
+    body.innerHTML = h;
+
+    $('cv-addpack').addEventListener('click', function () { $('cv-packfiles').click(); });
+    $('cv-packfiles').addEventListener('change', function (ev) {
+      var files = Array.prototype.slice.call(ev.target.files || []);
+      if (!files.length) return;
+      var pending = files.length, errors = [];
+      files.forEach(function (f) {
+        var fr = new FileReader();
+        fr.onload = function () {
+          try {
+            var obj = JSON.parse(String(fr.result));
+            var v = validatePack(obj);
+            if (v !== true) throw new Error(Array.isArray(v) ? v.join('; ') : String(v));
+            loadedPacks = loadedPacks.filter(function (p) { return p.id !== obj.id; }).concat([obj]);
+          } catch (e) { errors.push(f.name + ': ' + e.message); }
+          if (--pending === 0) {
+            renderClass();
+            var st2 = $('cv-status');
+            if (errors.length) { st2.hidden = false; st2.className = 'status bad'; st2.textContent = 'Not a pack — ' + errors.join(' · '); }
+          }
+        };
+        fr.readAsText(f);
+      });
+    });
+    $('cv-add').addEventListener('click', function () { $('cv-files').click(); });
+    $('cv-files').addEventListener('change', function (ev) {
+      var files = Array.prototype.slice.call(ev.target.files || []);
+      if (!files.length) return;
+      var st = $('cv-status'); st.hidden = false; st.className = 'status'; st.textContent = 'Reading ' + files.length + ' file' + (files.length === 1 ? '' : 's') + '…';
+      var pending = files.length, errors = [];
+      files.forEach(function (f) {
+        var fr = new FileReader();
+        fr.onload = function () {
+          try { loadedExports.push(readExport(String(fr.result), f.name)); }
+          catch (e) { errors.push(f.name + ': ' + e.message); }
+          if (--pending === 0) {
+            renderClass();
+            var st2 = $('cv-status');
+            if (errors.length) { st2.hidden = false; st2.className = 'status bad'; st2.textContent = 'Skipped — ' + errors.join(' · '); }
+          }
+        };
+        fr.readAsText(f);
+      });
+    });
+    var clr = $('cv-clear'); if (clr) clr.addEventListener('click', function () { loadedExports = []; loadedPacks = []; renderClass(); });
+    var cp = $('cv-copy'); if (cp) cp.addEventListener('click', function () {
+      var r = summarizeClass(loadedExports, classDeck(), { now: Date.now(), leechThreshold: store.prefs.leechThreshold });
+      var text = JSON.stringify(r, null, 1);
+      // A failed copy must not say "Copied" (Gate B, round 3): it says so, and offers the text.
+      var done = function () { cp.textContent = 'Copied'; };
+      var failed = function () {
+        cp.textContent = 'Could not copy — the report is shown below to select';
+        var ta = document.createElement('textarea'); ta.value = text; ta.readOnly = true; ta.style.width = '100%'; ta.style.height = '8rem';
+        cp.parentNode.insertBefore(ta, cp.nextSibling); ta.select();
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, failed); else failed();
+    });
+  }
+
+  function retCost() {
+    var r = store.prefs.desiredRetention;
+    var rel = Math.round((FSRS.relativeLoad(r) - 1) * 100);
+    $('v-retcost').textContent = rel === 0
+      ? 'The default. A good balance of retention and workload.'
+      : (rel > 0 ? 'About ' + rel + '% more reviews than the 90% default.'
+                 : 'About ' + Math.abs(rel) + '% fewer reviews than the 90% default, and you will forget more.');
+  }
+  function currentTheme() {
+    var t = root.getAttribute('data-theme');
+    if (t) return t;
+    try { return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
+    catch (e) { return 'light'; }
+  }
+
+  /* ── wiring ────────────────────────────────────────────────────── */
+  $('start').addEventListener('click', startSession);
+  $('go-stats').addEventListener('click', renderStats);
+  $('go-settings').addEventListener('click', renderSettings);
+  $('st-back').addEventListener('click', function () { renderHome(); show('s-home'); });
+  $('se-back').addEventListener('click', function () { renderHome(); show('s-home'); });
+  // Leaving the class view forgets the loaded exports: they are someone else's data.
+  $('cv-back').addEventListener('click', function () { loadedExports = []; loadedPacks = []; renderSettings(); });
+  $('r-back').addEventListener('click', finish);
+  $('d-home').addEventListener('click', function () { renderHome(); show('s-home'); });
+  $('d-more').addEventListener('click', function () {
+    // Studying ahead is allowed but never suggested as the default: the empty queue is the
+    // success state, and an app that cannot let you leave has substituted engagement for
+    // learning (SPEC.md 7.9). Same queue rules — siblings still deduped.
+    var b = queueFor(filter, 10);
+    if (!b.queue.length) return;
+    session = { queue: b.queue, done: 0, total: b.queue.length };
+    show('s-review'); nextCard();
+  });
+  $('r-undo').addEventListener('click', function () {
+    if (!session || !(session.answered > 0)) return;
+    var e = store.undoLast();
+    if (!e) return;
+    session.answered--;
+    if (session.done > 0) session.done--;
+    var card = DECK.cards.filter(function (c) { return c.id === e.c; })[0];
+    if (card && session) {
+      // An Again pushes its card to the END of the queue; undoing that answer must remove the
+      // pushed copy, or the card appears twice.
+      session.queue = session.queue.filter(function (c) { return c.id !== card.id; });
+      session.queue.unshift(card);
+    }
+    nextCard();
+  });
+
+  // Keyboard, for anyone reviewing at a desk: space reveals, 1-4 grade.
+  document.addEventListener('keydown', function (ev) {
+    if ($('s-review').hidden) return;
+    if (ev.key === ' ' || ev.key === 'Enter') { ev.preventDefault(); if (!revealed) reveal(); return; }
+    if (revealed && ev.key >= '1' && ev.key <= '4') { ev.preventDefault(); answer(parseInt(ev.key, 10)); }
+  });
+
+  renderHome();
+  show('s-home');
+})();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(function () {});
+  });
+}
+</script>
+</body>
+</html>
