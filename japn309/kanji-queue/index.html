@@ -118,10 +118,6 @@ button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
 .rd{font-size:.85rem;padding:.15rem .5rem;border-radius:4px;background:var(--surface-2);color:var(--ink-soft)}
 .rd b{font-family:"IBM Plex Mono",monospace;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-mute);margin-right:.3rem;font-weight:500}
 .meta{font-size:.78rem;color:var(--ink-mute)}
-.speak{margin-top:.3rem;padding:.35rem .75rem;border:1px solid var(--rule);border-radius:999px;font-size:.8rem;color:var(--ink-soft);min-height:38px}
-.speak:hover{border-color:var(--indigo);color:var(--indigo)}
-.speak.novoice{border-style:dashed;color:var(--ink-mute)}
-.voicehint{max-width:32ch;margin-top:.4rem;text-align:center}
 .leechflag{font-family:"IBM Plex Mono",monospace;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--again);border:1px solid var(--again);padding:.1rem .4rem;border-radius:3px}
 
 /* The answer band is a fixed-height region. "Show answer" and the four grades occupy the
@@ -757,7 +753,7 @@ window.__DECK__ = {"version":"1.0.0","generated":"2026-09-06T00:39:49.589Z","att
 (function () {
   'use strict';
   var DECK = window.__DECK__;
-  var APP_VERSION = '0.1.3';
+  var APP_VERSION = '0.1.4';
   // The public address. ADR-007: once a hosted address exists it is the one that goes to
   // people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/japn309/kanji-queue/';
@@ -940,13 +936,10 @@ window.__DECK__ = {"version":"1.0.0","generated":"2026-09-06T00:39:49.589Z","att
         h += '<div class="en">' + esc(f.english) + '</div>';
         h += '<div class="meta">' + esc(f.use) + ' of <span class="jp">' + esc(f.from) + '</span></div>';
       }
-      h += speakBtn(n, tmpl);
       if (st.reps) h += '<div class="meta">seen ' + st.reps + '×' + (st.lapses ? ' · ' + st.lapses + ' lapses' : '') + '</div>';
       h += '</div>';
     }
     host.innerHTML = h;
-    var sp = host.querySelector('.speak');
-    if (sp) sp.addEventListener('click', function () { speak(sp.getAttribute('data-say')); });
     drawBand();
   }
 
@@ -956,58 +949,6 @@ window.__DECK__ = {"version":"1.0.0","generated":"2026-09-06T00:39:49.589Z","att
     if (f.kun) h += '<span class="rd jp"><b class="jp">訓</b>' + esc(f.kun) + '</span>';
     if (f.on) h += '<span class="rd jp"><b class="jp">音</b>' + esc(f.on) + '</span>';
     return h + '</div>';
-  }
-
-  // Speech is offered only for KANA. Asking a system voice to read a bare kanji invites the
-  // wrong reading, and a study app that teaches a wrong reading is worse than a silent one.
-  var voices = [];
-  function loadVoices() { try { voices = window.speechSynthesis ? speechSynthesis.getVoices() : []; } catch (e) { voices = []; } }
-  loadVoices();
-  try { if (window.speechSynthesis) speechSynthesis.onvoiceschanged = loadVoices; } catch (e) {}
-  function jaVoice() {
-    for (var i = 0; i < voices.length; i++) if ((voices[i].lang || '').toLowerCase().indexOf('ja') === 0) return voices[i];
-    return null;
-  }
-  // The voice is the DEVICE's Japanese text-to-speech voice — not a native speaker, and not
-  // shipped with the app. What the button says must match what it can do (SPEC.md 7.8): when
-  // the voice list has loaded and holds no Japanese voice, the button says so and, on tap,
-  // says where one is usually added — it never speaks kana through an English voice, which
-  // teaches a wrong sound with confidence. While the list is still loading it stays
-  // optimistic; speak() re-checks at tap time.
-  function speakBtn(n, tmpl) {
-    if (!window.speechSynthesis) return '';
-    var say = n.type === 'vocab' ? n.fields.reading : (n.fields.kun || n.fields.on || '').split('、')[0];
-    say = (say || '').replace(/[-.]/g, '');
-    if (!say) return '';
-    var loadedNoJa = voices.length > 0 && !jaVoice();
-    if (loadedNoJa) {
-      return '<button class="speak novoice" type="button" data-say="' + esc(say) + '">No Japanese voice on this device</button>';
-    }
-    return '<button class="speak" type="button" data-say="' + esc(say) + '">▶ Say the reading</button>';
-  }
-  var VOICE_HINT = 'This phone has no Japanese voice installed, so the reading is not spoken. ' +
-    'One is usually added under Settings → Accessibility → Spoken Content → Voices (iPhone) ' +
-    'or Settings → Text-to-speech (Android). It is the device’s synthetic voice, not a native speaker.';
-  function speak(text) {
-    var v = jaVoice();
-    if (!v) {
-      var host = $('r-card'), old = host.querySelector('.voicehint');
-      if (!old) {
-        var d = document.createElement('div');
-        d.className = 'meta voicehint';
-        d.textContent = VOICE_HINT;
-        host.appendChild(d);
-      }
-      return;
-    }
-    try {
-      var u = new SpeechSynthesisUtterance(text);
-      u.lang = 'ja-JP';
-      u.voice = v;
-      u.rate = 0.85;
-      speechSynthesis.cancel();
-      speechSynthesis.speak(u);
-    } catch (e) { /* a voice that refuses to start is not worth a dialog */ }
   }
 
   function drawBand() {
