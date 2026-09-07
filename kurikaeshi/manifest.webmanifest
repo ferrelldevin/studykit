@@ -1,7 +1,7 @@
 {
   "name": "Kurikaeshi",
   "short_name": "Kurikaeshi",
-  "description": "Spaced-repetition study cards for any course. Offline; nothing leaves your browser.",
+  "description": "Spaced-repetition study cards for any course. Works offline; progress stays in this browser unless you choose to sign in and sync.",
   "lang": "en",
   "start_url": "./",
   "scope": "./",
