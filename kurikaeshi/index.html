@@ -2954,7 +2954,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 <script>
 (function () {
   'use strict';
-  var APP_VERSION = '0.7.0';
+  var APP_VERSION = '0.7.1';
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -3817,6 +3817,82 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
     t.classList.remove('in'); t.classList.add('out');
     setTimeout(function () { if (!t.classList.contains('in')) { t.classList.remove('out'); t.innerHTML = ''; } }, 150);
+  }
+
+  /* ── what broke, written down ──────────────────────────────────────
+     2026-09-13: the two window handlers below took no argument, so the message, the file, the
+     line, the column and the stack were all dropped and a live failure could be named by nobody —
+     not by the learner it happened to, and not by anyone reading afterwards. They are kept here
+     instead: the last few in this tab, and the most recent one through the storage adapter, which
+     already tolerates a browser that refuses, so a reload does not lose it.
+     What a learner sees never changes. The toast keeps its one sentence, and the record is read
+     only where somebody went looking for it. Every part is cut to a length and only the app's own
+     words are kept, so a learner's own card text cannot ride along into something they are asked
+     to pass on. */
+  var PROBLEM_KEY = 'bw08.problem.v1';
+  // The last few, this tab only, and read before the stored one: a device that refuses to store
+  // anything still has its record for as long as the tab is open, which is the device most likely
+  // to be the one with something wrong with it.
+  var PROBLEM_KEPT = 5;
+  var PROBLEM_MESSAGE_MAX = 240;
+  var PROBLEM_STACK_LINES = 8;
+  var PROBLEM_STACK_MAX = 900;
+  var problems = [];
+  function cutText(value, max) {
+    var s = String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+    return s.length > max ? s.slice(0, max) + '…' : s;
+  }
+  function cutStack(value) {
+    var s = String(value == null ? '' : value).split('\n').slice(0, PROBLEM_STACK_LINES).join('\n').trim();
+    return s.length > PROBLEM_STACK_MAX ? s.slice(0, PROBLEM_STACK_MAX) + '…' : s;
+  }
+  // `where` is the app's own short name for what it was doing, never anything typed by a learner.
+  function recordProblem(where, error, ev) {
+    var e = error || (ev && (ev.error || ev.reason)) || null;
+    // The kind of thing that went wrong is half of what names it, and an Error's own message leaves
+    // it out, so it is put back: "TypeError: …" says far more than "Cannot read properties of null".
+    var named = e && e.message ? (e.name ? e.name + ': ' : '') + e.message : null;
+    var rec = {
+      t: Date.now(),
+      version: APP_VERSION,
+      screen: screen,
+      where: cutText(where, 60),
+      message: cutText(named || (ev && ev.message) || String(e == null ? 'not given' : e), PROBLEM_MESSAGE_MAX),
+      file: cutText((ev && ev.filename) || '', 200),
+      line: ev && ev.lineno != null ? ev.lineno : null,
+      column: ev && ev.colno != null ? ev.colno : null,
+      stack: cutStack(e && e.stack)
+    };
+    problems.push(rec);
+    if (problems.length > PROBLEM_KEPT) problems.shift();
+    adapter.set(PROBLEM_KEY, JSON.stringify(rec));
+    return rec;
+  }
+  function lastProblem() {
+    if (problems.length) return problems[problems.length - 1];
+    var raw = adapter.get(PROBLEM_KEY);
+    if (!raw) return null;
+    // A stamp that is not a number is a record nothing can date, and a line that says when is the
+    // whole of what the screen shows: without one there is nothing to offer.
+    try { var rec = JSON.parse(raw); return rec && typeof rec === 'object' && typeof rec.t === 'number' && isFinite(rec.t) ? rec : null; } catch (e) { return null; }
+  }
+  function problemStamp(rec) {
+    try { return new Date(rec && rec.t).toISOString(); } catch (e) { return 'not given'; }
+  }
+  // One block a person can paste into a message. It is never put on a screen.
+  function problemText(rec) {
+    if (!rec) return '';
+    var lines = [
+      'Kurikaeshi ' + (rec.version || 'not given'),
+      'When: ' + problemStamp(rec),
+      'Screen: ' + (rec.screen || 'not given'),
+      'What: ' + (rec.where || 'not given'),
+      'Message: ' + (rec.message || 'not given'),
+      'Source: ' + (rec.file || 'not given') + (rec.line == null ? '' : ':' + rec.line + ':' + (rec.column == null ? 0 : rec.column))
+    ];
+    if (rec.stack) lines.push('Stack:', rec.stack);
+    lines.push('(shortened, and the app’s own words only)');
+    return lines.join('\n');
   }
 
   /* ── share: the system sheet, else the clipboard, else select-and-copy ── */
@@ -5368,6 +5444,16 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       return browseView.filter === 'all' || browseState(current, states, dueIds).bucket === browseView.filter;
     });
   }
+  // 2026-09-13: a browsed deck's list has the same shape as the learner's own, so it is drawn the
+  // same way — row by row, one that cannot be drawn standing for itself alone.
+  function safeBrowseRow(current, states, dueIds) {
+    try { return browseCardRowHtml(current, states, dueIds); }
+    catch (e) {
+      try { recordProblem('drawing a card in a deck list', e, null); } catch (ignore) { /* the row still stands in */ }
+      return '<div class="crow unshown"><span class="txt"><span class="a">This card could not be shown.</span>' +
+        '<span class="b">The rest of the deck is all here.</span></span></div>';
+    }
+  }
   function renderBrowseList(states) {
     var host = $('br-results');
     if (!host) return;
@@ -5385,7 +5471,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var page = cards.slice(offset, offset + 200);
     var h = '<p class="micro pad" id="br-summary">' + totals.new + ' new · ' + totals.learning + ' learning · ' + totals.due + ' due · ' + totals.retired + ' retired · ' + totals.direction + ' direction off · ' + totals.held + ' held out</p>' +
       '<p class="micro pad" id="br-count" role="status">' + plural(cards.length, 'card') + '</p><ul class="list" id="br-list">' +
-      page.map(function (current) { return '<li>' + browseCardRowHtml(current, ctx.states, dueIds) + '</li>'; }).join('');
+      page.map(function (current) { return '<li>' + safeBrowseRow(current, ctx.states, dueIds) + '</li>'; }).join('');
     if (!page.length) h += '<p class="note pad">Nothing matches.</p>';
     if (offset + 200 < cards.length) h += '<button class="textbtn" type="button" data-browse-more>Show more</button>';
     host.innerHTML = h + '</div>';
@@ -5592,9 +5678,35 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       if (screen === 's-cards') renderCards();
     } });
   }
+  // 2026-09-13: one card the page could not draw used to cost the whole screen. The list was built
+  // as a single string and handed to innerHTML, so a note that threw halfway through took every
+  // other card, the search, the export and the add form with it — which is what the operator's own
+  // device did, every time the tab opened. Each row is drawn on its own now: the one that cannot be
+  // drawn becomes a row saying so, and its cause is written down where it can still be read.
+  function safeCardRow(n, pack, retired) {
+    try { return cardRowHtml(n, pack, retired); }
+    catch (e) {
+      try { recordProblem('drawing a card in your own list', e, null); } catch (ignore) { /* the row still stands in */ }
+      return '<div class="crow unshown"><span class="txt"><span class="a">This card could not be shown.</span>' +
+        '<span class="b">Your other cards are all here.</span></span></div>';
+    }
+  }
+  // The same shape for the search: it reads every note's own fields, so one note it cannot read
+  // ended the search before a row was drawn. The whole-deck read stays the ordinary path — a deck
+  // of two thousand asks the search one question, not two thousand — and only when that read
+  // throws is each note asked on its own, so the one that cannot be read is the only one left out.
+  function searchNotes(pack, query) {
+    try { return findNotes(pack, query); }
+    catch (e) {
+      try { recordProblem('searching your own cards', e, null); } catch (ignore) { /* the search still answers */ }
+      return (pack.notes || []).filter(function (n) {
+        try { return findNotes({ notes: [n] }, query).length > 0; } catch (again) { return false; }
+      });
+    }
+  }
   function renderCardList() {
     var pack = ownPack(), host = $('mc-list'); if (!host) return;
-    var notes = pack ? findNotes(pack, cardsView.q) : [];
+    var notes = pack ? searchNotes(pack, cardsView.q) : [];
     notes = notes.slice().sort(function (a, b) { return Number(b.updated || 0) - Number(a.updated || 0); });
     var retired = !cardsView.q ? ownRetiredRows() : [];
     var rowPack = pack || ownPackBase(ownLang());
@@ -5608,9 +5720,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var room = 200 - livePage.length;
     var retiredPage = room > 0 ? retired.slice(retiredStart, retiredStart + room) : [];
     var query = String(cardsView.q || '').trim();
-    var h = livePage.length ? livePage.map(function (n) { return cardRowHtml(n, rowPack, false); }).join('') : (pack && !retiredPage.length && query ? '<p class="note pad">Nothing matches “' + esc(query) + '”.</p><button class="textbtn" type="button" data-clear-search>Clear search</button>' : '');
+    var h = livePage.length ? livePage.map(function (n) { return safeCardRow(n, rowPack, false); }).join('') : (pack && !retiredPage.length && query ? '<p class="note pad">Nothing matches “' + esc(query) + '”.</p><button class="textbtn" type="button" data-clear-search>Clear search</button>' : '');
     if (retiredPage.length) {
-      h += '<details class="retired-list"><summary>Retired (' + retired.length + ')</summary>' + retiredPage.map(function (n) { return cardRowHtml(n, rowPack, true); }).join('') + '</details>';
+      h += '<details class="retired-list"><summary>Retired (' + retired.length + ')</summary>' + retiredPage.map(function (n) { return safeCardRow(n, rowPack, true); }).join('') + '</details>';
     }
     if (offset + 200 < total) h += '<button class="textbtn" type="button" data-show-more>Show more</button>';
     host.innerHTML = h;
@@ -5731,18 +5843,41 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       link.download = 'kurikaeshi-cards.txt';
     } catch (e) { link.hidden = true; }
   }
+  // 2026-09-13: the quick form's two fields take their names from the chosen card type, from the
+  // same table the full editor names its fields from. They were fixed at Front and Back whatever was
+  // chosen, so choosing Vocabulary asked for a Front and a Back and then said a Vocabulary card had
+  // been made. quickAdd already stored the first as the word and the second as the meaning; only the
+  // two names were wrong.
+  // The names alone, not the editor's hint sentences: the empty screen measures 715px of content in
+  // a 715px phone viewport, so the whole quick form, both secondary actions and the tab bar sit above
+  // the fold, and two hint lines put 40px of that below it. The longer form is where the hints live.
+  var QUICK_FIELDS = { basic: ['front', 'back'], both: ['front', 'back'], vocab: ['word', 'meaning'] };
+  function quickLabels(type) {
+    return (QUICK_FIELDS[type] || QUICK_FIELDS.basic).map(function (f) { return (FIELD_LABELS[f] || [f])[0]; });
+  }
+  // Renamed where they stand: what is half typed and where the cursor is both survive the change.
+  function relabelQuickFields() {
+    var pair = quickLabels(cardsView.quick.type || 'basic');
+    [['front', 0], ['back', 1]].forEach(function (row) {
+      var lab = $('l-qa-' + row[0]);
+      if (lab) lab.textContent = pair[row[1]];
+    });
+  }
   function renderCards() {
     var pack = ownPack();
     var back = $('mc-back'), title = $('mc-title');
     back.hidden = !(cardsView.editing || cardsView.importing);
     if (cardsView.editing) { title.textContent = cardsView.editing.guid ? 'Edit card' : 'New card'; renderCardForm(pack, cardsView.editing); return; }
     if (cardsView.importing) { title.textContent = 'Import cards'; renderImport(); return; }
-    title.textContent = 'Cards';
+    // 2026-09-13: the tab, the empty state and the screen's own title are one name. This line said
+    // Cards, and the later pass that corrects it does not run when the list below throws — which is
+    // how the operator came to read the short name on his own device.
+    title.textContent = 'My cards';
     var quickType = cardsView.quick.type || 'basic';
     var h = '<div class="quick">' +
       '<label class="field"><span class="lbl">Card type</span><select class="textin" id="qa-type"><option value="basic"' + (quickType === 'basic' ? ' selected' : '') + '>Basic</option><option value="both"' + (quickType === 'both' ? ' selected' : '') + '>Both ways</option><option value="vocab"' + (quickType === 'vocab' ? ' selected' : '') + '>Vocabulary</option></select></label>' +
-      '<label class="field"><span class="lbl">Front</span><input type="text" class="textin" id="qa-front" autocomplete="off" enterkeyhint="next" value="' + esc(cardsView.quick.front) + '"' + (ownLang() ? ' lang="' + esc(ownLang()) + '"' : '') + '></label>' +
-      '<label class="field"><span class="lbl">Back</span><input type="text" class="textin" id="qa-back" autocomplete="off" enterkeyhint="done" value="' + esc(cardsView.quick.back) + '"></label>' +
+      '<label class="field"><span class="lbl" id="l-qa-front">' + esc(quickLabels(quickType)[0]) + '</span><input type="text" class="textin" id="qa-front" autocomplete="off" enterkeyhint="next" value="' + esc(cardsView.quick.front) + '"' + (ownLang() ? ' lang="' + esc(ownLang()) + '"' : '') + '></label>' +
+      '<label class="field"><span class="lbl" id="l-qa-back">' + esc(quickLabels(quickType)[1]) + '</span><input type="text" class="textin" id="qa-back" autocomplete="off" enterkeyhint="done" value="' + esc(cardsView.quick.back) + '"></label>' +
       '<div id="qa-msg" class="msg bad" hidden></div>' +
       '<button class="primary" id="qa-add" type="button">Add card</button>' +
       '<span class="sr-only" id="mc-more-word">More for</span>' +
@@ -5765,7 +5900,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     h += '<div class="list" id="mc-list" style="margin-top:8px"></div>';
     $('mc-body').innerHTML = h;
     $('qa-add').addEventListener('click', function () { quickAdd(false); });   // never the event object as the force flag
-    $('qa-type').addEventListener('change', function () { cardsView.quick.type = $('qa-type').value; });
+    $('qa-type').addEventListener('change', function () { cardsView.quick.type = $('qa-type').value; relabelQuickFields(); });
     $('qa-front').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); $('qa-back').focus(); } });
     $('qa-back').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); quickAdd(false); } });
     // No cards yet: the form is the whole screen, so Front is already focused — the first card is
@@ -6176,6 +6311,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   /* ── Settings: the two dials, your data, and the reading view for a teacher ── */
   function renderSettings() {
     var p = store.prefs, b = store.intakeBudget();
+    // 2026-09-13: where the last problem the app ran into can be reached. One line saying when,
+    // and a control that hands the whole record to the clipboard — the words themselves are never
+    // put on a screen, so nobody meets them who did not come looking.
+    var problem = lastProblem();
     $('se-body').innerHTML = '<div class="prose">' +
       '<label class="field"><span class="lbl">Minutes a day: <span class="val" id="v-min">' + p.minutesPerDay + '</span></span>' +
       '<input type="range" id="i-min" min="5" max="90" step="5" value="' + p.minutesPerDay + '" aria-describedby="v-derived"></label>' +
@@ -6194,6 +6333,13 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<input type="file" id="i-file" accept="application/json" hidden>' +
       '<button class="danger" id="i-reset" type="button">Erase my progress</button></div>' +
       '<p class="note">Erasing also forgets which cards you already know.</p>' +
+      (problem ? '<h2 class="sec">A problem the app ran into</h2>' +
+        '<p class="note" id="se-problem-when">The app hit a problem here ' + esc(relTime(problem.t)) + '.</p>' +
+        '<div class="stack" style="padding:0"><button class="ghost" id="i-problem" type="button"><span>Copy the details</span></button>' +
+        '<div id="se-problem-status" class="copy-status" hidden></div>' +   // .msg only once it speaks: .msg[hidden] holds its row open, and an always-open one here left a hole under the control
+        '<div id="se-problem-box" class="exportbox" hidden><label for="se-problem-text" class="vh">The details</label>' +
+        '<textarea id="se-problem-text" readonly rows="4" spellcheck="false"></textarea></div></div>' +
+        '<p class="note">The details are the app’s own words about what stopped, shortened. None of your card text is in them. Send them on if somebody asks what happened.</p>' : '') +
       '<h2 class="sec">For whoever teaches the course</h2>' +
       '<p class="note">Students hand you their exports; this reads them together and answers four questions, here on this device. Nothing leaves it.</p>' +
       '<button class="ghost" id="go-class" type="button"><span>Read student exports</span></button>' +
@@ -6264,6 +6410,32 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         }
         catch (e) { a.hidden = true; }
       }
+    });
+    // The export box's own copy control, the same shape: "Copied." only when a copy happened.
+    var problemButton = $('i-problem');
+    if (problemButton) problemButton.addEventListener('click', function () {
+      var text = problemText(problem);
+      var status = $('se-problem-status');
+      var report = function (message, bad) {
+        status.className = 'msg copy-status' + (bad ? ' bad' : '');
+        status.setAttribute('role', bad ? 'alert' : 'status');
+        status.hidden = false;
+        status.textContent = message;
+      };
+      var done = function () { report('Copied.', false); };
+      // The box stays empty and hidden until the clipboard refuses, exactly as the export box's
+      // does: the words are on a screen only when a learner asked for them and nothing else worked.
+      var fallback = function () {
+        var box = $('se-problem-box'), field = $('se-problem-text');
+        box.hidden = false;
+        field.value = text;
+        field.focus();
+        field.select();
+        var copied = false; try { copied = document.execCommand('copy'); } catch (e) { copied = false; }
+        report(copied ? 'Copied.' : 'Selected. Copy it by hand.', !copied);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
+      else fallback();
     });
     $('i-import').addEventListener('click', function () { $('i-file').click(); });
     $('i-file').addEventListener('change', function (ev) {
@@ -7687,8 +7859,18 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if ((ev.key === 'h' || ev.key === 'H') && $('r-hint')) { ev.preventDefault(); hintShown = true; drawCard(); return; }
   });
 
-  window.addEventListener('error', function () { toast('The app hit a problem. Reload to try again.', { label: 'Reload', on: function () { location.reload(); } }); });
-  window.addEventListener('unhandledrejection', function () { toast('The app hit a problem. Reload to try again.', { label: 'Reload', on: function () { location.reload(); } }); });
+  // 2026-09-13: both handlers take their event now and write down what it carried. The sentence a
+  // learner reads is unchanged; what changed is that afterwards somebody can say what happened.
+  // Writing the record down is guarded: a throw inside a handler for throws would raise another
+  // error event and go round for ever, and the sentence a learner needs must come out either way.
+  window.addEventListener('error', function (ev) {
+    try { recordProblem('an error nothing caught', null, ev); } catch (ignore) { /* the sentence below still shows */ }
+    toast('The app hit a problem. Reload to try again.', { label: 'Reload', on: function () { location.reload(); } });
+  });
+  window.addEventListener('unhandledrejection', function (ev) {
+    try { recordProblem('a promise nothing caught', null, ev); } catch (ignore) { /* as above */ }
+    toast('The app hit a problem. Reload to try again.', { label: 'Reload', on: function () { location.reload(); } });
+  });
   window.addEventListener('storage', function (ev) {
     if ([LOG_KEY, PREVIEW_KEY, PREFS_KEY, SUSPENDED_KEY, RETIRED_KEY, SKIPPED_KEY, PACKS_KEY, ACCOUNT_KEY].indexOf(ev.key) < 0) return;
     if (store.load({ legacyPackId: LEGACY_PACK_ID }) === false) storageBroken = true;
@@ -7810,7 +7992,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.7.0";
+  var APP_V = "0.7.1";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
