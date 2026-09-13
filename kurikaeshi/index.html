@@ -1441,6 +1441,14 @@ function validatePack(p) {
       if (v.length > IMAGE_VALUE_MAX) bad(`note ${n.guid}: "${f}" is ${v.length} characters; an image value is at most ${IMAGE_VALUE_MAX} until the store moves (PACK-FORMAT.md)`);
     }
   }
+
+  if (p.retired != null) {
+    if (!Array.isArray(p.retired)) bad('retired must be an array');
+    for (const r of p.retired) {
+      if (!r || typeof r !== 'object' || typeof r.guid !== 'string' || !r.guid) bad('every retired card needs a guid');
+      if (!r.fields || typeof r.fields !== 'object') bad(`retired card ${r.guid} has no fields`);
+    }
+  }
   const serialised = JSON.stringify(p).length;
   if (carriesImage && serialised > IMAGE_PACK_MAX) bad(`a pack carrying images is at most ${IMAGE_PACK_MAX} characters serialised until the store moves (PACK-FORMAT.md)`, 'too-big');
   if (serialised > TEXT_PACK_MAX) bad(`a pack is at most ${TEXT_PACK_MAX} characters serialised`, 'too-big');
@@ -1449,6 +1457,26 @@ function validatePack(p) {
     for (const m of p.milestones) if (!m || typeof m.id !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(m.due || '')) bad('every milestone needs an id and an ISO due date');
   }
   return true;
+}
+
+function repairRetired(pack) {
+  if (!pack || !Array.isArray(pack.retired) || !pack.retired.length) return { pack, repaired: 0 };
+  const firstField = (typeId) => {
+    const t = (pack.noteTypes || []).find((x) => x && x.id === typeId);
+    return t && Array.isArray(t.fields) && t.fields.length ? t.fields[0] : '';
+  };
+  let repaired = 0;
+  const rows = [];
+  for (const row of pack.retired) {
+
+    if (!row || typeof row !== 'object' || typeof row.guid !== 'string' || !row.guid) { repaired++; continue; }
+    if (row.fields && typeof row.fields === 'object') { rows.push(row); continue; }
+    repaired++;
+    const first = firstField(row.type);
+    const key = String(row.key == null ? '' : row.key);
+    rows.push({ ...row, fields: first && key ? { [first]: key } : {} });
+  }
+  return repaired ? { pack: { ...pack, retired: rows }, repaired } : { pack, repaired: 0 };
 }
 
 function compareVersions(a, b) {
@@ -1537,9 +1565,25 @@ function makePackStore(adapter) {
   const persist = (next = state) => adapter.set(PACKS_KEY, JSON.stringify(next));
 
   return {
+
+    repaired: 0,
+    repairSaved: true,
+
     load() {
       try { const raw = adapter.get(PACKS_KEY); if (raw) state = JSON.parse(raw); } catch { state = { installed: [], data: {} }; }
       if (!state || !Array.isArray(state.installed) || typeof state.data !== 'object') state = { installed: [], data: {} };
+
+      let repaired = 0;
+      const data = {};
+      for (const id of Object.keys(state.data || {})) {
+        const fix = repairRetired(state.data[id]);
+        repaired += fix.repaired;
+        data[id] = fix.pack;
+      }
+      this.repaired = repaired;
+      if (!repaired) { this.repairSaved = true; return; }
+      state = { ...state, data };
+      this.repairSaved = !!persist(state);
     },
     list() { return state.installed.map((row) => ({ ...row, options: { ...(row.options || {}) } })); },
     get(id) { return state.data[id] || null; },
@@ -2742,7 +2786,10 @@ const stampValue = (value) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-function mergeOwnPacks(local, incoming) {
+function mergeOwnPacks(local0, incoming0) {
+
+  const local = local0 ? repairRetired(local0).pack : local0;
+  const incoming = incoming0 ? repairRetired(incoming0).pack : incoming0;
   if (!local) return incoming ? { ...incoming, notes: (incoming.notes || []).map((n) => ({ ...n })), retired: (incoming.retired || []).map((r) => ({ ...r })) } : null;
   if (!incoming) return { ...local, notes: (local.notes || []).map((n) => ({ ...n })), retired: (local.retired || []).map((r) => ({ ...r })) };
   const base = stampValue(incoming.updated) > stampValue(local.updated) ? incoming : local;
@@ -2954,7 +3001,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 <script>
 (function () {
   'use strict';
-  var APP_VERSION = '0.7.1';
+  var APP_VERSION = '0.7.2';
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -2992,6 +3039,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   var packStore = makePackStore(adapter);
   window.__kurikaeshiStore = store;   // the walk counts history folds across one screen render
   packStore.load();
+  // Rows an older version of the app wrote without the card's own text. The load puts them right;
+  // these two say so on My cards, because a card the learner wrote is his and a silent rewrite of
+  // it is not ours to make. Cleared once it has been said.
+  var repairedRows = packStore.repaired;
+  var repairedSaved = packStore.repairSaved;
   var lastPlanPartial = false;   // set by applyPlan when its own revert failed: the sync side reads it for its status line
   function applyPlan(plan) {
     if (!plan || !plan.apply) return plan;
@@ -5549,7 +5601,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   function ownLang() { var p = ownPack(); return p ? (p.language || '') : ''; }
   function ownRetiredRows() {
     var pack = ownPack();
-    return pack ? (pack.retired || []) : (account.ownRetired || []);
+    if (pack) return pack.retired || [];
+    // The rows kept beside the account when the last card was retired. The pack that would have
+    // put an older version's rows right is gone with the cards, so they are put right here, where
+    // they are read, on the same rule — nothing is written, so nothing of his is rewritten.
+    return repairRetired({ noteTypes: OWN_NOTE_TYPES, retired: account.ownRetired || [] }).pack.retired || [];
   }
   // The shell's own pack always starts from the rows the account kept when the last card was
   // retired, so a front written again finds its guid and its history (outside read, round 36).
@@ -5563,11 +5619,22 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (!account.ownRetiredAt) return undefined;
     var pack = ownPackBase(ownLang());
     pack.notes = [];
-    pack.retired = account.ownRetired || [];
+    pack.retired = ownRetiredRows();   // the rows as they read, so a copy sent elsewhere carries the whole of each one
     pack.updated = account.ownRetiredAt;
     return pack;
   }
 
+  // What the learner is told when a row an older version of the app wrote is put right on the way
+  // in. It names what was changed and what was never there to keep, so nothing about his own cards
+  // is altered behind his back.
+  function repairWords(n, saved) {
+    var one = n === 1;
+    return (one ? 'One card you had retired was' : plural(n, 'card') + ' you had retired were') +
+      ' saved by an older version of this app, which kept only the front. ' +
+      (one ? 'It is' : 'They are') + ' in Retired below, and writing ' + (one ? 'that card' : 'one of them') +
+      ' again still brings its history back.' +
+      (saved ? '' : ' This device could not write the correction down, so it happens again next time.');
+  }
   function typeName(id) { var t = OWN_NOTE_TYPES.filter(function (x) { return x.id === id; })[0]; return t ? t.name : id; }
   function typeHint(t) {
     return t === 'basic' ? 'One card: you see the front and recall the back.'
@@ -5609,10 +5676,15 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     return value && !/^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/.test(value) ? 'Language code is not valid. Use a code like ja or ja-JP, then save again.' : '';
   }
 
+  // 2026-09-13: a card with nothing to read is drawn empty, never thrown on. A list is not the only
+  // thing that asks a card for its face, and the one place that reads a card's own text should not
+  // be able to take a screen down with it. The rows this was written for are repaired as they load;
+  // this is what holds if anything else ever arrives without text.
   function noteFace(n) {
-    var f = n.fields;
-    if (n.type === 'cloze') { var k = clozeOrds(f.text).length; return { a: clozeFilled(f.text), b: plural(k, 'blank') + (f.extra ? ' · ' + f.extra : '') }; }
-    return n.type === 'vocab' ? { a: f.word, b: (f.reading ? f.reading + ' · ' : '') + f.meaning } : { a: f.front, b: f.back };
+    var f = (n && n.fields && typeof n.fields === 'object') ? n.fields : {};
+    var s = function (v) { return v == null ? '' : String(v); };
+    if (n.type === 'cloze') { var k = clozeOrds(f.text).length; return { a: clozeFilled(f.text), b: plural(k, 'blank') + (f.extra ? ' · ' + s(f.extra) : '') }; }
+    return n.type === 'vocab' ? { a: s(f.word), b: (f.reading ? s(f.reading) + ' · ' : '') + s(f.meaning) } : { a: s(f.front), b: s(f.back) };
   }
   function saveOwn(next) {
     var current = ownPack();
@@ -5687,8 +5759,13 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     try { return cardRowHtml(n, pack, retired); }
     catch (e) {
       try { recordProblem('drawing a card in your own list', e, null); } catch (ignore) { /* the row still stands in */ }
-      return '<div class="crow unshown"><span class="txt"><span class="a">This card could not be shown.</span>' +
-        '<span class="b">Your other cards are all here.</span></span></div>';
+      // 2026-09-13: the row that stands in keeps the … control, so a card the app cannot draw can
+      // still be opened, edited or retired. A row the learner can see and cannot act on is a card
+      // he cannot get rid of, and the one thing he wants from a card that will not show is out.
+      var guid = n && typeof n.guid === 'string' ? n.guid : '';
+      var act = guid ? '<button class="more" type="button" ' + (retired ? 'data-retired' : 'data-more') + '="' + esc(guid) + '" aria-labelledby="mc-more-word mc-unshown-' + esc(guid) + '">…</button>' : '';
+      return '<div class="crow unshown"><span class="txt"><span class="a" id="mc-unshown-' + esc(guid) + '">This card could not be shown.</span>' +
+        '<span class="b">Your other cards are all here.</span></span>' + act + '</div>';
     }
   }
   // The same shape for the search: it reads every note's own fields, so one note it cannot read
@@ -5754,7 +5831,21 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         if (!retiredGuid) return;
         openSheet(target, null, [{ label: 'Restore card', on: function () {
           var current = ownPack() || ownPackBase(ownLang());
-          if (!saveOwn(restoreNote(current, retiredGuid))) return;
+          var back;
+          // 2026-09-13: a card retired by an older version of this app kept only its first field,
+          // so it cannot come back whole. That used to throw here and the tap did nothing at all.
+          // Now it says what is missing and opens the form with what the card still has, which is
+          // also how its history comes back: writing the same first field again finds the same card.
+          try { back = restoreNote(current, retiredGuid); }
+          catch (e) {
+            var row = ownRetiredRows().filter(function (r) { return r && r.guid === retiredGuid; })[0];
+            var kept = row && row.fields ? row.fields : {};
+            cardsView.editing = { guid: null, type: (row && row.type) || 'basic', fields: kept,
+              notice: 'This card was retired before the app kept the whole of a card. What it still has is below; fill in the rest and save it, and the card comes back with its history.' };
+            renderCards();
+            return;
+          }
+          if (!saveOwn(back)) return;
           cardsView.listOffset = 0;
           renderCards();
           toast('Card restored');
@@ -5777,6 +5868,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   }
   function cardRowHtml(n, pack, retired) {
     var face = noteFace(n);
+    // A card with no words at all draws a row of no height, and a row of no height cannot be
+    // tapped — which would leave the learner looking at a card he cannot open. It says what it is
+    // and what he can do about it instead, which keeps both lines of an ordinary row, so the row
+    // is a target like any other and its … control has something to be named by. 2026-09-13.
+    if (!face.a && !face.b) face = { a: 'This card has no words in it.', b: 'Open it to write them, or retire it.' };
     var frontLang = fieldLanguage(face.a, '', pack.language || '');
     var backLang = fieldLanguage(face.b, '', pack.language || '');
     var A = frontLang ? ' lang="' + esc(frontLang) + '"' : '';
@@ -5887,6 +5983,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<div class="acts" style="margin-top:12px"><button class="ghost" id="mc-other" type="button">Add other card types</button><button class="ghost" id="mc-import" type="button">Import cards</button></div>' +
       '</div>';
     if (cardsView.notice) { h += '<div class="prose" style="padding-top:0"><div class="msg">' + esc(cardsView.notice) + '</div></div>'; cardsView.notice = null; }
+    if (repairedRows) { h += '<div class="prose" style="padding-top:0"><div class="msg">' + esc(repairWords(repairedRows, repairedSaved)) + '</div></div>'; repairedRows = 0; }
     if (!pack) {
       h += '<div class="prose" style="padding-top:0"><h2 class="title">No cards of your own yet</h2><p class="note">Type a word and its meaning above. Your card is in today’s session.</p></div>';
     } else {
@@ -5980,7 +6077,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     h += '<label class="field"><span class="lbl">Language of your cards</span>' +
       '<input type="text" class="textin" id="f-lang" value="' + esc(ed.lang != null ? ed.lang : ownLang()) + '" autocapitalize="off" autocomplete="off" maxlength="12" placeholder="ja" aria-describedby="h-f-lang"></label><span class="hint" id="h-f-lang">Optional. A code such as ja, zh or ko lets your device choose the right font. It applies to all your cards.</span>';
     h += '<p class="note">Furigana: write the reading in brackets right after the word, with a space before the word to mark where it starts, like <span lang="ja"> 日本語[にほんご]</span>. It shows above the word on the card. Any field takes it.</p>';
-    h += '<div id="mc-status" class="msg" hidden></div><div class="stack" style="padding:0">' +
+    // A sentence the form opens with — why a card could not simply be brought back, say. It is part
+    // of the render rather than set after it, because closing the sheet that started this draws the
+    // screen again, and a message written onto the old one goes with it.
+    h += '<div id="mc-status" class="msg"' + (ed.notice ? ' role="status">' + esc(ed.notice) : ' hidden>') + '</div><div class="stack" style="padding:0">' +
       '<button class="primary" id="mc-save" type="button">' + (note ? 'Save changes' : 'Add card') + '</button>' +
       '<button class="ghost" id="mc-cancel" type="button"><span>Cancel</span></button>' +
       (note ? '<button class="danger" id="mc-retire" type="button">Retire card</button>' +
@@ -7111,7 +7211,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       var v = packVerdict(l, r, account.ownRetiredAt);
       if (r && (!r.notes || !r.notes.length) && v === 'adopt') { if (!adoptOwnPack(r)) return 'failed'; return 'pulled'; }
       if (!l && account.ownRetiredAt && v === 'keep') {
-        var gone = Object.assign({}, r || ownPackBase(''), { notes: [], retired: account.ownRetired || undefined, version: bumpVersion((r && r.version) || '1.0.0'), updated: account.ownRetiredAt });
+        var goneRows = ownRetiredRows();   // as they read, so the copy on the server carries the whole of each row
+        var gone = Object.assign({}, r || ownPackBase(''), { notes: [], retired: goneRows.length ? goneRows : undefined, version: bumpVersion((r && r.version) || '1.0.0'), updated: account.ownRetiredAt });
         sync.pushPack(gone).catch(function () { /* the flush below carries the result */ });
         return sync.flushOwnPacks().then(function () { return 'pushed'; });
       }
@@ -7875,6 +7976,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if ([LOG_KEY, PREVIEW_KEY, PREFS_KEY, SUSPENDED_KEY, RETIRED_KEY, SKIPPED_KEY, PACKS_KEY, ACCOUNT_KEY].indexOf(ev.key) < 0) return;
     if (store.load({ legacyPackId: LEGACY_PACK_ID }) === false) storageBroken = true;
     packStore.load();
+    // Another tab can write back a deck carrying the old rows; what this load put right is said here too.
+    if (packStore.repaired) { repairedRows += packStore.repaired; repairedSaved = packStore.repairSaved; }
     try { account = JSON.parse(adapter.get(ACCOUNT_KEY) || '{}') || {}; } catch (e) { account = {}; }
     refreshDeck(); indexNotes();
     var missing = (openDeck && !packStore.has(openDeck)) || (session && session.scope && session.scope.pack && !packStore.has(session.scope.pack));
@@ -7992,7 +8095,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.7.1";
+  var APP_V = "0.7.2";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
