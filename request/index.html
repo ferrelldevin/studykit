@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="build-id" content="20260915T172721">
+<title>Personalized Study Material</title>
+<meta name="description" content="Free study material built for your exam, any college course. Tell me the course, the test date and what is on it.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --ground:#F4F2EC; --surface:#FFFFFF; --surface2:#EDEAE1;
+  --ink:#23212A; --ink2:#56525E; --muted:#857F8C;
+  --line:#E3DFD5; --moss:#23302B; --mosstext:#1C5B48; --pen:#A9491F; --pentint:#F6E6DD;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--ground); color:var(--ink);
+  font-family:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.6; margin:0; padding-block:24px 72px; padding-inline:16px}
+main{max-width:660px; margin:0 auto}
+a{color:var(--mosstext)}
+a:focus-visible,.cta:focus-visible{outline:2px solid var(--mosstext); outline-offset:3px}
+.eyebrow{font-family:"Spline Sans Mono",ui-monospace,monospace; font-size:11px;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}
+.eyebrow a{color:inherit}
+h1{font-family:"Bricolage Grotesque","Instrument Sans",sans-serif; font-weight:800;
+  font-size:40px; line-height:1.04; letter-spacing:-.02em; margin:6px 0 0; text-wrap:balance}
+h1 .marked{position:relative; white-space:nowrap}
+h1 .marked svg{position:absolute; left:-6%; bottom:-.18em; width:112%; height:.5em; overflow:visible; pointer-events:none}
+.dek{font-size:18px; line-height:1.55; color:var(--ink2); margin:16px 0 0; max-width:54ch}
+.act{display:flex; flex-wrap:wrap; align-items:center; gap:10px 18px; margin:24px 0 0}
+.cta{display:inline-block; background:var(--moss); color:#fff; text-decoration:none;
+  font-weight:600; font-size:17px; padding:13px 22px; border-radius:10px}
+.cta:hover{background:var(--mosstext)}
+.act small{font-size:14px; color:var(--muted)}
+.pending{background:var(--surface2); border-radius:12px; padding:14px 16px; margin:24px 0 0; font-size:15.5px; color:var(--ink2); max-width:60ch}
+.pending p{margin:0} .pending b{color:var(--ink)}
+dl.fields{margin:0; display:grid; grid-template-columns:minmax(0,11em) minmax(0,1fr); gap:10px 16px; font-size:15px}
+dl.fields dt{font-weight:600} dl.fields dd{margin:0; color:var(--ink2)}
+@media (max-width:440px){ dl.fields{grid-template-columns:1fr; gap:2px} dl.fields dd{margin-bottom:10px} }
+h2{font-family:"Bricolage Grotesque","Instrument Sans",sans-serif; font-weight:600;
+  font-size:14px; letter-spacing:.06em; text-transform:uppercase; color:var(--mosstext); margin:0 0 12px}
+section{margin:44px 0 0}
+.gets{list-style:none; margin:0; padding:0; display:grid; gap:14px}
+.gets li{display:grid; grid-template-columns:26px 1fr; gap:10px; align-items:start}
+.gets svg{width:22px; height:22px; margin-top:2px}
+.gets b{display:block; font-size:17px}
+.gets span{color:var(--ink2); font-size:15.5px}
+.honest{margin:16px 0 0; font-size:15.5px; color:var(--ink2)}
+ol.steps{margin:0; padding:0; list-style:none; counter-reset:s; display:grid; gap:12px}
+ol.steps li{counter-increment:s; display:grid; grid-template-columns:34px 1fr; gap:10px; font-size:15.5px; color:var(--ink2)}
+ol.steps li::before{content:counter(s); font-family:"Spline Sans Mono",ui-monospace,monospace; font-size:13px;
+  color:var(--mosstext); border:1px solid var(--line); background:var(--surface); border-radius:50%;
+  width:28px; height:28px; display:grid; place-items:center}
+ol.steps b{color:var(--ink)}
+.ruler{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px 16px 14px}
+.scale{display:grid; grid-template-columns:3fr 4fr 7fr; gap:4px}
+.band{border-top:6px solid var(--line); padding-top:8px; min-width:0}
+.band.b7{border-top-color:var(--mosstext)} .band.b3{border-top-color:#8FA99E} .band.b0{border-top-color:var(--pen)}
+.band .d{font-family:"Spline Sans Mono",ui-monospace,monospace; font-size:12px; color:var(--muted); letter-spacing:.04em}
+.band p{margin:2px 0 0; font-size:14.5px; line-height:1.4}
+.ruler .why{margin:12px 0 0; font-size:14px; color:var(--ink2)}
+.rules{background:var(--pentint); border-radius:12px; padding:16px 18px}
+.rules ul{margin:0; padding-left:1.1em; display:grid; gap:6px; font-size:15.5px}
+.rules .cite{margin:12px 0 0; font-size:13px; color:var(--ink2)}
+.data ul{margin:0; padding-left:1.1em; display:grid; gap:6px; font-size:15.5px; color:var(--ink2)}
+.colophon{border-top:1px solid var(--line); margin-top:48px; padding-top:16px;
+  font-family:"Spline Sans Mono",ui-monospace,monospace; font-size:12px; color:var(--muted); line-height:1.8}
+@media (max-width:440px){
+  h1{font-size:32px} .dek{font-size:16.5px}
+  .scale{grid-template-columns:1fr; gap:10px}
+}
+@media print{
+  body{background:#fff; padding:0}
+  .cta{border:1px solid #333; color:#000; background:#fff}
+  a[href^="http"]::after{content:" (" attr(href) ")"; font-size:9pt}
+}
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow"><a href="../">Study Kit</a> · free · any college course</div>
+  <h1>Study material built for <span class="marked">your exam<svg viewBox="0 0 200 20" preserveAspectRatio="none" aria-hidden="true"><path d="M4 13 C 50 5, 120 4, 196 9" fill="none" stroke="#A9491F" stroke-width="4" stroke-linecap="round"/></svg></span>.</h1>
+  <p class="dek">Tell me the course, the test date and what's on it. I build practice made for where you are, check it, and send you a link. Free.</p>
+  <div class="act">
+    <a class="cta" id="request" href="https://deluxe-tail-8b1.notion.site/e15c5f339f644ddaac1ffaab9d4fc19d?pvs=105">Request study material</a>
+    <small>Nine required questions. Form won't open? <a href="mailto:ferrelldevin01@gmail.com?subject=%5BMATERIAL%5D%20request">E-mail me</a> the same details.</small>
+  </div>
+
+  <section aria-labelledby="h-gets">
+    <h2 id="h-gets">What you get</h2>
+    <ul class="gets">
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13l5 5L20 6" fill="none" stroke="#A9491F" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>Practice first</b><span>Problems built backward from what your test actually asks, before any answers.</span></div></li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13l5 5L20 6" fill="none" stroke="#A9491F" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>Worked solutions that fade</b><span>Every step at first, then fewer, until you're doing it on your own.</span></div></li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13l5 5L20 6" fill="none" stroke="#A9491F" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>A plan across your days</b><span>Spread over the days you have left, not one long night.</span></div></li>
+    </ul>
+    <p class="honest">Any college course. If I can't do yours well, I'll tell you so instead of guessing.</p>
+  </section>
+
+  <section aria-labelledby="h-how">
+    <h2 id="h-how">How it works</h2>
+    <ol class="steps">
+      <li><div><b>Fill in the form.</b> Course, test date, the topic list, and where you are on each topic. A graded quiz or homework with the marks still on it helps more than anything else, if your course lets you share it.</div></li>
+      <li><div><b>I reply by e-mail within 2 days</b> with a yes, or with what's missing.</div></li>
+      <li><div><b>I build it and check it</b> against your course, then send you a link.</div></li>
+      <li><div><b>The day after your test,</b> I ask whether it helped. That's how the next one gets better.</div></li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="h-when">
+    <h2 id="h-when">When to ask</h2>
+    <div class="ruler">
+      <div class="scale">
+        <div class="band b0"><div class="d">0–2 days</div><p>Too late to help well. I'll say so.</p></div>
+        <div class="band b3"><div class="d">3–6 days</div><p>A one-page recall sheet.</p></div>
+        <div class="band b7"><div class="d">7+ days before</div><p>The full set: practice, solutions, and a plan.</p></div>
+      </div>
+      <p class="why">Material crammed into the last night doesn't stick, and I won't pretend it does.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-rules">
+    <h2 id="h-rules">The rules</h2>
+    <div class="rules">
+      <ul>
+        <li><b>Study material only.</b> I don't write, solve, or check anything you turn in for a grade.</li>
+        <li><b>Written fresh.</b> Your instructor's slides, exams and answer keys are never copied or passed along.</li>
+        <li><b>Made with AI tools, then checked by me</b> before it reaches you.</li>
+        <li><b>Free.</b> Nothing is sold.</li>
+        <li><b>Send only what your course lets you share.</b> That includes a graded quiz, slides or an old exam. If your instructor doesn't allow sharing it, send your topic list instead.</li>
+        <li>Your course's rules about outside help still apply, and following them is on you.</li>
+      </ul>
+      <p class="cite" id="cite" data-state="current" data-recheck="2026-12-15">At ODU these lines follow the Code of Student Conduct, Policy 1530 (revised 2024-06-14), §VIII, checked 2026-09-15. Other schools: your own code wins.</p>
+      <script>
+      (function(){ /* the citation is a dated fact: past its re-check date it says so instead of reading as current */
+        var c = document.getElementById("cite"), r = c && c.getAttribute("data-recheck");
+        if (r && Date.now() > Date.parse(r + "T23:59:59")) {
+          c.textContent = "These lines were checked against ODU’s Code of Student Conduct (Policy 1530) on 2026-09-15 and may be out of date. Your school’s current code wins.";
+          c.setAttribute("data-state", "stale");
+        }
+      })();
+      </script>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-form">
+    <h2 id="h-form">What the form asks</h2>
+    <dl class="fields">
+      <dt>Title</dt><dd>Your course and the test, like "MATH 211 — Exam 2".</dd>
+      <dt>Topic list</dt><dd>Paste it from your syllabus, study guide or review sheet.</dd>
+      <dt>Where you are now</dt><dd>For each topic: never seen it · can't do it · can do it slowly · solid. Guessing high gets you material that wastes your time.</dd>
+      <dt>Format</dt><dd>How the test runs: closed book, calculator allowed, timed, and so on.</dd>
+      <dt>Graded work</dt><dd>A photo or PDF of a quiz or homework you got back, marks showing, if your course lets you share it. Optional.</dd>
+      <dt>Course materials · Materials link</dt><dd>Your syllabus or topic sheet. If you use a link, set it so anyone with the link can view. Optional.</dd>
+      <dt>Study time available</dt><dd>Minutes a day, and the days you already can't study.</dd>
+    </dl>
+  </section>
+
+  <section class="data" aria-labelledby="h-data">
+    <h2 id="h-data">What happens to what you send</h2>
+    <ul>
+      <li>The form asks for your name, e-mail, school, course, test date and topic list, and anything you choose to upload.</li>
+      <li>It is stored in my Notion workspace (Notion runs the form). To build and check your material, what you send also passes through the AI services I work with, such as Anthropic's Claude and OpenAI's ChatGPT. It is never posted publicly or sold.</li>
+      <li><b>Uploads</b> are kept one semester, then deleted.</li>
+      <li><b>Your request record</b> (name, e-mail, school, course, dates) is kept until one year after your test date, then deleted.</li>
+      <li>Ask any time and I'll delete yours sooner, uploads included.</li>
+    </ul>
+  </section>
+
+  <p class="colophon">
+    Questions, or the form won't open? E-mail <a href="mailto:ferrelldevin01@gmail.com?subject=%5BMATERIAL%5D%20request">ferrelldevin01@gmail.com</a> with the subject [MATERIAL].<br>
+    Devin Ferrell · <a href="../">Study Kit</a> · build 20260915T172721
+  </p>
+</main>
+</body>
+</html>
