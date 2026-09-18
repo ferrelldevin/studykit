@@ -16,8 +16,8 @@
 <!-- The saved theme, applied before anything paints: a returning dark reader must not see a light
      first frame. Light unless a choice was saved; the device never decides (artifact-theme rule). -->
 <script>(function(){var t='light';try{var p=JSON.parse(localStorage.getItem('bw08.prefs.v1')||'{}');if(p&&p.theme==='dark')t='dark';}catch(e){}var r=document.documentElement;r.setAttribute('data-theme',t);r.style.colorScheme=t;})();</script>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500&display=swap" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500&display=swap"></noscript>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500&family=Noto+Serif+JP:wght@500&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500&family=Noto+Serif+JP:wght@500&display=swap"></noscript>
 <style>
 /* DESIGN-0.6 B. Light on bare :root, dark under [data-theme="dark"] only. The app writes the
    attribute itself at boot, so the in-app toggle wins over the system setting both ways; there
@@ -47,6 +47,7 @@
   --f-body:"IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --f-ja:"Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Yu Gothic UI", Meiryo, sans-serif;
+  --f-ja-glyph:"Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", YuMincho, "BIZ UDMincho", serif;
   --t-glyph:clamp(4rem,24vw,7rem); --t-glyph-long:clamp(2.25rem,11vw,3.25rem);
   --t-display:1.625rem; --t-title:1.125rem; --t-body:1.0625rem; --t-label:.875rem; --t-micro:.75rem;
   --t-ja-reading:1.5rem; --t-ja-sentence:1.25rem;
@@ -254,7 +255,7 @@ p{margin:0 0 var(--s-3)}
 textarea.textin{min-height:5rem;font-family:var(--f-mono);font-size:var(--t-label);resize:vertical}
 textarea.textin.plain{font-family:inherit;font-size:var(--t-body);min-height:3.4rem}
 select.textin{appearance:auto;-webkit-appearance:auto}
-input[type=range]{width:100%;margin:var(--s-2) 0;accent-color:var(--accent);height:48px;min-height:48px}
+input[type=range]{width:100%;margin:var(--s-2) 0;accent-color:var(--accent);height:48px;min-height:48px;touch-action:pan-y}
 .val{font-family:var(--f-mono);font-variant-numeric:tabular-nums;color:var(--accent);font-weight:500}
 .quick{margin:var(--s-4);padding:var(--s-4);border:1px solid var(--hairline);border-radius:var(--r-control);background:var(--surface)}
 .quick .cnt{margin-top:var(--s-2);min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:var(--s-2)}
@@ -294,6 +295,11 @@ button.row:active{background:var(--surface-2)}
 .rbar{display:flex;align-items:center;gap:var(--s-2);padding:calc(var(--s-1) + env(safe-area-inset-top,0px)) 0 var(--s-1);flex:none}
 .rbar .sp{flex:1}
 .rbar .micro{padding:0 var(--s-4)}
+/* Two numbers; on a narrow phone the line wraps between them, each half whole, the dot with the first. The
+   bar's text button never wraps: it keeps its one-line width and the counter wraps in the room that remains. */
+.rbar .textbtn{white-space:nowrap}
+#r-left{text-align:right}
+#r-left span{white-space:nowrap}
 .rbar .more{width:var(--tap);height:var(--tap);flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-control);color:var(--ink-soft);font-size:var(--t-ja-sentence);letter-spacing:.1em;transition:background-color var(--d-short2) var(--ease-standard)}
 .rbar .more:active{background:var(--surface-2)}
 
@@ -310,6 +316,8 @@ button.row:active{background:var(--surface-2)}
 .ans{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:var(--s-1);min-height:0;overflow-y:auto;padding-top:var(--s-3)}
 .tag{font-family:var(--f-mono);font-size:var(--t-micro);letter-spacing:.06em;color:var(--ink-mute);font-variant-numeric:tabular-nums}
 .r-glyph{font-size:var(--t-glyph);line-height:1.1;font-weight:500}
+/* 2026-09-16 (item 21): a Japanese glyph takes a serif face. In the body face at this size 一 was a solid bar a first-time learner read as a redaction; the serif gives each stroke its end. Mincho is the fallback on every platform that has one. */
+.r-glyph[lang^="ja"]{font-family:var(--f-ja-glyph)}
 .r-glyph.long{font-size:var(--t-glyph-long);line-height:1.3}
 .ans .r-glyph{font-size:var(--t-glyph-long);line-height:1.3}
 .r-headline{font-family:var(--f-display);font-size:var(--t-display);line-height:1.3;max-width:22ch;font-weight:600}
@@ -351,8 +359,8 @@ button.row:active{background:var(--surface-2)}
 
 .r-cloze{font-family:var(--f-display);font-size:var(--t-title);line-height:1.6;max-width:30ch}
 .r-cloze[lang]{font-family:var(--f-ja);font-size:var(--t-ja-sentence);line-height:1.9;max-width:20ch}
-.r-cloze .blank{display:inline-block;min-width:3em;border-bottom:2px solid var(--accent);color:var(--accent);padding:0 .3em;font-family:var(--f-mono);font-size:var(--t-blank)}
-.r-cloze mark.filled{background:var(--surface-2);color:var(--accent);font-weight:600;border-radius:0;padding:0 .15em;box-decoration-break:clone}
+.r-cloze .blank{display:inline-block;min-width:3em;border-bottom:2px solid var(--accent);color:var(--accent);padding:0 var(--s-1);font-family:var(--f-mono);font-size:var(--t-blank)}
+.r-cloze mark.filled{background:var(--surface-2);color:var(--accent);font-weight:600;border-radius:0;padding:0 var(--s-1);box-decoration-break:clone}
 ruby{ruby-position:over;ruby-align:center}
 rt{font-size:.5em;line-height:1.1;font-weight:400;color:var(--ink-soft);letter-spacing:.02em;-webkit-text-fill-color:currentColor}
 ruby[data-reading="hidden"] rt{visibility:hidden}
@@ -415,6 +423,14 @@ ruby[data-reading="hidden"] rt{visibility:hidden}
 #sheet.closing{transition:transform var(--d-short4) var(--ease-out)}
 #sheet .sh-title{padding:var(--s-2) var(--s-4) var(--s-1);font-size:var(--t-label);font-weight:500;color:var(--ink-mute)}
 #sheet .sh-title.confirm{font-size:var(--t-body);color:var(--ink);padding:var(--s-3) var(--s-4)}
+/* A card's own two sides on its details sheet, drawn by the review renderer at a size a half-height sheet can hold. */
+#sheet .sh-card{display:flex;flex-direction:column;align-items:center;gap:var(--s-2);padding:var(--s-2) var(--s-4) var(--s-3);text-align:center;border-bottom:1px solid var(--hairline)}
+#sheet .sh-card .sh-front,#sheet .sh-card .sh-back{display:flex;flex-direction:column;align-items:center;gap:var(--s-1);width:100%;min-width:0}
+#sheet .sh-card .sh-back{padding-top:var(--s-2);border-top:1px solid var(--hairline)}
+#sheet .sh-card .r-glyph{font-size:var(--t-glyph-long);line-height:1.2}
+#sheet .sh-card .r-glyph.long{font-size:var(--t-specimen)}
+#sheet .sh-card .r-headline{font-size:var(--t-title)}
+#sheet .sh-card .r-headline[lang]{font-size:var(--t-ja-sentence)}
 #sheet div.act.static{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);width:100%;min-height:56px;padding:0 var(--s-4);font-size:var(--t-body);color:var(--ink);border-bottom:1px solid var(--hairline)}
 #sheet button.act{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);width:100%;min-height:56px;padding:0 var(--s-4);font-size:var(--t-body);font-weight:400;color:var(--ink);transition:background-color var(--d-short2) var(--ease-standard)}
 #sheet button.act:active{background:var(--surface-2)}
@@ -731,6 +747,10 @@ function nextStates(memory, elapsedDays, desiredRetention, maximumInterval = S_M
     }
     out[g] = { s, d, ivl };
   }
+
+  out[2].ivl = Math.min(out[2].ivl, out[3].ivl);
+  out[3].ivl = Math.min(maximumInterval, Math.max(out[3].ivl, out[2].ivl + 1));
+  out[4].ivl = Math.min(maximumInterval, Math.max(out[4].ivl, out[3].ivl + 1));
   return out;
 }
 
@@ -1053,26 +1073,28 @@ function makeStore(adapter) {
     },
 
     intakeBudget(now = Date.now()) {
-      const secondsPerCard = this.measuredSecondsPerCard();
-      const ratio = this.measuredReviewsPerNewCard();
+      const before = dayStart(dayKey(now));
+      const secondsPerCard = this.measuredSecondsPerCard(before);
+      const ratio = this.measuredReviewsPerNewCard(before);
       const seconds = prefs.minutesPerDay * 60;
       const perDay = Math.max(1, Math.round(seconds / (secondsPerCard.value * ratio.value)));
       
       return { perDay, secondsPerCard, ratio, own: secondsPerCard.measured };
     },
 
-    measuredSecondsPerCard() {
-      const times = log.map((e) => e.e).filter((v) => typeof v === 'number' && v > 500 && v < 120000);
+    measuredSecondsPerCard(before = Infinity) {
+      const times = log.filter((e) => e.t < before).map((e) => e.e).filter((v) => typeof v === 'number' && v > 500 && v < 120000);
       if (times.length < 30) return { value: 10, measured: false, n: times.length };
       times.sort((a, b) => a - b);
       return { value: times[Math.floor(times.length / 2)] / 1000, measured: true, n: times.length };
     },
 
-    measuredReviewsPerNewCard() {
+    measuredReviewsPerNewCard(before = Infinity) {
 
-      const introduced = new Set(log.filter((e) => e.k === KINDS.learn).map((e) => e.c)).size;
-      if (introduced < 20 || log.length < 100) return { value: 10, measured: false, n: introduced };
-      return { value: Math.max(1, log.length / introduced), measured: true, n: introduced };
+      const past = before === Infinity ? log : log.filter((e) => e.t < before);
+      const introduced = new Set(past.filter((e) => e.k === KINDS.learn).map((e) => e.c)).size;
+      if (introduced < 20 || past.length < 100) return { value: 10, measured: false, n: introduced };
+      return { value: Math.max(1, past.length / introduced), measured: true, n: introduced };
     },
 
     trueRetention() {
@@ -1646,6 +1668,25 @@ function deckFrom(packs) {
 
 
 const SOON_DAYS = 3;
+
+function owedRepeat(st, store, now = Date.now()) {
+  return !!st && st.state === 'review' && st.reps === 1 && !!st.last && st.last.k === 0
+    && (st.last.g === 2 || st.last.g === 3) && store.dayKey(st.last.t) === store.dayKey(now);
+}
+
+function sittingWork(cards, store, opts = {}) {
+  const schedules = opts.schedules !== false;
+  const seen = new Set(); let showings = 0;
+  for (const c of cards) {
+    if (!c) continue;
+    const id = c.id || c;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const st = store.state(id);
+    showings += 1 + (schedules && (!st || st.state === 'new') ? 1 : 0);
+  }
+  return { cards: seen.size, showings };
+}
 function buildQueue(deck, store, opts = {}) {
   const now = opts.now ?? Date.now();
   const lesson = opts.lesson ?? null;
@@ -1664,8 +1705,9 @@ function buildQueue(deck, store, opts = {}) {
   const isSuspended = typeof store.isSuspended === 'function' ? (id) => store.isSuspended(id) : () => false;
 
   const isSkipped = typeof store.isSkippedToday === 'function' ? (id) => store.isSkippedToday(id, now) : () => false;
+
   const pool = deck.cards.filter((c) =>
-    (!pack || c.pack === pack) && (!lesson || c.lesson === lesson) && !isSuspended(c.id) && !isSkipped(c.id) && !isPaused(c.pack));
+    (!pack || c.pack === pack) && (lesson == null || c.lesson === lesson) && !isSuspended(c.id) && !isSkipped(c.id) && !isPaused(c.pack));
 
   const used = ctx.reviewsUsed != null ? ctx.reviewsUsed
     : (typeof store.reviewLimitUsed === 'function' ? store.reviewLimitUsed(store.dayKey(now)) : today.reviews);
@@ -1703,7 +1745,7 @@ function buildQueue(deck, store, opts = {}) {
   const unburied = (c) => !p.burySiblings ||
     !(siblingsOf.get(noteKey(c)) || []).some((id) => id !== c.id && cardsAnsweredToday.has(id));
 
-  const due = [], learn = [], learnInter = [], fresh = [], laterToday = [];
+  const due = [], learn = [], learnInter = [], fresh = [], laterToday = [], owed = [];
   const todayK = store.dayKey(now);
   const dayEnd = store.dayStart(store.addDays(todayK, 1)) - 1;
   const soonEnd = store.dayStart(store.addDays(todayK, SOON_DAYS + 1)) - 1;   
@@ -1712,6 +1754,8 @@ function buildQueue(deck, store, opts = {}) {
     const s = states.get(c.id) || { state: 'new' };
     if (s.state === 'new') { fresh.push(c); continue; }
     if (s.due != null && s.due > now && s.due <= soonEnd) soon++;
+
+    if (owedRepeat(s, store, now)) { owed.push(c); continue; }
     if (s.due == null || s.due > horizon) { if (s.due != null && s.due <= dayEnd) laterToday.push(c); continue; }
     if (s.state === 'review') due.push({ c, due: s.due });
     else (s.last && store.dayKey(s.last.t) === todayK ? learn : learnInter).push({ c, due: s.due });
@@ -1724,7 +1768,7 @@ function buildQueue(deck, store, opts = {}) {
   const intakePaused = !opts.ahead && gapDays >= 3 && backlog > allowance;
   if (intakePaused) newLeft = 0;
   const learnAheadMs = (p.learnAheadMinutes ?? 20) * 60000;
-  if (!due.length && !learn.length && !learnInter.length && Math.min(fresh.length, newLeft) === 0) {
+  if (!due.length && !learn.length && !learnInter.length && !owed.length && Math.min(fresh.length, newLeft) === 0) {
     for (const c of pool) {
       const s = states.get(c.id);
       if (!s || s.state === 'new' || s.state === 'review') continue;
@@ -1739,18 +1783,22 @@ function buildQueue(deck, store, opts = {}) {
   const seenNote = new Set();
   const oncePerNote = (c) => { const k = noteKey(c); if (seenNote.has(k)) return false; seenNote.add(k); return true; };
 
+  owed.forEach((c) => seenNote.add(noteKey(c)));
+
   learnInter.sort((a, b) => a.due - b.due);
 
   let buried = 0, sameNote = 0;
   const unburiedCounted = (c) => { const ok = unburied(c); if (!ok) buried++; return ok; };
   const oncePerNoteCounted = (c) => { const ok = oncePerNote(c); if (!ok) sameNote++; return ok; };
+
+  const learnQ = learn.map((x) => x.c).filter(unburiedCounted).filter(oncePerNoteCounted);
   const cappable = learnInter.map((x) => x.c).concat(due.map((x) => x.c))
     .filter(unburiedCounted).filter(oncePerNoteCounted);
   const overCap = Math.max(0, cappable.length - reviewsLeft);
   const capped = cappable.slice(0, reviewsLeft);
 
   if (!p.newCardsIgnoreReviewLimit && !opts.ahead) newLeft = Math.min(newLeft, Math.max(0, reviewsLeft - capped.length));
-  const dueQ = learn.map((x) => x.c).filter(unburiedCounted).filter(oncePerNoteCounted).concat(capped);
+  const dueQ = owed.concat(learnQ, capped);
 
   const perPackUsed = (today.perPack || {});
   const perPackLeft = {};
@@ -1776,11 +1824,14 @@ function buildQueue(deck, store, opts = {}) {
   const newHeldByLimit = newLeft === 0 && allowanceLeft > 0 && !intakePaused
     && !opts.ahead && !opts.aheadDays && !p.newCardsIgnoreReviewLimit;
 
+  const newCutByLimit = newLeft < allowanceLeft && !intakePaused
+    && !opts.ahead && !opts.aheadDays && !p.newCardsIgnoreReviewLimit;
+
   return {
     queue: out,
-    newLeft, reviewsLeft, budget, gapDays, backlog, intakePaused, newHeldByLimit,
+    newLeft, reviewsLeft, budget, gapDays, backlog, intakePaused, newHeldByLimit, newCutByLimit,
 
-    counts: { fresh: fresh.length, newToday: freshQ.length, toStudyToday: out.length, due: due.length, learn: learn.length + learnInter.length, soon, learningLater, buried, overCap, sameNote },
+    counts: { fresh: fresh.length, newToday: freshQ.length, toStudyToday: out.length, due: due.length, learn: learn.length + learnInter.length + owed.length, soon, learningLater, buried, overCap, sameNote },
   };
 }
 
@@ -1800,6 +1851,15 @@ function forecast(deck, store, days, now = Date.now(), ctx = {}, deckOptions = {
     if (index >= 0 && index < days) out[index]++;
   }
   return out;
+}
+
+const RETIRED_CLOZE_RE = /\{\{c(\d+)::([\s\S]*?)(?:::([\s\S]*?))?\}\}/g;
+function retiredNoteOrds(type, note) {
+  if (type.kind !== 'cloze') return (type.templates || []).map((form) => form.ord);
+  const prompt = type.templates && type.templates[0] ? type.templates[0].prompt : null;
+  const ords = new Set();
+  for (const m of String((note.fields || {})[prompt] || '').matchAll(RETIRED_CLOZE_RE)) ords.add(parseInt(m[1], 10));
+  return [...ords].sort((a, b) => a - b);
 }
 
 function lessonProgress(deck, store, opts = {}) {
@@ -1842,8 +1902,9 @@ function lessonProgress(deck, store, opts = {}) {
     const types = new Map((pack.noteTypes || []).map((item) => [item.id, item]));
     for (const note of pack.retired || []) {
       const type = types.get(note.type);
-      for (const form of type && type.templates || []) {
-        const cardId = `${id}/${note.guid}#${form.ord}`;
+      if (!type) continue;
+      for (const ord of retiredNoteOrds(type, note)) {
+        const cardId = `${id}/${note.guid}#${ord}`;
         if (listed.has(cardId)) continue;
         listed.add(cardId);
         const r = rowFor(id, note.lesson || '');
@@ -3001,7 +3062,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 <script>
 (function () {
   'use strict';
-  var APP_VERSION = '0.7.2';
+  var APP_VERSION = '0.7.8';
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -3192,7 +3253,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   }
 
   window.__kurikaeshiCurrentCard = function () { return card ? card.id : null; };   // the walk asserts the card's pack
-  window.__kurikaeshiDueIds = function (scope) { return queueFor(scope).queue.map(function (c) { return c.id; }); };
+  window.__kurikaeshiDueIds = function (scope) { return queueFor(scope).queue.map(function (c) { return c.id; }); };   // a scope's own queue; a row's part of today's set is this list for everything, filtered to the row
 
   function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
   function relTime(t) {
@@ -3207,17 +3268,19 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     return n;
   }
   // Minutes for n cards: the median pace times the cards, plus the repeats an Again brings back
-  // (the learner's own Again rate so far), rounded. Printed as "about"; printed at all only once
-  // the pace is the learner's own — until then the tile says "a few minutes" (P13 item 3).
+  // (the learner's own Again rate before today), rounded. Printed as "about"; printed at all only once
+  // the pace is the learner's own — until then the tile says "a few minutes" (P13 item 3). Both come
+  // from the answers given before the study day began, so the estimate holds for the day (2026-09-15).
   function minutesFor(n) {
-    var b = store.intakeBudget(), a = store.answers();
+    var b = store.intakeBudget(), before = store.dayStart(store.dayKey(Date.now()));
+    var a = store.answers().filter(function (e) { return e.t < before; });
     var again = a.length ? a.filter(function (e) { return e.g === 1; }).length / a.length : 0;
     return Math.max(1, Math.round(n * (1 + again) * b.secondsPerCard.value / 60));
   }
   function paceLine(n) { return store.intakeBudget().own ? 'about ' + plural(minutesFor(n), 'min', 'min') : 'a few minutes'; }
   function paceHint() {
     var b = store.intakeBudget();
-    return (b.own ? 'About ' + plural(b.perDay, 'new card') + ' a day at your pace so far.' : 'Starting estimate: about ' + plural(b.perDay, 'new card') + ' a day, until 30 of your answers have been timed.') +
+    return (b.own ? 'About ' + plural(b.perDay, 'new card') + ' a day at your pace so far.' : 'Starting estimate: about ' + plural(b.perDay, 'new card') + ' a day, until the day after 30 of your answers have been timed.') +
       ' Set the time, not the card count: the minutes are what you can feel.';
   }
   // A timed session is shown as timed: a session stopped after seconds is not "1 min".
@@ -3439,6 +3502,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     // Same screen, already visible: the caller may have re-rendered it (a sheet's history step re-renders the deck), so the standing storage line is put back before returning.
     if (!options.force && id === screen && !$(id).hidden) { showStorageProblem(); return false; }
     if (id !== 's-done' && id !== 's-review') doneUndo = null;   // the done screen's Undo lives only there
+    if (toastAction) hideToast();   // a real screen change withdraws the offer it covered (item 38)
     var outgoing = $(screen), incoming = $(id), before = document.activeElement;
     if (screen === 's-class' || screen === 's-classes') clearClassView();
     closeSheet(true, true);
@@ -3486,7 +3550,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   function goTab(t) {
     var id = t === 'today' ? 's-today' : t === 'decks' ? 's-decks' : 's-cards';
     if (screen === id && !$(id).hidden) return;
-    if (screen === 's-cards' && id !== 's-cards') cardsView.added = 0;
+    if (screen === 's-cards' && id !== 's-cards') { cardsView.added = 0; cardsView.addedGuids = []; }
     youFrom = t;
     if (t === 'today') { show('s-today'); renderToday(); }
     else if (t === 'decks') { show('s-decks'); renderDecks(); }
@@ -3554,12 +3618,16 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 
   var sheetAnchor = null, sheetTimer = null, sheetGeneration = 0, sheetDragX = null, sheetDragY = null, sheetDragActive = false;
-  function openSheet(anchor, title, items) {
+  // `lead`: rendered markup shown under the title, before the items — a card's own two sides on its
+  // details sheet. Every item label is escaped here, so a block of rendered HTML has to arrive apart
+  // from the items, the way the direction sheet builds its own rows.
+  function openSheet(anchor, title, items, lead) {
     var sh = $('sheet'), sc = $('scrim');
     if (sheetTimer) { clearTimeout(sheetTimer); sheetTimer = null; }
     sheetGeneration++;
     sheetAnchor = anchor || null;
     var h = title ? '<div class="sh-title">' + esc(title) + '</div>' : '';
+    if (lead) h += '<div class="sh-card">' + lead + '</div>';
     items = items.filter(Boolean);
     items.forEach(function (it, i) {
       if (it.static) {   // a fact the sheet shows: text, reachable by a reader, never a dimmed control
@@ -3847,10 +3915,14 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   });
 
   /* ── the toast: says what happened, not that it succeeded ──────── */
-  var toastTimer = null, toastAction = false, cueFocus = false;
-  function toast(msg, action) {
+  var toastTimer = null, toastAction = false, toastPaused = false, cueFocus = false;
+  // `durable`: the action has another way to reach it (E.13's durable twin — Restore card in
+  // Browse's More for an own retired card), so an 8 s clock is not the only way back to it. An
+  // action with no twin (a course card's retire or skip) waits for the learner instead, still.
+  function toast(msg, action, durable) {
     var t = $('toast');
     if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
+    toastPaused = false;
     t.classList.remove('in', 'out');
     t.innerHTML = '';
     requestAnimationFrame(function () {
@@ -3858,18 +3930,22 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       t.classList.add('in');
       if (action) { $('toast-act').addEventListener('click', function () { hideToast(); action.on(); }); $('toast-dismiss').addEventListener('click', function () { hideToast(); }); }
     });
-    // A toast that offers an action waits for the learner (it leaves with the screen, a sheet, or Dismiss);
-    // a plain notice leaves on its own.
     toastAction = !!action;
-    toastTimer = action ? null : setTimeout(hideToast, 4000);
+    toastTimer = action ? (durable ? setTimeout(hideToast, 8000) : null) : setTimeout(hideToast, 4000);
   }
   function hideToast() {
     var t = $('toast');
-    toastAction = false;
+    toastAction = false; toastPaused = false;
     if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
     t.classList.remove('in'); t.classList.add('out');
     setTimeout(function () { if (!t.classList.contains('in')) { t.classList.remove('out'); t.innerHTML = ''; } }, 150);
   }
+  // WCAG 2.2.1 Timing Adjustable: the durable toast's 8 s clock pauses on hover or focus and
+  // resumes at 8 s again when both leave (E.13). Plain and non-durable toasts carry no timer here.
+  $('toast').addEventListener('mouseenter', function () { if (toastAction && toastTimer) { clearTimeout(toastTimer); toastTimer = null; toastPaused = true; } });
+  $('toast').addEventListener('focusin', function () { if (toastAction && toastTimer) { clearTimeout(toastTimer); toastTimer = null; toastPaused = true; } });
+  $('toast').addEventListener('mouseleave', function () { if (toastPaused) { toastPaused = false; toastTimer = setTimeout(hideToast, 8000); } });
+  $('toast').addEventListener('focusout', function () { if (toastPaused) { toastPaused = false; toastTimer = setTimeout(hideToast, 8000); } });
 
   /* ── what broke, written down ──────────────────────────────────────
      2026-09-13: the two window handlers below took no argument, so the message, the file, the
@@ -3979,6 +4055,89 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     opts = opts || {};
     return buildQueue(DECK, store, { pack: scope.pack, lesson: scope.lesson, ahead: opts.ahead || 0, aheadDays: opts.aheadDays || 0, deckOptions: opts.deckOptions || deckOptionsFor(), ctx: opts.ctx });
   }
+  // A deck's or a lesson's part of today's set: the cards of Today's one queue that belong to the scope,
+  // in Today's order, with the day's own figures (the allowance, the gap) carried over. The new-card
+  // allowance and the review limit belong to the day, so a queue built for one scope claims all of them:
+  // a course deck and My cards read 49 and 1 to study today over a Today of 49, and Study now on the
+  // course deck spent every new card of the day there, putting off the card the learner had just written
+  // (2026-09-15). A row prints this part and its Study now opens it, so the rows add up to Today and a
+  // deck's lesson rows add up to the deck row. Learn new, Review ahead and Practice are chosen extras and
+  // keep the scope's own queue; so do a deck's first session and a link that names one deck. No lesson
+  // key means the whole deck, and an empty one the cards with no lesson, as on the rows.
+  function todayShare(scope, opts) {
+    opts = opts || {};
+    var all = opts.all || queueFor(ALL, opts);
+    if (isAll(scope)) return all;
+    var part = all.queue.filter(function (c) { return c.pack === scope.pack && (scope.lesson == null || c.lesson === scope.lesson); });
+    var states = opts.ctx && opts.ctx.states;
+    var out = {};
+    Object.keys(all).forEach(function (k) { out[k] = all[k]; });
+    out.queue = part;
+    out.counts = { toStudyToday: part.length, newToday: part.filter(function (c) { return ((states ? states.get(c.id) : store.state(c.id)) || { state: 'new' }).state === 'new'; }).length };
+    return out;
+  }
+  // The notes of the learner's own that have not started and have no card in the given queue: written, and waiting
+  // while today's set has no room for them (2026-09-15; present tense since 2026-09-16, round 53). A note counts once however many cards it makes, as the
+  // count row under the quick form counts what was added. A paused My cards deck is paused rather than waiting,
+  // and a card skipped today was put off by the learner, so neither counts here.
+  function ownWaitingGuids(queue, states) {
+    if ((deckOptionsFor()[OWN_PACK_ID] || {}).paused) return [];
+    var now = Date.now(), inQueue = {}, started = {}, fresh = {};
+    queue.forEach(function (c) { if (c.pack === OWN_PACK_ID) inQueue[c.guid] = true; });
+    DECK.cards.forEach(function (c) {
+      if (c.pack !== OWN_PACK_ID || store.isSuspended(c.id)) return;
+      var st = (states ? states.get(c.id) : store.state(c.id)) || { state: 'new' };
+      if (st.state !== 'new') started[c.guid] = true;
+      else if (!store.isSkippedToday(c.id, now)) fresh[c.guid] = true;
+    });
+    return Object.keys(fresh).filter(function (g) { return !started[g] && !inQueue[g]; });
+  }
+  // Why cards of the learner's own are outside today's set (2026-09-15). My cards come first in the deck's order,
+  // so a waiting card is held by the day's allowance or by a limit, never by a course card. The review limit is
+  // named whenever it took today's new cards below the allowance, to none or to fewer; the allowance is taken, not
+  // only spent, once today's set holds as many new cards as it allows. Null when nothing here explains it.
+  // Each hold is a brake the queue applies today, so the card waits and nothing says until when (2026-09-16, round
+  // 53). This used to reason that the allowance renews, so the card "starts tomorrow"; Minutes a day raised in
+  // Settings served that card the same day. A day is named only where the schedule names one (§G.1).
+  function newCardHold(b) {
+    var full = b.queue.filter(function (c) { return (store.state(c.id) || { state: 'new' }).state === 'new'; }).length >= b.newLeft;
+    if (full && b.newCutByLimit) return { words: b.newLeft ? 'today’s review limit leaves room for only ' + plural(b.newLeft, 'new card') : 'today’s review limit leaves no room for new cards' };
+    if (full && b.intakePaused) return { words: 'new cards pause: more cards are waiting from your time away than today’s review limit leaves room for' };
+    if (b.newLeft === 0) return { words: 'today’s new cards are done' };
+    if (full) return { words: 'today’s set already holds the day’s new cards' };
+    var cap = (deckOptionsFor()[OWN_PACK_ID] || {}).newPerDay;
+    if (Number.isFinite(cap)) return { words: 'the new cards a day set for My cards are done' };
+    return null;
+  }
+  // A held card's verb: present tense, no day (2026-09-16, round 53).
+  function waitWords(n) { return n === 1 ? ' waits' : ' wait'; }
+  function ownWaitingLine(b, states) {
+    var n = ownWaitingGuids(b.queue, states).length;
+    var hold = n ? newCardHold(b) : null;
+    return hold ? plural(n, 'card') + ' of your own' + waitWords(n) + ': ' + hold.words + '.' : '';
+  }
+  // The count row under the quick form: the cards this visit added, how many of them wait, and the one study action
+  // that opens something (2026-09-15). Only notes still in My cards count, so a card retired from the list leaves
+  // the total, neither waits nor brings back a Study now, and comes back with Undo. Study now stands while an added
+  // card is in today's set, Learn new while My cards' own queue holds a card, and neither when both would open
+  // nothing; with no added card left the row hides.
+  function drawAddedCount(count) {
+    var b = queueFor(ALL), pack = ownPack(), live = {}, today = {}, waitingSet = {};
+    (pack ? pack.notes : []).forEach(function (note) { live[note.guid] = true; });
+    b.queue.forEach(function (c) { if (c.pack === OWN_PACK_ID) today[c.guid] = true; });
+    ownWaitingGuids(b.queue).forEach(function (g) { waitingSet[g] = true; });
+    var added = cardsView.addedGuids.filter(function (g) { return live[g]; });
+    var waiting = added.filter(function (g) { return waitingSet[g]; }).length;
+    var hold = waiting ? newCardHold(b) : null;
+    var inToday = added.some(function (g) { return today[g]; });
+    count.hidden = !added.length;
+    if (!added.length) { count.innerHTML = ''; return; }
+    var learnable = !inToday && queueFor({ pack: OWN_PACK_ID, lesson: null }, { ahead: 10 }).queue.length > 0;
+    count.innerHTML = '<span class="micro">' + plural(added.length, 'card') + ' added' + (hold ? ' · ' + waiting + waitWords(waiting) : '') + '</span>' +
+      (inToday || learnable ? '<button class="textbtn" id="qa-study" type="button">' + (inToday ? 'Study now' : 'Learn new') + '</button>' : '');
+    var act = $('qa-study');
+    if (act) act.addEventListener('click', function () { if (inToday) startNow({ pack: OWN_PACK_ID, lesson: null }); else startLearn({ pack: OWN_PACK_ID, lesson: null }); });
+  }
   // Practice is a preview of cards already seen. It never introduces a card or changes its
   // schedule; the same queue supplies both the offer's number and the sitting it opens.
   var PRACTISE_N = 40;
@@ -3989,7 +4148,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   function offersFor(scope, opts) {
     opts = opts || {};
     var shared = { deckOptions: opts.deckOptions || deckOptionsFor(), ctx: opts.ctx };
-    var b = queueFor(scope, shared);
+    var b = todayShare(scope, shared);
     return {
       today: b,
       learn: queueFor(scope, { ahead: 10, deckOptions: shared.deckOptions, ctx: shared.ctx }).queue.length,
@@ -4009,15 +4168,15 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     return [
       o.learn ? { label: 'Learn new' + where, count: '(' + o.learn + ')', on: function () { startLearn(scope); } } : null,
       o.soon ? { label: 'Review ahead: next ' + SOON_DAYS + ' days' + where, count: '(' + o.soon + ')', on: function () { startAhead(scope); } } : null,
-      o.practise ? { label: (scope.pack ? 'Practise all' : 'Practise a deck') + where, count: scope.pack ? '(' + o.practise + ')' : null, on: function () { if (scope.pack) startPractise(scope); else practiseSheet(null); } } : null
+      o.practise ? { label: (scope.pack ? 'Practice all' : 'Practice a deck') + where, count: scope.pack ? '(' + o.practise + ')' : null, on: function () { if (scope.pack) startPractise(scope); else practiseSheet(null); } } : null
     ];
   }
   function practiseSheet(anchor) {
     var items = packStore.list().map(function (r) {
       var n = practiseQueue({ pack: r.id, lesson: null }).length;
-      return n ? { label: 'Practise ' + r.title, count: '(' + n + ')', on: function () { startPractise({ pack: r.id, lesson: null }); } } : null;
+      return n ? { label: 'Practice ' + r.title, count: '(' + n + ')', on: function () { startPractise({ pack: r.id, lesson: null }); } } : null;
     });
-    openSheet(anchor, 'Practise a deck', items);
+    openSheet(anchor, 'Practice a deck', items);
   }
 
   /* ── the session ───────────────────────────────────────────────── */
@@ -4032,12 +4191,65 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   var LEARN_AHEAD_MS = 20 * 60000;
   // A session the learner stopped, kept whole for Continue this session; and the sitting that
   // ended on an answer, kept for the done screen's Undo until the learner leaves that screen.
-  var stoppedSession = null, doneUndo = null;
+  // stoppedSession is scoped to a stopped TODAY sitting only (§B: Today continues a today
+  // sitting only); justStopped is whatever was stopped last, any mode, and is what the done
+  // screen you are ON resumes — the same immediate meaning Continue has always had there.
+  var stoppedSession = null, justStopped = null, doneUndo = null;
   function remaining(s) { return s.queue.length + s.learning.length + s.repeat.length; }
+  // What a card's record read when the sitting stopped. Any later answer changes reps or the last
+  // answer's stamp, so comparing the mark catches it whatever clock it carries — a device that was
+  // offline syncs in answers stamped before the stop, and a "newer than stoppedAt" test called those
+  // cards unanswered and promised them again (round 53).
+  function sittingMark(id) { var st = store.state(id); return st.reps + '|' + (st.last ? st.last.t : 0); }
+  function markSitting(s) {
+    var m = {};
+    s.queue.concat(s.repeat, s.learning.map(function (x) { return x.card; })).forEach(function (c) {
+      if (c) m[c.id] = sittingMark(c.id);
+    });
+    s.mark = m;
+  }
+  // Today's own sitting only: a stop kept from another study day is not offered for Continue —
+  // the schedule kept its cards, but the object itself is scoped to one tab, one study day (§B).
+  function stoppedToday() {
+    if (stoppedSession && stoppedSession.day !== store.dayKey(Date.now())) stoppedSession = null;
+    return stoppedSession;
+  }
+  // Drops what no longer belongs in a stopped sitting: suspended, skipped today, gone from the
+  // deck (the same resolver leaveEditor uses), or answered since the stop — on this device or,
+  // once synced, another. Mutates `s` in place and returns what remains.
+  function reconcileSitting(s) {
+    // What the mark caught changing since the stop, whatever clock the change arrived stamped
+    // with (§ above sittingMark): a device that was offline syncs in an answer stamped before the
+    // stop, and comparing the mark catches it where comparing stoppedAt did not (round 53).
+    var answeredSince = function (id) {
+      return !!(s.mark && Object.prototype.hasOwnProperty.call(s.mark, id) && s.mark[id] !== sittingMark(id));
+    };
+    var resolveCard = function (candidate) {
+      if (!candidate) return null;
+      if (store.isSuspended(candidate.id) || store.isSkippedToday(candidate.id, Date.now())) return null;
+      var fresh = DECK.cards.filter(function (x) { return x.id === candidate.id; })[0];
+      if (!fresh) return null;
+      if (answeredSince(candidate.id)) return null;
+      return fresh;
+    };
+    s.queue = s.queue.map(resolveCard).filter(Boolean);
+    s.learning = s.learning.map(function (item) { var fresh = resolveCard(item.card); return fresh ? { card: fresh, due: item.due } : null; }).filter(Boolean);
+    // A repeat is owed only while the card's own record still reads first sight, Hard or Good, today —
+    // the same predicate queue.js lists it by, so a rebuilt queue and the kept sitting cannot disagree.
+    s.repeat = s.repeat.map(resolveCard).filter(Boolean)
+      .filter(function (c) { return owedRepeat(store.state(c.id), store, Date.now()); });
+    return remaining(s);
+  }
   function startSession(queue, scope, mode) {
     if (!queue.length) { toast('Nothing to study right now.'); return; }
-    stoppedSession = null; doneUndo = null;
-    session = { queue: queue.slice(), learning: [], repeat: [], done: 0, answered: 0, again: 0, elapsed: 0, cards: {}, entries: [], total: queue.length, scope: scope, mode: mode };
+    // A deck's Study now (mode 'today') replaces a stopped sitting; Learn new, Review ahead and
+    // Practise leave it where it is — Today still offers Continue — but once another activity
+    // has answered, Undo in the resumed sitting reaches only its own answers again (§B). The
+    // blocking itself happens on the extra's own answer (see answer()), not here on its start:
+    // an extra opened and stopped unanswered must cost the parked sitting nothing (round 54).
+    if (mode === 'today') stoppedSession = null;
+    justStopped = null; doneUndo = null;
+    session = { queue: queue.slice(), learning: [], repeat: [], done: 0, answered: 0, again: 0, elapsed: 0, cards: {}, entries: [], total: queue.length, scope: scope, mode: mode, day: store.dayKey(Date.now()), undoBlocked: false };
     var progress = $('r-prog');
     progress.style.transition = 'none';
     progress.style.transform = 'scaleX(0)';
@@ -4046,10 +4258,22 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     show('s-review');
     nextCard();
   }
-  function resumeSession(s) { stoppedSession = null; doneUndo = null; session = s; show('s-review'); nextCard(); }
-  window.__kurikaeshiSession = function () { return session ? { total: session.total, left: remaining(session), mode: session.mode, scope: session.scope } : null; };   // the walk reads the sitting
+  function resumeSession(s) {
+    // Only the object being resumed leaves the parked slot: a stopped extra's own Continue must not
+    // discard the Today sitting that Today is still offering (§B).
+    if (stoppedSession === s) stoppedSession = null;
+    justStopped = null; doneUndo = null;
+    // goTab returns without rendering when the tab is already the one shown, so a Continue tile
+    // rendered before 04:00 and tapped after it would sit there doing nothing.
+    var toToday = function () { if (screen === 's-today') renderToday(); else goTab('today'); };
+    if (s.day !== store.dayKey(Date.now())) { toToday(); return; }
+    var left = reconcileSitting(s);
+    if (!left) { toToday(); return; }
+    session = s; show('s-review'); nextCard();
+  }
+  window.__kurikaeshiSession = function () { return session ? { total: session.total, left: remaining(session), showings: sittingWork([card].concat(session.queue, session.repeat, session.learning.map(function (x) { return x.card; })), store, { schedules: session.mode !== 'practice' }).showings, mode: session.mode, scope: session.scope, answered: session.answered, day: session.day, undoBlocked: !!session.undoBlocked } : null; };   // the walk reads the sitting
   function startToday() { startSession(queueFor(ALL).queue, ALL, 'today'); }
-  function startNow(scope) { startSession(queueFor(scope).queue, scope, 'today'); }
+  function startNow(scope) { startSession(todayShare(scope).queue, scope, 'today'); }
   function startLearn(scope) { startSession(queueFor(scope, { ahead: 10 }).queue, scope, 'learn'); }
   function startAhead(scope) { startSession(queueFor(scope, { aheadDays: SOON_DAYS }).queue, scope, 'ahead'); }
   function startPractise(scope) { startSession(practiseQueue(scope), scope, 'practice'); }
@@ -4087,7 +4311,45 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     session.queue.unshift(saved);
     nextCard();
   }
-  function openCardDetails(anchor, current) {
+  // A card's own two sides for its details sheet, drawn by the same role-driven renderer the review
+  // screen uses, so what the sheet shows is what the card shows. The answer side is drawn only when
+  // asked for: details opened from a card still being asked must not show what the learner is being
+  // asked. A retired or broken note draws nothing, and the sheet is its facts alone, as before. The
+  // renderer's per-card flags are saved and restored around the draw: this is not the card on screen,
+  // a sheet of facts carries no Play control, and it shows the meaning whatever the English setting.
+  function cardSidesHtml(c, withAnswer) {
+    var n = c ? noteOf(c) : null;
+    var nt = n ? typeOf(n) : null;
+    var f = n && n.fields;
+    var cloze = !!(nt && nt.kind === 'cloze');
+    var tmpl = nt && nt.templates ? (cloze ? nt.templates[0] : nt.templates[c.ord]) : null;
+    if (!n || !f || !nt || !Array.isArray(nt.fields) || !tmpl) return '';
+    var wasOwn = renderingOwnCard, wasSay = sayBuilt, wasMeaning = meaningShown;
+    renderingOwnCard = n.pack === OWN_PACK_ID;
+    sayBuilt = true;
+    meaningShown = true;
+    var pk = DECK.packs[n.pack] || {}, lang = pk.language || '';
+    var h = '<div class="sh-front">' + (cloze ? clozeHtml(f[tmpl.prompt], c.ord, false, lang) : renderField(nt, tmpl.prompt, f[tmpl.prompt], lang, false, tmpl.prompt)) + '</div>';
+    if (withAnswer) {
+      var a = cloze ? clozeHtml(f[tmpl.prompt], c.ord, true, lang) : renderField(nt, tmpl.answer, f[tmpl.answer], lang, true, tmpl.prompt);
+      var chips = '', rest = '';
+      nt.fields.forEach(function (name) {
+        if (name === tmpl.prompt || name === tmpl.answer) return;
+        var role = (nt.display && nt.display[name]) || 'text';
+        if (role === 'hint') return;
+        var piece = renderField(nt, name, f[name], lang, true, tmpl.prompt);
+        if (role === 'chip') chips += piece; else rest += piece;
+      });
+      a += rest;
+      if (chips) a += '<div class="chips">' + chips + '</div>';
+      h += '<div class="sh-back">' + a + '</div>';
+    }
+    renderingOwnCard = wasOwn; sayBuilt = wasSay; meaningShown = wasMeaning;
+    return h;
+  }
+  // `withAnswer` is passed by the caller, never read off the review screen's state: Browse and Slipping
+  // show both sides; the review screen's More passes whether the answer is already showing.
+  function openCardDetails(anchor, current, withAnswer) {
     var st = store.state(current.id), historyRows = store.history(current.id);
     var last = historyRows.length ? historyRows[historyRows.length - 1] : null;
     var labels = { 1: 'Again', 2: 'Hard', 3: 'Good', 4: 'Easy' };
@@ -4097,16 +4359,18 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       // Due is the store's own word (P04: a review is due at its study day's start), not the answer's clock time.
       { label: 'Due', count: fmtCardDate(last ? st.due : null), static: true },
       { label: 'Interval', count: last ? fmtIvl(last.i) : 'Not yet', static: true },
-      { label: 'Last seen', count: fmtCardDate(last && last.t), static: true },
+      // A past answer is dated by its study day, as Progress dates it: a study day rolls over at 04:00 local,
+      // and an answer given at 02:00 belongs to the day before its calendar date. Due stays a schedule date.
+      { label: 'Last seen', count: fmtCardDate(last ? store.dayKey(last.t) : null), static: true },
       { label: 'Times seen', count: String(st.reps || 0), static: true },
       { label: 'Forgotten', count: String(st.lapses || 0), static: true }
     ];
     if (tags.length) items.push({ label: 'Tags', count: tags.join(' '), static: true });
     historyRows.forEach(function (entry) {
-      items.push({ label: fmtCardDate(entry.t) + ' · ' + labels[entry.g], count: fmtIvl(entry.i), static: true });
+      items.push({ label: fmtCardDate(store.dayKey(entry.t)) + ' · ' + labels[entry.g], count: fmtIvl(entry.i), static: true });
     });
     items.push({ label: 'Close', on: function () {} });
-    openSheet(anchor, 'Card details', items);
+    openSheet(anchor, 'Card details', items, cardSidesHtml(current, !!withAnswer));
   }
   function openReviewMore(anchor) {
     if (!card || !session) return;
@@ -4132,7 +4396,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
           putCardBack(current);
         } });
       } },
-      { label: 'Card details', on: function (button) { openCardDetails(button, current); } },
+      { label: 'Card details', on: function (button) { openCardDetails(button, current, revealed); } },
       { label: 'What the grades mean', on: function (button) { openGradeMeanings(button); } },
       own ? { id: 'r-edit', label: 'Edit card', on: function () {
         cardsView.editing = { guid: current.guid, back: 'review' }; renderCards(); show('s-cards');
@@ -4144,10 +4408,12 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
   function openGradeMeanings(anchor) {
     if (!card || !previews) return;
+    // Mirrors drawBand's firstSight/once-more wording (§G.3): the same promise, said in the sheet too.
+    var once = session.mode !== 'practice' && store.state(card.id).state === 'new';
     openSheet(anchor, 'What the grades mean', [
       { label: 'Again — You did not recall it. It comes back in this session.', count: fmtIvl(previews[1].ivl), static: true },
-      { label: 'Hard — You recalled it, slowly or with doubt. It comes back sooner than Good would bring it.', count: fmtIvl(previews[2].ivl), static: true },
-      { label: 'Good — You recalled it. The usual step forward.', count: fmtIvl(previews[3].ivl), static: true },
+      { label: 'Hard — You recalled it, slowly or with doubt.' + (once ? ' It comes back once more in this session, then sooner than Good would bring it.' : ' It comes back sooner than Good would bring it.'), count: fmtIvl(previews[2].ivl), static: true },
+      { label: 'Good — You recalled it.' + (once ? ' It comes back once more in this session, then the usual step forward.' : ' The usual step forward.'), count: fmtIvl(previews[3].ivl), static: true },
       { label: 'Easy — You recalled it at once. A bigger step forward.', count: fmtIvl(previews[4].ivl), static: true },
       { label: 'Close', on: function () {} }
     ]);
@@ -4171,15 +4437,20 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     card = next;
     revealed = false; hintShown = false; meaningShown = false;
     shownAt = now;
-    // The counter is the sitting as it stands: answers given, this card, and what is still to
-    // come. A step or a same-sitting repeat counts, because the sitting will show it.
-    var left = remaining(session) + 1;
-    var total = session.answered + left;
-    $('r-left').textContent = left + ' left';
+    // The counter is the sitting as it stands, two numbers, showings first: the showings still to come —
+    // this card, a step, a same-sitting repeat, and the once-more showing a first-sight card is owed —
+    // then the distinct cards not yet through. The promise is counted forward, so an answer always moves
+    // the leading number: a first-sight Good keeps its card and takes one showing off, and a run of
+    // first-sight Goods holds the card count still, which is why cards cannot lead. Practising owes
+    // nothing twice. The bar's whole is answers given plus showings owed, so it too moves on every answer.
+    var work = sittingWork([card].concat(session.queue, session.repeat, session.learning.map(function (x) { return x.card; })), store, { schedules: session.mode !== 'practice' });
+    var total = session.answered + work.showings;
+    $('r-left').innerHTML = '<span>' + plural(work.showings, 'showing') + ' ·</span> <span>' + plural(work.cards, 'card') + ' left</span>';
     $('r-prog').style.transform = 'scaleX(' + (total ? session.answered / total : 1) + ')';
     // Undo reaches only answers given in THIS sitting. On a session's first card it used to pop
-    // the previous day's last review and delete a real answer (outside read, round 2).
-    $('r-undo').disabled = !(session.answered > 0);
+    // the previous day's last review and delete a real answer (outside read, round 2). A resumed
+    // sitting that another activity has since answered waits until it answers again (§B).
+    $('r-undo').disabled = !(session.answered > 0) || !!session.undoBlocked;
     cardArriving = true;
     drawCard();
   }
@@ -4321,7 +4592,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var st = store.state(card.id);
     renderingOwnCard = n.pack === OWN_PACK_ID;
     var pk = DECK.packs[n.pack] || {}, lang = pk.language || '';
-    var q = '<div class="tag">' + (st.state === 'new' ? 'New · ' : '') + (session.mode === 'practice' ? 'Practise · ' : '') + esc(n.lesson || pk.title) + (typeof tmpl.name === 'string' && tmpl.name ? ' · ' + esc(tmpl.name) : '') + (cloze ? ' ' + card.ord : '') +
+    var q = '<div class="tag">' + (st.state === 'new' ? 'New · ' : '') + (session.mode === 'practice' ? 'Practice · ' : '') + esc(n.lesson || pk.title) + (typeof tmpl.name === 'string' && tmpl.name ? ' · ' + esc(tmpl.name) : '') + (cloze ? ' ' + card.ord : '') +
       (st.leech ? ' <span class="leech">keeps slipping</span>' : '') + '</div>';
     // The prompt is the template's prompt field and nothing else: a reading shown beside a
     // word is the answer (one unknown per card, readings hidden on the ask).
@@ -4421,7 +4692,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var undo = $('r-undo');
     bandDrawnAt = Date.now();
     undo.textContent = revealed && store.log.length === 0 ? 'What do the grades mean?' : 'Undo last answer';
-    undo.disabled = revealed && store.log.length === 0 ? false : !(session.answered > 0);
+    undo.disabled = revealed && store.log.length === 0 ? false : !(session.answered > 0) || !!session.undoBlocked;
     if (!revealed) {
       band.innerHTML = '<button class="reveal" id="reveal" type="button">Show answer</button>';
       $('reveal').addEventListener('click', function (ev) {
@@ -4514,9 +4785,14 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       }
     }
     session.done++; session.answered++; session.elapsed += elapsed;
+    session.undoBlocked = false;   // the sitting itself has answered again: Undo reaches this answer
+    // Another activity has answered since the parked sitting last did: an Undo there would reach this
+    // answer, not its own, so it waits until that sitting answers again (§B). Set on the answer, not on
+    // the activity's start: an extra opened and stopped unanswered costs the parked sitting nothing.
+    if (stoppedSession && stoppedSession !== session) stoppedSession.undoBlocked = true;
     if (grade === 1) session.again++;
     session.cards[card.id] = (session.cards[card.id] || 0) + 1;
-    session.entries.push({ c: card.id, g: grade, e: elapsed });
+    session.entries.push({ c: card.id, g: grade, e: elapsed, n: wasNew ? 1 : 0 });
     // A step (Again) comes back on its due time inside this sitting; that is what the learning
     // steps are for, and dropping it to tomorrow wastes the failure. A card seen for the first
     // time and graded Hard or Good comes back once more in the same sitting, the way Anki's
@@ -4554,7 +4830,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     session.queue.unshift(c);
   }
   function undoAnswer() {
-    if (!session || !(session.answered > 0)) return;
+    if (!session || !(session.answered > 0) || session.undoBlocked) return;
     var e = store.undoLast();
     if (e === false) { storageBroken = true; showStorageProblem(); return; }
     if (!e) return;
@@ -4565,7 +4841,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // Offered on the done screen only until the learner leaves it.
   function undoFromDone() {
     var u = doneUndo; doneUndo = null;
-    if (!u) return;
+    if (!u || u.undoBlocked) return;
     var e = store.undoLast();
     if (e === false) { storageBroken = true; showStorageProblem(); return; }
     if (!e) return;
@@ -4597,15 +4873,28 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (reason !== 'stopped' && reason !== 'pending') reason = 'finished';
     // The card on screen was shifted off the queue when it was shown; a stop keeps it, in front.
     if (reason === 'stopped' && session && card) session.queue.unshift(card);
+    // The number this screen prints is the number Today will offer: reconcile before counting, so a card
+    // retired, held out or skipped during the sitting is not counted here and uncounted there. The old
+    // mark goes first — it belongs to the previous stop, and this sitting has answered since.
+    if (reason === 'stopped' && session) { session.mark = null; reconcileSitting(session); markSitting(session); }
     var s = session || { answered: 0, again: 0, elapsed: 0, cards: {}, scope: ALL, mode: 'today', queue: [], learning: [], repeat: [], entries: [] };
     var scope = s.scope || ALL, left = remaining(s);
+    // The same pair the review header prints, by the same rule: the cards still in the sitting, and the
+    // showings they still owe — two for a first-sight card in a scheduling sitting, one otherwise.
+    var work = sittingWork(s.queue.concat(s.repeat, s.learning.map(function (x) { return x.card; })), store, { schedules: s.mode !== 'practice' });
     var o = offersFor(ALL), todayLeft = o.today.queue.length;
     var t = store.countsToday();
     var sittingCards = Object.keys(s.cards).length;
+    // Only cards this sitting saw for the first time: an owed repeat answered in Learn new is a card
+    // coming back, not a card learned.
+    var firstSeen = {};
+    (s.entries || []).forEach(function (e) { if (e.n) firstSeen[e.c] = 1; });
     var waiting = todayLeft ? ' ' + todayLeft + ' of today’s ' + (todayLeft === 1 ? 'cards is' : 'cards are') + ' still waiting.' : '';
     var head, line;
     if (reason === 'stopped' && !s.answered) { head = 'Nothing answered yet'; line = 'Come back when you can; nothing has changed.'; }
-    else if (reason === 'stopped') { head = 'Stopped for now'; line = plural(left, 'card is', 'cards are') + ' still in this session. The schedule keeps them.'; }
+    // The card clause comes first and the showings clause only when the two numbers differ: a practise
+    // sitting, or one whose cards all owe a single showing, names its cards once.
+    else if (reason === 'stopped') { head = 'Stopped for now'; line = plural(work.cards, 'card is', 'cards are') + ' still in this session' + (work.showings !== work.cards ? ', ' + plural(work.showings, 'showing') + ' in all' : '') + '. ' + (s.mode === 'practice' ? 'Practicing schedules nothing.' : 'The schedule keeps them.'); }
     else if (reason === 'pending') {
       var soonest = s.learning[0].due - Date.now();
       head = 'Done for now';
@@ -4614,14 +4903,18 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     else if (s.mode === 'today' && !todayLeft) { head = 'Done for today'; line = t.answers + ' answered today. ' + nextCardsLine(true); }
     else {
       head = 'Session finished';
-      line = (s.mode === 'learn' ? plural(sittingCards, 'new card') + ' learned.'
+      line = (s.mode === 'learn' ? plural(Object.keys(firstSeen).length, 'new card') + ' learned.'
         : s.mode === 'ahead' ? plural(sittingCards, 'card') + ' reviewed ahead.'
-        : s.mode === 'practice' ? plural(sittingCards, 'card') + ' practised.'
+        : s.mode === 'practice' ? plural(sittingCards, 'card') + ' practiced.'
         : plural(sittingCards, 'card') + ' answered.') + waiting;
     }
     var h = '<h2 class="display">' + head + '</h2><p>' + line + '</p>' +
+      // Every figure sits under a visible scope word. The rows are this sitting and nothing else; the
+      // day is the Today line beneath them. One unlabelled block used to mix the day's answers with the
+      // sitting's Again rate and time, and the three figures read as three that disagreed.
+      '<div class="micro sit">This sitting</div>' +
       '<div class="rows">' +
-      '<div class="row"><span class="k">Answered today</span><span class="v">' + t.answers + ' answered</span></div>' +
+      '<div class="row"><span class="k">Answered</span><span class="v">' + s.answered + '</span></div>' +
       '<div class="row"><span class="k">Again rate</span><span class="v">' + (s.answered ? Math.round(s.again / s.answered * 100) + '%' : '0%') + '</span></div>' +
       '<div class="row"><span class="k">Time</span><span class="v">' + fmtSpent(s.elapsed) + '</span></div>' +
       '</div>' +
@@ -4630,7 +4923,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       ? '<button class="primary" id="dn-continue" type="button">Continue this session (' + left + ')</button><button class="ghost" id="dn-home" type="button">Back to today</button>'
       : '<button class="primary" id="dn-home" type="button">Back to today</button>') + '</div>';
     h += '<div class="stack" id="dn-offers"></div>';
-    var canUndo = reason !== 'stopped' && s.answered > 0 && !!session;
+    // The done screen's Undo reaches the store's newest entry, so it must honour the same ownership
+    // the in-review Undo does: a sitting another activity has answered since waits until it answers
+    // again (§B). Astra found this screen offering an Undo the review screen would have refused.
+    var canUndo = reason !== 'stopped' && s.answered > 0 && !!session && !session.undoBlocked;
     if (canUndo) h += '<button class="textbtn" id="dn-undo" type="button">Undo last answer</button>';
     var offerCard = reason === 'finished' && FIRST_EVER && SYNC_READY && !account.signedIn && !store.prefs.signInOffered && store.log.length > 0;
     if (offerCard) {
@@ -4657,7 +4953,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       var missedIds = [];
       (s.entries || []).forEach(function (entry) { if (entry.g === 1 && missedIds.indexOf(entry.c) < 0) missedIds.push(entry.c); });
       var missedCards = missedIds.map(function (id) { return DECK.cards.filter(function (candidate) { return candidate.id === id; })[0]; }).filter(Boolean);
-      if (missedCards.length) items.push({ label: 'Practise the ' + missedCards.length + ' you missed', count: null, on: function () { startSession(missedCards, scope, 'practice'); } });
+      if (missedCards.length) items.push({ label: 'Practice the ' + missedCards.length + ' you missed', count: null, on: function () { startSession(missedCards, scope, 'practice'); } });
       // Today's set is still waiting outside this session's scope: an offer, not a headline.
       if (todayLeft && !(s.mode === 'today' && isAll(scope))) items.push({ label: 'Start today’s cards', count: '(' + todayLeft + ')', on: startToday });
       items = items.concat(offerItems(scope, isAll(scope) ? o : offersFor(scope), true));
@@ -4669,7 +4965,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       offers.appendChild(b2);
     });
     $('dn-home').addEventListener('click', function () { goTab('today'); });
-    var ct = $('dn-continue'); if (ct) ct.addEventListener('click', function () { if (stoppedSession) resumeSession(stoppedSession); });
+    var ct = $('dn-continue'); if (ct) ct.addEventListener('click', function () { if (justStopped) resumeSession(justStopped); });
     var un = $('dn-undo'); if (un) un.addEventListener('click', undoFromDone);
     var si = $('dn-signin'); if (si) si.addEventListener('click', function () { signIn(si); });
     var nn = $('dn-notnow'); if (nn) nn.addEventListener('click', function () {
@@ -4682,7 +4978,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       show('s-settings');
       $('i-export').click();
     });
-    stoppedSession = reason === 'stopped' ? session : null;
+    // Only a stopped TODAY sitting is ever tracked for Continue: stopping or finishing an extra
+    // (Learn new, Review ahead, Practise) leaves an already-stopped Today sitting exactly where
+    // it was, never replaced by the extra's own (§B).
+    stoppedSession = (reason === 'stopped' && session && session.mode === 'today') ? session : stoppedSession;
+    justStopped = reason === 'stopped' ? session : null;
     doneUndo = canUndo ? session : null;
     card = null;
     session = null;
@@ -4711,22 +5011,47 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       target = { row: row, label: (row.milestone && row.milestone.label) || record.title };   // the binding row names its own target
       return true;
     });
+    // Within one tab and one study day, a stopped Today sitting is offered back whole; reconciled
+    // live, so a card retired, held out, skipped or answered since the stop is never promised
+    // again (§B). Learn new, Review ahead and Practise never reach here: only mode 'today' does.
+    var stopped = stoppedToday();
+    var continuing = stopped && stopped.answered > 0 && stopped.mode === 'today' ? reconcileSitting(stopped) : 0;
+    if (stopped && !continuing) stoppedSession = null;   // spent: nothing left to continue, the ordinary tile
     var h = '<div class="prose">';
-    if (n) {
+    if (continuing) {
+      h += '<button class="tile" id="t-start" type="button"><span class="t1">Continue this session (' + continuing + ')</span><span class="fold"></span><span class="t2">' + paceLine(continuing) + '</span></button>';
+      if (b.intakePaused && b.gapDays >= 3 && b.backlog > 0) {
+        h += '<p class="micro" id="t-gap">You were away ' + plural(b.gapDays, 'day') + '. ' + plural(b.backlog, 'card is', 'cards are') + ' waiting; today\'s set is ' + n + ' of them.</p>';
+      }
+      var ownTile = ownWaitingLine(b, ctx.states);
+      if (ownTile) h += '<p class="micro" id="t-own">' + ownTile + '</p>';
+      if (b.counts.learningLater) h += '<p class="micro" id="t-later">' + plural(b.counts.learningLater, 'card comes', 'cards come') + ' back later today.</p>';
+    } else if (n) {
       h += '<button class="tile" id="t-start" type="button"><span class="t1">Start today’s ' + plural(n, 'card') + '</span><span class="fold"></span><span class="t2">' + paceLine(n) + '</span></button>';
       if (b.intakePaused && b.gapDays >= 3 && b.backlog > 0) {
         h += '<p class="micro" id="t-gap">You were away ' + plural(b.gapDays, 'day') + '. ' + plural(b.backlog, 'card is', 'cards are') + ' waiting; today\'s set is ' + n + ' of them.</p>';
       }
+      // 2026-09-15: cards the learner wrote that wait are named here, since the tile counts none of them.
+      var ownTile = ownWaitingLine(b, ctx.states);
+      if (ownTile) h += '<p class="micro" id="t-own">' + ownTile + '</p>';
+      if (b.counts.learningLater) h += '<p class="micro" id="t-later">' + plural(b.counts.learningLater, 'card comes', 'cards come') + ' back later today.</p>';
     } else {
       // Four reasons a card is not in today's set, each with its own sentence, and "later today"
-      // only for a step genuinely due before the study day ends. The rest come back tomorrow.
+      // only for a step genuinely due before the study day ends. The rest wait, and nothing says until
+      // when: the limit, burying and once-per-note are brakes a changed setting, an Undo or a retired
+      // sibling can lift before the day ends (2026-09-16, round 53).
       var c = b.counts, next = nextCardsLine(false, ctx), lines = [];
       lines.push(t.answers ? t.answers + ' answered. ' + next
         : (/^Nothing/.test(next) ? 'Nothing is due today or in the next week.' : 'Nothing is due today. ' + next));
       if (c.learningLater) lines.push(plural(c.learningLater, 'card comes', 'cards come') + ' back later today.');
-      if (c.overCap) lines.push(plural(c.overCap, 'card waits', 'cards wait') + ' until tomorrow: today’s review limit of ' + store.prefs.maxReviewsPerDay + ' is reached.');
-      if (c.buried) lines.push(plural(c.buried, 'card waits', 'cards wait') + ' until tomorrow: another card of the same note was answered today.');
-      if (c.sameNote) lines.push(plural(c.sameNote, 'card waits', 'cards wait') + ' until tomorrow: it shares a note with a card in today’s set.');
+      if (c.overCap) lines.push(plural(c.overCap, 'card waits', 'cards wait') + ': today’s review limit of ' + store.prefs.maxReviewsPerDay + ' is reached.');
+      if (c.buried) lines.push(plural(c.buried, 'card waits', 'cards wait') + ': another card of the same note was answered today.');
+      // One card of a note per sitting, chosen before the review limit slices the set, so the sibling that went
+      // first may itself be over the limit: "it shares a note with a card in today's set" could be false, and was
+      // "it" for two cards (2026-09-16, round 53 review).
+      if (c.sameNote) lines.push(plural(c.sameNote, 'card waits', 'cards wait') + ': only one card of a note is studied at a time.');
+      var ownDone = ownWaitingLine(b, ctx.states);   // 2026-09-15: and the cards of the learner's own that wait
+      if (ownDone) lines.push(ownDone);
       h += '<div class="tile done" id="t-done"><h2 class="display">Done for today</h2><p>' + lines.join(' ') + '</p></div>';
     }
     if (target) {
@@ -4740,16 +5065,16 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       // the limit, name it and drop the reach and the instruction rather than printing a number the
       // dial cannot reach. Anki's manual (Deck Options): "the review limit also applies to new cards".
       h += b.newHeldByLimit
-        ? '<p class="micro" id="t-milestone">By ' + esc(target.label) + ': ' + target.row.covered + ' cards. No new card today: the cards already due take all of today’s review limit of ' + esc(store.prefs.maxReviewsPerDay) + '.</p>'
+        ? '<p class="micro" id="t-milestone">By ' + esc(target.label) + ': ' + target.row.covered + ' cards. New cards wait: the cards already due take all of today’s review limit of ' + esc(store.prefs.maxReviewsPerDay) + '.</p>'
         : '<button class="textbtn micro" id="t-milestone" type="button">By ' + esc(target.label) + ': ' + target.row.covered + ' cards; at this pace you reach ' + reached + '. Change the minutes</button>';
     }
     // 2026-09-12: the caveat is a note, not a figure. .status is the mono Micro role, which carries
     // counts and one-line facts; a 190-character sentence set in it ran six lines of monospace.
     h += '</div><div class="status" id="t-status" role="status"></div><div class="note pad" id="t-keep" role="status" hidden></div>' +
       '<div class="micro pad" id="t-tomorrow">Tomorrow: ' + (tomorrow ? plural(tomorrow, 'card') : 'nothing due') + '</div>';
-    if (!n) h += '<div class="offers" id="t-offers"></div>';
+    if (!n && !continuing) h += '<div class="offers" id="t-offers"></div>';
     host.innerHTML = h;
-    var st = $('t-start'); if (st) st.addEventListener('click', startToday);
+    var st = $('t-start'); if (st) st.addEventListener('click', continuing ? function () { resumeSession(stopped); } : startToday);
     // Only the tappable form of the line goes to the minutes; the held form is a plain sentence,
     // and a listener on it would offer a tap that leads somewhere it cannot help (2026-09-12).
     var milestone = $('t-milestone'); if (milestone && milestone.tagName === 'BUTTON') milestone.addEventListener('click', function () {
@@ -4805,8 +5130,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   function retiredTotal() {
     var ids = store.retired();
     var total = store.retiredCount;
-    packStore.list().forEach(function (row) {
-      var pack = packStore.get(row.id);
+    var countRetiredNotes = function (pack) {
       if (!pack || !(pack.retired || []).length) return;
       var retiredPack = Object.assign({}, pack, { notes: pack.retired, retired: [] });
       deriveCards(retiredPack).forEach(function (current) {
@@ -4814,7 +5138,12 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         ids.add(current.id);
         total++;
       });
-    });
+    };
+    packStore.list().forEach(function (row) { countRetiredNotes(packStore.get(row.id)); });
+    // 2026-09-16 (round 54, item 63): retiring the last card of the learner's own removes My cards' pack and keeps
+    // its retired rows beside the account, where the loop above cannot see them, so Progress read them as none.
+    // They are retired cards still: counted from the same rows My cards lists, once, and only while the pack is gone.
+    if (!ownPack()) countRetiredNotes(ownPackBase(ownLang()));
     return total;
   }
 
@@ -4840,6 +5169,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // due before any of the three rules above shrinks the queue, so a learner with 301 cards waiting
   // under a limit of 200 read "301 to study today" and tapped it into a session of 199. The word had
   // been right since 2026-09-12 and the arithmetic was not. One figure, taken from the queue.
+  // 2026-09-15: the queue is the row's part of today's set (todayShare), so the rows add up to Today.
   function rowHtml(cls, id, title, lang, s, c, sub) {
     return '<li>' + rowInnerHtml(cls, id, title, lang, s, c, sub) + '</li>';
   }
@@ -4853,7 +5183,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     else {
       if (todays) when += ' · ' + todays + ' to study today';
       if (fresh) when += ' · ' + fresh + ' new';
-      if (!todays && !fresh) when += ' · nothing to study today';
+      // The set as it stands, not the rest of the day: a started card held by the review limit, burying or one card
+      // per note can join today's set once the hold lifts (2026-09-16, round 53 review).
+      if (!todays && !fresh) when += ' · nothing in today’s set';
     }
     if (s.retired) when += ' · ' + s.retired + ' retired';
     if (s.directionOff) when += ' · ' + s.directionOff + ' direction off';
@@ -4873,10 +5205,12 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       h += '<div class="prose"><h2 class="display">No decks yet</h2><p>A deck is a set of cards. Choose one, paste a link, or write your own.</p>' +
         '<button class="primary" id="dk-choose" type="button">Choose a deck</button></div>';
     } else {
+      var ctx = { states: store.allStates(), today: store.countsToday(), budget: store.intakeBudget(), reviewsUsed: store.reviewLimitUsed(store.dayKey(Date.now())) };
+      var dayAll = queueFor(ALL, { ctx: ctx, deckOptions: deckOptionsFor() });   // one queue for the day, divided among the rows
       h += '<ul class="list">' + list.map(function (r) {
         var pk = DECK.packs[r.id] || {};
         var scope = { pack: r.id, lesson: null };
-        var counts = queueFor(scope).counts;
+        var counts = todayShare(scope, { all: dayAll }).counts;
         counts.paused = !!(r.options && r.options.paused);
         return rowHtml('deck', r.id, r.title, pk.language, rowStats(r.id, null), counts, null);
       }).join('') + '</ul>';
@@ -4899,7 +5233,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var items = [n ? { label: 'Study now', count: '(' + n + ')', on: function () { startNow(scope); } } : null];
     if (o.learn) items.push({ label: 'Learn new', count: '(' + o.learn + ')', on: function () { startLearn(scope); } });
     if (o.soon) items.push({ label: 'Review ahead: next ' + SOON_DAYS + ' days', count: '(' + o.soon + ')', on: function () { startAhead(scope); } });
-    if (o.practise) items.push({ label: 'Practise all', count: '(' + o.practise + ')', on: function () { startPractise(scope); } });
+    if (o.practise) items.push({ label: 'Practice all', count: '(' + o.practise + ')', on: function () { startPractise(scope); } });
     if (!scope.lesson && directionTypes(scope.pack).length) items.push({ label: 'Choose what cards ask', on: function (button) { openDirectionSheet(button, scope.pack); } });
     if (withOpen) items.push({ label: 'Open deck', count: null, nav: true, on: function () { renderDeck(scope.pack); show('s-deck'); } });
     if (!items.filter(Boolean).length) { items.push({ label: 'Nothing to study here yet', static: true }); items.push({ label: 'Close', on: function () {} }); }
@@ -4929,9 +5263,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       (s.total ? '<span class="bar"><i style="transform:scaleX(' + fill + ')"></i></span>' : '') +
       '<div class="micro">' + s.started + ' of ' + s.total + ' started' + (s.retired ? ' · ' + s.retired + ' retired' : '') + (s.directionOff ? ' · ' + s.directionOff + ' direction off' : '') + '</div>' +
       '</div>';
+    var dayAll = queueFor(ALL, { ctx: ctx, deckOptions: options });   // one queue for the day, divided among the lesson rows
     h += '<ul class="list">' + s.lessons.map(function (row) {
       var L = row.lesson || (own ? 'Ungrouped' : 'No lesson');
-      var due = queueFor({ pack: id, lesson: row.lesson }, { ctx: ctx, deckOptions: options }).counts;
+      var due = todayShare({ pack: id, lesson: row.lesson }, { all: dayAll }).counts;
       due.paused = !!(options[id] && options[id].paused);
       return rowHtml('lesson', row.lesson, L, null, { total: row.total, started: row.learning + row.review, fresh: row.fresh, retired: row.retired, directionOff: row.directionOff, heldOut: row.heldOut, suspended: row.suspended }, due, null);   // a lesson row names held-out cards as its deck row does
     }).join('') + '</ul>';
@@ -5510,13 +5845,26 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var host = $('br-results');
     if (!host) return;
     var ctx = { states: states || store.allStates(), today: store.countsToday(), budget: store.intakeBudget(), reviewsUsed: store.reviewLimitUsed(store.dayKey(Date.now())) };
-    var dueIds = new Set(queueFor({ pack: openDeck }, { ctx: ctx }).queue.map(function (current) { return current.id; }));
+    var dueIds = new Set(todayShare({ pack: openDeck, lesson: null }, { ctx: ctx }).queue.map(function (current) { return current.id; }));   // the deck's part of today's set, which its row counts
     var whole = DECK.cards.filter(function (current) { return current.pack === openDeck; });
     var totals = { new: 0, learning: 0, due: 0, retired: 0, direction: 0, held: 0 };
     whole.forEach(function (current) {
       var info = browseState(current, ctx.states, dueIds);
-      if (info.census in totals) totals[info.census]++;   // the six names partition the deck, so they add up to the total printed beneath them
+      if (info.census in totals) totals[info.census]++;   // the six names partition the deck's live cards, which the list beneath shows
     });
+    // 2026-09-16 (0.7.7): a note retired from My cards leaves the deck's cards for the pack's retired rows, so this
+    // census never saw it, and Browse read 0 retired where the deck's own row and Progress read 1. Its cards are
+    // counted with the retired, once; the list beneath still shows live cards, and a line says where these are.
+    var openPack = packStore.get(openDeck), retiredElsewhere = 0;
+    if (openPack && (openPack.retired || []).length) {
+      var inCensus = new Set(whole.map(function (current) { return current.id; }));
+      deriveCards(Object.assign({}, openPack, { notes: openPack.retired, retired: [] })).forEach(function (current) {
+        if (inCensus.has(current.id)) return;
+        inCensus.add(current.id);
+        totals.retired++;
+        retiredElsewhere++;
+      });
+    }
     var cards = browseCards(ctx.states, dueIds);
     var offset = Math.max(0, browseView.listOffset || 0);
     if (offset >= cards.length && offset) offset = browseView.listOffset = Math.max(0, Math.floor((Math.max(0, cards.length - 1)) / 200) * 200);
@@ -5525,6 +5873,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<p class="micro pad" id="br-count" role="status">' + plural(cards.length, 'card') + '</p><ul class="list" id="br-list">' +
       page.map(function (current) { return '<li>' + safeBrowseRow(current, ctx.states, dueIds) + '</li>'; }).join('');
     if (!page.length) h += '<p class="note pad">Nothing matches.</p>';
+    if (retiredElsewhere && openDeck === OWN_PACK_ID && (browseView.filter === 'all' || browseView.filter === 'retired')) {
+      h += '<p class="note pad">' + (retiredElsewhere === 1
+        ? '1 retired card of your own is not listed here: it is under My cards, where Restore card brings it back.'
+        : retiredElsewhere + ' retired cards of your own are not listed here: they are under My cards, where Restore card brings them back.') + '</p>';
+    }
     if (offset + 200 < cards.length) h += '<button class="textbtn" type="button" data-browse-more>Show more</button>';
     host.innerHTML = h + '</div>';
   }
@@ -5589,14 +5942,14 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         }
         var id = target.getAttribute('data-card');
         var current = DECK.cards.filter(function (candidate) { return candidate.id === id; })[0];
-        if (current) openCardDetails(target, current);
+        if (current) openCardDetails(target, current, true);
       });
     }
   }
 
 
   /* ── Cards: the learner's own deck, quick-add first (editor.js, tested in node) ── */
-  var cardsView = { q: '', editing: null, importing: null, added: 0, notice: null, quick: { front: '', back: '', type: 'basic' } };
+  var cardsView = { q: '', editing: null, importing: null, added: 0, addedGuids: [], notice: null, quick: { front: '', mid: '', back: '', type: 'basic' } };
   function ownPack() { return packStore.get(OWN_PACK_ID); }
   function ownLang() { var p = ownPack(); return p ? (p.language || '') : ''; }
   function ownRetiredRows() {
@@ -5742,13 +6095,14 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     refreshDeck(); indexNotes();
     pushOwnPack(next);   // an empty pack is the tombstone the other devices need
     if (onDone) onDone();
+    // Durable: an own retired card also has Restore card in Browse's More (E.13's twin).
     toast('Card retired', { label: 'Undo', on: function () {
       var cur = ownPack();
       var base = cur || Object.assign({}, next, { language: savedLanguage, version: savedVersion, retired: ownRetiredRows() });
       var back = restoreNote(base, note.guid);
       if (!saveOwn(back)) return;   // saveOwn clears the tombstone stamp and rows itself, and reads that write
       if (screen === 's-cards') renderCards();
-    } });
+    } }, true);
   }
   // 2026-09-13: one card the page could not draw used to cost the whole screen. The list was built
   // as a single string and handed to innerHTML, so a note that threw halfway through took every
@@ -5947,17 +6301,39 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // The names alone, not the editor's hint sentences: the empty screen measures 715px of content in
   // a 715px phone viewport, so the whole quick form, both secondary actions and the tab bar sit above
   // the fold, and two hint lines put 40px of that below it. The longer form is where the hints live.
-  var QUICK_FIELDS = { basic: ['front', 'back'], both: ['front', 'back'], vocab: ['word', 'meaning'] };
-  function quickLabels(type) {
-    return (QUICK_FIELDS[type] || QUICK_FIELDS.basic).map(function (f) { return (FIELD_LABELS[f] || [f])[0]; });
+  // 2026-09-15: Vocabulary takes its reading here too, a third field between the word and the meaning. A
+  // learner on the quick form, the path the first screen points to, had no way to record a reading.
+  // Basic and Both ways keep two fields, so the empty screen keeps its fit; with Vocabulary chosen the
+  // form grows by one row and Add card still sits above the tab bar.
+  var QUICK_FIELDS = { basic: ['front', 'back'], both: ['front', 'back'], vocab: ['word', 'reading', 'meaning'] };
+  // The three inputs by the field each one holds: the first and the last always, the middle one only for
+  // a type with three fields.
+  function quickSlots(type) {
+    var names = QUICK_FIELDS[type] || QUICK_FIELDS.basic;
+    return { front: names[0], mid: names.length > 2 ? names[1] : null, back: names[names.length - 1] };
   }
+  function slotLabel(field) { return (FIELD_LABELS[field] || [field])[0]; }
   // Renamed where they stand: what is half typed and where the cursor is both survive the change.
   function relabelQuickFields() {
-    var pair = quickLabels(cardsView.quick.type || 'basic');
-    [['front', 0], ['back', 1]].forEach(function (row) {
-      var lab = $('l-qa-' + row[0]);
-      if (lab) lab.textContent = pair[row[1]];
+    var slots = quickSlots(cardsView.quick.type || 'basic');
+    ['front', 'mid', 'back'].forEach(function (slot) {
+      var lab = $('l-qa-' + slot);
+      if (lab && slots[slot]) lab.textContent = slotLabel(slots[slot]);
     });
+    var midRow = $('qa-mid-row');
+    if (midRow) midRow.hidden = !slots.mid;
+  }
+  // What the quick form holds, as the fields of the chosen type, in the order that type lists them. The
+  // middle input counts only when the type has a middle field, so a reading left in it from a Vocabulary
+  // card is never saved onto a Basic one.
+  function quickFields() {
+    var slots = quickSlots(cardsView.quick.type || 'basic');
+    var fields = {};
+    fields[slots.front] = $('qa-front') ? $('qa-front').value : cardsView.quick.front;
+    if (slots.mid) fields[slots.mid] = $('qa-mid') ? $('qa-mid').value : (cardsView.quick.mid || '');
+    fields[slots.back] = $('qa-back') ? $('qa-back').value : cardsView.quick.back;
+    fields.note = ''; fields.hint = '';
+    return fields;
   }
   function renderCards() {
     var pack = ownPack();
@@ -5972,8 +6348,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var quickType = cardsView.quick.type || 'basic';
     var h = '<div class="quick">' +
       '<label class="field"><span class="lbl">Card type</span><select class="textin" id="qa-type"><option value="basic"' + (quickType === 'basic' ? ' selected' : '') + '>Basic</option><option value="both"' + (quickType === 'both' ? ' selected' : '') + '>Both ways</option><option value="vocab"' + (quickType === 'vocab' ? ' selected' : '') + '>Vocabulary</option></select></label>' +
-      '<label class="field"><span class="lbl" id="l-qa-front">' + esc(quickLabels(quickType)[0]) + '</span><input type="text" class="textin" id="qa-front" autocomplete="off" enterkeyhint="next" value="' + esc(cardsView.quick.front) + '"' + (ownLang() ? ' lang="' + esc(ownLang()) + '"' : '') + '></label>' +
-      '<label class="field"><span class="lbl" id="l-qa-back">' + esc(quickLabels(quickType)[1]) + '</span><input type="text" class="textin" id="qa-back" autocomplete="off" enterkeyhint="done" value="' + esc(cardsView.quick.back) + '"></label>' +
+      '<label class="field"><span class="lbl" id="l-qa-front">' + esc(slotLabel(quickSlots(quickType).front)) + '</span><input type="text" class="textin" id="qa-front" autocomplete="off" enterkeyhint="next" value="' + esc(cardsView.quick.front) + '"' + (ownLang() ? ' lang="' + esc(ownLang()) + '"' : '') + '></label>' +
+      '<label class="field" id="qa-mid-row"' + (quickSlots(quickType).mid ? '' : ' hidden') + '><span class="lbl" id="l-qa-mid">' + esc(slotLabel(quickSlots('vocab').mid)) + '</span><input type="text" class="textin" id="qa-mid" autocomplete="off" autocapitalize="off" enterkeyhint="next" value="' + esc(cardsView.quick.mid || '') + '"' + (ownLang() ? ' lang="' + esc(ownLang()) + '"' : '') + '></label>' +
+      '<label class="field"><span class="lbl" id="l-qa-back">' + esc(slotLabel(quickSlots(quickType).back)) + '</span><input type="text" class="textin" id="qa-back" autocomplete="off" enterkeyhint="done" value="' + esc(cardsView.quick.back) + '"></label>' +
       '<div id="qa-msg" class="msg bad" hidden></div>' +
       '<button class="primary" id="qa-add" type="button">Add card</button>' +
       '<span class="sr-only" id="mc-more-word">More for</span>' +
@@ -5985,25 +6362,32 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (cardsView.notice) { h += '<div class="prose" style="padding-top:0"><div class="msg">' + esc(cardsView.notice) + '</div></div>'; cardsView.notice = null; }
     if (repairedRows) { h += '<div class="prose" style="padding-top:0"><div class="msg">' + esc(repairWords(repairedRows, repairedSaved)) + '</div></div>'; repairedRows = 0; }
     if (!pack) {
-      h += '<div class="prose" style="padding-top:0"><h2 class="title">No cards of your own yet</h2><p class="note">Type a word and its meaning above. Your card is in today’s session.</p></div>';
+      // 2026-09-15: when today's set takes no new card, a card written now is not in it, and the line says why —
+      // never when (2026-09-16, round 53). While the day has room the card is in the set, since My cards come
+      // first in the deck's order.
+      var emptyDay = queueFor(ALL), emptyHold = emptyDay.newLeft === 0 ? newCardHold(emptyDay) : null;
+      h += '<div class="prose" style="padding-top:0"><h2 class="title">No cards of your own yet</h2><p class="note">Type a word and its meaning above. ' + (emptyHold ? 'Your card' + waitWords(1) + ': ' + emptyHold.words + '.' : 'Your card is in today’s session.') + '</p></div>';
     } else {
       var n = pack.notes.length;
       h += '<div class="pad"><label class="sr-only" for="mc-q">Search your cards</label><input type="search" class="textin" id="mc-q" placeholder="Search your cards" value="' + esc(cardsView.q) + '"' + (ownLang() ? ' lang="' + esc(ownLang()) + '"' : '') + ' autocapitalize="off" autocomplete="off"></div>';
       if (n) h += '<div class="stack" style="margin-top:12px"><button class="ghost" id="mc-export" type="button"><span>Export my cards</span></button>' +
         '<div id="mc-exportbox" class="exportbox" hidden><label for="mc-text" class="vh">Your cards</label><textarea id="mc-text" readonly rows="8" spellcheck="false"></textarea>' +
         '<button class="ghost copybtn" type="button"><span>Copy to clipboard</span></button><a class="dl" download="kurikaeshi-cards.txt" hidden>or save as a file</a>' +
-        '<p class="micro">Tab-separated text with Anki’s header lines: one card per row, its card type first, then its fields in order. It opens in a spreadsheet or Anki.</p></div></div>';
+        '<p class="micro">Tab-separated text with Anki’s header lines: one card per row, its card type first, then its fields in order. It opens in a spreadsheet or Anki. Your cards’ text only; to move to a new phone, use Export my progress in Settings.</p></div></div>';
     }
     h += '<div class="list" id="mc-list" style="margin-top:8px"></div>';
     $('mc-body').innerHTML = h;
     $('qa-add').addEventListener('click', function () { quickAdd(false); });   // never the event object as the force flag
     $('qa-type').addEventListener('change', function () { cardsView.quick.type = $('qa-type').value; relabelQuickFields(); });
-    $('qa-front').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); $('qa-back').focus(); } });
+    $('qa-front').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); (quickSlots(cardsView.quick.type || 'basic').mid ? $('qa-mid') : $('qa-back')).focus(); } });
+    $('qa-mid').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); $('qa-back').focus(); } });
     $('qa-back').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); quickAdd(false); } });
     // No cards yet: the form is the whole screen, so Front is already focused — the first card is
     // the tab, Back and Add card. Once cards exist the list is what the tab opens on, unfocused.
-    if (!(ownPack() && ownPack().notes.length) && !cardsView.q && !cardsView.quick.front && !cardsView.quick.back) { try { $('qa-front').focus(); } catch (e) { /* no focus in a hidden frame */ } }
-    $('mc-other').addEventListener('click', function () { cardsView.editing = { guid: null, fields: { front: $('qa-front').value, back: $('qa-back').value } }; renderCards(); });
+    if (!(ownPack() && ownPack().notes.length) && !cardsView.q && !cardsView.quick.front && !cardsView.quick.mid && !cardsView.quick.back) { try { $('qa-front').focus(); } catch (e) { /* no focus in a hidden frame */ } }
+    // The full editor opens on the type chosen here, with what was typed in the fields it was typed as.
+    // Until 2026-09-15 it opened on Basic, so a Vocabulary word arrived as a Front and its meaning as a Back.
+    $('mc-other').addEventListener('click', function () { cardsView.editing = { guid: null, type: cardsView.quick.type || 'basic', fields: quickFields() }; renderCards(); });
     $('mc-import').addEventListener('click', function () {
       cardsView.importing = { text: '', type: 'basic', lesson: '', headerRow: false, mapping: [], parsed: null }; renderCards();
     });
@@ -6017,8 +6401,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   }
   function quickAdd(force) {
     var type = cardsView.quick.type || 'basic';
-    var raw = { front: $('qa-front').value, back: $('qa-back').value };
-    var fields = type === 'vocab' ? { word: raw.front, reading: '', meaning: raw.back, note: '', hint: '' } : { front: raw.front, back: raw.back, note: '', hint: '' };
+    var fields = quickFields();
     var problem = noteProblem(type, fields);
     if (problem) { setMsg('qa-msg', problemWords(problem), true); return; }
     var current = ownPack();
@@ -6033,11 +6416,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var added = next.notes.filter(function (note) { return !current || !current.notes.some(function (old) { return old.guid === note.guid; }); })[0] || next.notes[next.notes.length - 1];
     if (!saveOwn(next)) return;
     cardsView.added++;
-    cardsView.quick.front = ''; cardsView.quick.back = '';
+    cardsView.quick.front = ''; cardsView.quick.mid = ''; cardsView.quick.back = '';
     setMsg('qa-msg', '', false);
-    $('qa-front').value = ''; $('qa-back').value = '';
-    var c = $('qa-count'); c.hidden = false; c.innerHTML = '<span class="micro">' + plural(cardsView.added, 'card') + ' added</span><button class="textbtn" id="qa-study" type="button">Study now</button>';
-    $('qa-study').addEventListener('click', function () { startNow({ pack: OWN_PACK_ID, lesson: null }); });
+    $('qa-front').value = ''; $('qa-mid').value = ''; $('qa-back').value = '';
+    cardsView.addedGuids.push(added.guid);
+    var c = $('qa-count'); c.hidden = false; drawAddedCount(c);
     if (!current) { cardsView.listOffset = 0; renderCards(); }   // the empty state gives way to the search and the list
     else if (cardsView.q || !prependCardRow(added, next)) renderCardList();
     $('qa-front').focus();
@@ -6048,8 +6431,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var count = $('qa-count');
     if (!cardsView.editing && !cardsView.importing) $('mc-title').textContent = 'My cards';
     if (!count || !cardsView.added) return;
-    count.innerHTML = '<span class="micro">' + plural(cardsView.added, 'card') + ' added</span><button class="textbtn" id="qa-study" type="button">Study now</button>';
-    $('qa-study').addEventListener('click', function () { startNow({ pack: OWN_PACK_ID, lesson: null }); });
+    drawAddedCount(count);
   };
 
 
@@ -6113,7 +6495,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         try { next = upsertNote(base, { guid: ed.guid, type: type, lesson: $('f-lesson').value, tags: savedTags, fields: fields }); }
         catch (e) { setMsg('mc-status', errorWords(e), true); return; }
         if (!saveOwn(next)) return;
-        if (!note) cardsView.added++;
+        if (!note) {
+          cardsView.added++;
+          var addedNote = next.notes.filter(function (candidate) { return !current || !current.notes.some(function (old) { return old.guid === candidate.guid; }); })[0];
+          if (addedNote) cardsView.addedGuids.push(addedNote.guid);
+        }
         leaveEditor(ed, false);
       };
       if (duplicate) { showDuplicateChoice('mc-status', duplicate, commit); return; }
@@ -6423,7 +6809,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<input type="range" id="i-ret" min="80" max="97" step="1" value="' + (p.desiredRetention * 100) + '" aria-describedby="v-retcost"></label>' +
       '<span class="hint" id="v-retcost"></span>' +
       '<h2 class="sec">Your data</h2>' +
-      '<p class="note">The export carries your reviews, your own cards and your retired cards. Your settings are offered on import. Decks are not in the file: add them again on the new device.</p>' +
+      '<p class="note">The export carries your reviews, your own cards and your retired cards. Your settings are offered on import. Decks are not in the file: add them again on the new device. This is the file that moves you to a new phone.</p>' +
       (storageKept === null ? '' : '<p class="note" id="se-kept">Stored on this device: ' + (storageKept ? 'protected' : 'may be cleared if space runs low') + '</p>') +
       '<div class="stack" style="padding:0">' +
       '<button class="ghost" id="i-export" type="button"><span>Export my progress</span></button>' +
@@ -6441,7 +6827,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         '<textarea id="se-problem-text" readonly rows="4" spellcheck="false"></textarea></div></div>' +
         '<p class="note">The details are the app’s own words about what stopped, shortened. None of your card text is in them. Send them on if somebody asks what happened.</p>' : '') +
       '<h2 class="sec">For whoever teaches the course</h2>' +
-      '<p class="note">Students hand you their exports; this reads them together and answers four questions, here on this device. Nothing leaves it.</p>' +
+      '<p class="note">Reads progress files students choose to give you, together, here; nothing leaves this device. A progress file is a student’s whole record, so it is theirs to offer, not yours to ask for.</p>' +
       '<button class="ghost" id="go-class" type="button"><span>Read student exports</span></button>' +
       '</div>';
     var min = $('i-min'), ret = $('i-ret');
@@ -6719,7 +7105,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
           renderSlipping();
         } });
       } },
-      { label: 'Card details', on: function (button) { openCardDetails(button, current); } }
+      { label: 'Card details', on: function (button) { openCardDetails(button, current, true); } }
     ]);
   }
   function renderSlipping() {
@@ -6741,7 +7127,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         var current = DECK.cards.filter(function (candidate) { return candidate.id === id; })[0];
         if (!current) return;
         if (target.hasAttribute('data-slip-more')) openSlippingMore(target, current);
-        else openCardDetails(target, current);
+        else openCardDetails(target, current, true);
       });
     }
   }
@@ -6772,8 +7158,12 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var sec = store.measuredSecondsPerCard(), ratio = store.measuredReviewsPerNewCard();
     var t = store.countsToday();
     var firstKey = store.dayKey(Date.now());
+    // One noun, one definition: an answer is every answer the learner gave, practice included, and Today,
+    // All-time, the calendar and Recent days all count the same way. Recent days used to walk the scheduled
+    // log alone, so one study day read 16 answers above and 15 below. A practice answer still writes a
+    // preview and never a schedule entry; only the counting changes.
     var answerDays = new Map(), touched = new Set();
-    store.log.forEach(function (entry) {
+    store.answers().forEach(function (entry) {
       var key = store.dayKey(entry.t);
       answerDays.set(key, (answerDays.get(key) || 0) + 1);
       touched.add(entry.c);
@@ -6833,7 +7223,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<h2 class="sec">All decks</h2><div class="rows">' +
       row('Decks', packStore.list().length) + row('Cards', DECK.cards.length) +
       row('Not started', n) + row('Learning', l) + row('In review', r) +
-      row('Known for 3 weeks or more', mature) + '<button class="row" type="button" id="st-slipping"><span class="k">keeps slipping</span><span class="v">' + leeches + '</span></button>' + row('Retired', retiredTotal()) + row('Direction off', off) + '</div>' +
+      row('Interval of 3 weeks or more', mature) + '<button class="row" type="button" id="st-slipping"><span class="k">keeps slipping</span><span class="v">' + leeches + '</span></button>' + row('Retired', retiredTotal()) + row('Direction off', off) + '</div>' +
+      '<p class="note">Direction off: cards of a direction you turned off in the deck’s settings. Held out by deck updates: cards of a note a deck update removed; they return if the note does. Interval of 3 weeks or more: cards the schedule now spaces three weeks or more apart. It is the Interval that Card details shows, not how long you have known them. Retired counts cards, as every row here does. A word you add as Vocabulary or Both ways is two cards, one each way, and retiring it retires both.</p>' +
       '<h2 class="sec">Your record</h2>' + calendarHtml +
       '<h2 class="sec">All-time</h2><div class="rows">' +
       row('Answers', store.answers().length) + row('Cards touched', touched.size) + row('Days studied', daysStudied()) + '</div>' +
@@ -6884,6 +7275,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<p><b>Hard</b> — You recalled it, slowly or with doubt. It comes back sooner than Good would bring it.</p>' +
       '<p><b>Good</b> — You recalled it. The usual step forward.</p>' +
       '<p><b>Easy</b> — You recalled it at once. A bigger step forward.</p>' +
+      '<p>A card seen for the first time and graded Hard or Good comes back once more in the same sitting.</p>' +
       (attrs.length ? '<h2 class="sec">Sources</h2><p class="note">' + attrs.join('</p><p class="note">') + '</p>' : '') +
       '<h2 class="sec">Where your record goes</h2>' +
       '<p class="note">' + sendsLine() + '</p>' +
@@ -6920,7 +7312,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var h = '<div class="prose">';
     h += '<div class="caveat"><b>What this is.</b> ' + esc(CAVEAT) + '</div>';
     h += '<p class="note">Two loads. First the course deck, the same file you sent the class; the view needs it to name the cards and it is read, not installed. ' +
-         'Then the export files your students handed you. Their file names are the only labels shown; the app adds no names and keeps nothing after you leave this screen.</p>' +
+         'Then the progress files students chose to give you, theirs to offer, not yours to ask for. Their file names are the only labels shown; nothing leaves this device, and it keeps nothing after you leave this screen.</p>' +
          '<div class="acts"><button class="ghost" id="cv-addpack" type="button">Load the course deck</button>' +
          '<button class="ghost" id="cv-add" type="button">Load export files</button></div>' +
          '<input type="file" id="cv-packfiles" accept="application/json,.json" multiple hidden>' +
@@ -7852,6 +8244,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var target = ev.target;
     if (!target || screen !== 's-cards') return;
     if (target.id === 'qa-front') cardsView.quick.front = target.value;
+    else if (target.id === 'qa-mid') cardsView.quick.mid = target.value;
     else if (target.id === 'qa-back') cardsView.quick.back = target.value;
     else if (cardsView.editing && /^f-/.test(target.id || '')) {
       cardsView.editing.fields = cardsView.editing.fields || {};
@@ -8095,7 +8488,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.7.2";
+  var APP_V = "0.7.8";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
