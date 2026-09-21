@@ -60,6 +60,7 @@
   --ease-standard:cubic-bezier(0.2, 0, 0, 1);
   --ease-in:cubic-bezier(0.05, 0.7, 0.1, 1);
   --ease-out:cubic-bezier(0.3, 0, 0.8, 0.15);
+  --ease-linear:linear;
   --d-short2:100ms; --d-short3:150ms; --d-short4:200ms; --d-medium1:250ms; --d-loop:1000ms;
   /* aliases kept from 0.5/0.6 */
   --paper:var(--ground); --indigo:var(--accent); --indigo-lo:var(--accent-lo); --indigo-ink:var(--accent-ink); --shadow:var(--shadow-sheet);
@@ -218,15 +219,18 @@ p{margin:0 0 var(--s-3)}
 .retired-list summary{display:flex;align-items:center;min-height:48px;padding:0 var(--s-4);color:var(--ink-mute);font-size:var(--t-label);font-weight:500;cursor:pointer;transition:background-color var(--d-short2) var(--ease-standard)}
 .retired-list summary:active{background:var(--surface-2)}
 .retired-list .crow{background:var(--surface)}
-.answer-row{display:block;width:100%;min-height:64px;padding:var(--s-3) var(--s-4);border:1px solid var(--rule);border-radius:var(--r-control);background:var(--surface);transition:background-color var(--d-short2) var(--ease-standard)}
+.answer-row{display:block;width:100%;min-height:64px;padding:var(--s-3) var(--s-4);border:1px solid var(--rule);border-radius:var(--r-control);background:var(--surface);position:relative;transition:background-color var(--d-short2) var(--ease-standard)}
 .answer-row:active{background:var(--surface-2)}
+/* An answer row that leads to another screen carries the deck rows' chevron, and keeps its text clear of it. */
+.answer-row.nav{padding-right:var(--s-7)}
+.answer-row .chev{position:absolute;right:16px;top:50%;width:20px;height:20px;transform:translateY(-50%);color:var(--ink-mute)}
 .answer-row:disabled{color:var(--ink-off);border-color:var(--rule-off);opacity:1}
 .answer-row .t{font-size:var(--t-title);font-weight:600}
 .answer-row .s{font-size:var(--t-label);color:var(--ink-mute);font-weight:500}
 .answers{display:flex;flex-direction:column;gap:var(--s-3);padding:0}
 
 .busy{position:relative;overflow:hidden;color:var(--ink-off)!important;pointer-events:none}
-.busy::after{content:"";position:absolute;left:0;bottom:0;width:var(--s-7);height:2px;background:var(--accent);transform:translateX(0);animation:busy-slide var(--d-loop) linear infinite}
+.busy::after{content:"";position:absolute;left:0;bottom:0;width:var(--s-7);height:2px;background:var(--accent);transform:translateX(0);animation:busy-slide var(--d-loop) var(--ease-linear) infinite}
 @keyframes busy-slide{from{transform:translateX(0)}to{transform:translateX(var(--busy-travel,calc(100% - var(--s-7))))}}
 
 
@@ -433,6 +437,7 @@ ruby[data-reading="hidden"] rt{visibility:hidden}
 #sheet .sh-card .r-headline[lang]{font-size:var(--t-ja-sentence)}
 #sheet div.act.static{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);width:100%;min-height:56px;padding:0 var(--s-4);font-size:var(--t-body);color:var(--ink);border-bottom:1px solid var(--hairline)}
 #sheet button.act{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);width:100%;min-height:56px;padding:0 var(--s-4);font-size:var(--t-body);font-weight:400;color:var(--ink);transition:background-color var(--d-short2) var(--ease-standard)}
+#sheet button.act.stick{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--hairline)}
 #sheet button.act:active{background:var(--surface-2)}
 #sheet button.act:disabled{color:var(--ink-off)}
 #sheet button.act .c{font-family:var(--f-mono);font-size:var(--t-micro);letter-spacing:.06em;color:var(--ink-mute);font-variant-numeric:tabular-nums}
@@ -482,14 +487,14 @@ ruby[data-reading="hidden"] rt{visibility:hidden}
 /* Reduced motion is a replacement, not a removal (F): travel goes, a 100ms fade stays. */
 @media (prefers-reduced-motion: reduce){
   /* DESIGN-0.6 §F, line by line: rises, scales and cross-fades drop; opacity keeps its own durations */
-  .reveal-in,.grades-in,.card-in{animation:fadein var(--d-short2) linear both!important;transform:none!important}   /* answer reveal: opacity only, 100ms */
-  #sheet{opacity:0;transition:opacity var(--d-short2) linear!important;transform:none!important} /* sheet opens and closes: 100ms opacity in place — the base has no opacity to move, so it is given one here */
-  #sheet.open{opacity:1} #sheet.closing{opacity:0;transition:opacity var(--d-short2) linear!important}
-  #scrim{transition:opacity var(--d-short2) linear!important}                                    /* the scrim still fades */
+  .reveal-in,.grades-in,.card-in{animation:fadein var(--d-short2) var(--ease-linear) both!important;transform:none!important}   /* answer reveal: opacity only, 100ms */
+  #sheet{opacity:0;transition:opacity var(--d-short2) var(--ease-linear)!important;transform:none!important} /* sheet opens and closes: 100ms opacity in place — the base has no opacity to move, so it is given one here */
+  #sheet.open{opacity:1} #sheet.closing{opacity:0;transition:opacity var(--d-short2) var(--ease-linear)!important}
+  #scrim{transition:opacity var(--d-short2) var(--ease-linear)!important}                                    /* the scrim still fades */
   .screen.leaving,.screen.arriving{animation:none!important;opacity:1!important}
   .sprog i,.bar i{transition:none!important} /* progress updates in place without animated travel */
-  #toast{transition:opacity var(--d-short4) linear!important;transform:none!important}           /* toast in 200ms, opacity only */
-  #toast.out{transition:opacity var(--d-short3) linear!important}                                /* toast out 150ms */
+  #toast{transition:opacity var(--d-short4) var(--ease-linear)!important;transform:none!important}           /* toast in 200ms, opacity only */
+  #toast.out{transition:opacity var(--d-short3) var(--ease-linear)!important}                                /* toast out 150ms */
   /* the fill step stays — every control on J.4 §5's list, not a subset */
   .tile,.primary,.ghost,.danger,.textbtn,.back,.you,.drow,.crow .txt,.crow .more,.answer-row,
   .grade,.reveal,.undo,.hintbtn,.say,.more,#tabbar button::before,#sheet button.act,
@@ -556,6 +561,12 @@ ruby[data-reading="hidden"] rt{visibility:hidden}
   <section class="screen tabbed" id="s-add" aria-labelledby="ad-title" hidden>
     <header class="top"><button class="back" id="ad-back" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 6l-6 6 6 6"/></svg>Back</button><h1 id="ad-title" tabindex="-1">Add a deck</h1></header>
     <div class="scroll" id="ad-body"></div>
+  </section>
+
+  <!-- ── DECKS YOU CAN ADD: the catalog, one row per deck, what a tap costs printed on the row ── -->
+  <section class="screen tabbed" id="s-catalog" aria-labelledby="ct-title" hidden>
+    <header class="top"><button class="back" id="ct-back" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 6l-6 6 6 6"/></svg>Back</button><h1 id="ct-title" tabindex="-1">Decks you can add</h1></header>
+    <div class="scroll" id="ct-body"></div>
   </section>
 
   <!-- ── CARDS: the learner's own deck, quick-add first (editor.js) ─────────── -->
@@ -1507,6 +1518,15 @@ function compareVersions(a, b) {
   return 0;
 }
 
+function catalogInstallState(pageRow, installedRow) {
+  const pageVersion = pageRow && pageRow.version;
+  if (typeof pageVersion !== 'string' || !pageVersion) return 'installed';
+  if (!installedRow) return 'install';
+  const installedVersion = installedRow.version;
+  if (typeof installedVersion !== 'string' || !installedVersion) return 'installed';
+  return compareVersions(pageVersion, installedVersion) > 0 ? 'update' : 'installed';
+}
+
 const cardId = (packId, guid, ord) => `${packId}/${guid}#${ord}`;
 
 const CLOZE_RE = /\{\{c(\d+)::([\s\S]*?)(?:::([\s\S]*?))?\}\}/g;
@@ -2404,6 +2424,9 @@ function makeSync(store, transport, opts = {}) {
 const fetchSharedPack = (transport, code, full = false) =>
   transport.rpc('get_shared_pack', { p_code: String(code || '').trim(), p_full: !!full }).then((r) => (Array.isArray(r) ? (r[0] || null) : (r || null)));
 
+const fetchCatalogPack = (transport, id) =>
+  transport.rpc('get_catalog_pack', { p_id: String(id || '').trim() }).then((r) => (Array.isArray(r) ? (r[0] || null) : (r || null)));
+
 function timeoutSignal(ms) {
   if (globalThis.__kurikaeshiFetchTimeout) ms = globalThis.__kurikaeshiFetchTimeout;
   if (typeof AbortController !== 'function') return undefined;
@@ -2483,6 +2506,7 @@ function memoryTransport(server, user) {
   server.packs = server.packs || new Map();          
   server.profiles = server.profiles || new Map();    
   server.shared = server.shared || new Map();        
+  server.catalog = server.catalog || new Map();      
   server.classes = server.classes || new Map();      
   server.classPacks = server.classPacks || new Map();
   server.enrollments = server.enrollments || new Map();   
@@ -2549,6 +2573,7 @@ function memoryTransport(server, user) {
       }
       if (name === 'share_pack') {
         const p = args.p_pack; if (!p || typeof p !== 'object' || !p.id || !p.title) throw new Error('pack needs an id and a title');
+        if (p.id !== 'mine') throw new Error('only your own cards can be shared by code');   
         const n = derivedCardCount(p);   
         let row = [...server.shared.values()].find((r) => r.owner_id === user && r.pack_id === p.id);
         if (!row) { row = { code: 'SHR' + String(server.shared.size + 1).padStart(5, '0'), owner_id: user, pack_id: p.id }; server.shared.set(row.code, row); }
@@ -2556,6 +2581,8 @@ function memoryTransport(server, user) {
         return [{ code: row.code, cards: n }];
       }
       if (name === 'get_shared_pack') { const r = server.shared.get(String(args.p_code || '').trim().toUpperCase()); return r ? [{ title: r.title, cards: r.cards, updated_at: r.updated_at, pack: args.p_full ? r.pack : null }] : []; }
+      
+      if (name === 'get_catalog_pack') { const r = server.catalog.get(String(args.p_id || '').trim()); return r && (r.access === 'open' || r.access === 'issuer') ? [{ title: r.title, cards: r.cards, updated_at: r.updated_at || stamp(), pack: r.pack }] : []; }
       if (name === 'unshare_pack') { let n = 0; for (const [k, r] of [...server.shared]) if (r.owner_id === user && r.pack_id === args.p_pack_id) { server.shared.delete(k); n++; } return n; }
       if (name === 'erase_my_reviews') {
         server.erasures.set(user, Date.now());
@@ -3062,7 +3089,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 <script>
 (function () {
   'use strict';
-  var APP_VERSION = '0.7.8';
+  var APP_VERSION = '0.8.1';
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -3070,6 +3097,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // (a square bracket anywhere) mean accounts are off: the page then never touches the network
   // except to install a deck on the learner's tap. Nothing here is a secret by design.
   var CONFIG = {"auth0":{"domain":"dev-rxe3mje4y1suwccw.us.auth0.com","clientId":"EpM3qKZqHIjpumcmmsuXUUaxSHibqXi3","audience":"https://kurikaeshi/api"},"dataApi":"https://ep-shiny-union-ay3o428i.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1","contact":""};
+  var CATALOG = [{"id":"japn309-kll-l1-l8","access":"open","title":"JAPN 309 · Kanji Look and Learn · Lessons 1–8","language":"ja","source":"KANJIDIC2 and JMdict, EDRDG","terms":"Open-licensed. Free, no account needed.","cards":683,"lessons":8,"version":"1.1.1","url":"https://ferrelldevin.github.io/studykit/kurikaeshi/packs/japn309-kll-l1-l8.json"},{"id":"irodori-a2-1-vocab","access":"issuer","title":"Irodori Elementary 1 · Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. The source is named here, and again under About Kurikaeshi.","cards":2382,"lessons":18,"version":"1.0.0"},{"id":"japn111f-vocab","access":"class","title":"JAPN 111F · Vocabulary and Expressions · Lists 1–16","language":"ja","source":"The course instructor","terms":"Made for the class. Join with the class code.","cards":992,"lessons":16},{"id":"japn212-kanji","access":"class","title":"JAPN 212 · Kanji · Lessons 1–17","language":"ja","source":"The course instructor, readings from KANJIDIC2","terms":"Made for the class. Join with the class code.","cards":218,"lessons":13},{"id":"japn212-vocab","access":"class","title":"JAPN 212 · Vocabulary · Lessons 1–9, 11–13, 17","language":"ja","source":"The course instructor","terms":"Made for the class. Join with the class code.","cards":960,"lessons":13},{"id":"japn301-vocab","access":"class","title":"JAPN 301 · Irodori Elementary 2 · Vocabulary","language":"ja","source":"The course instructor","terms":"Made for the class. Join with the class code.","cards":3540,"lessons":18}];
   var SYNC_READY = !!(CONFIG && CONFIG.auth0 && CONFIG.dataApi && !/\[/.test(JSON.stringify(CONFIG)));
   var $ = function (id) { return document.getElementById(id); };
   // Everything interpolated into markup from a pack goes through this. Packs are trusted and
@@ -3474,11 +3502,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   }
 
   /* ── navigation: three tabs, everything else one level below ───── */
-  var SCREENS = ['s-first', 's-landing', 's-paste', 's-today', 's-decks', 's-deck', 's-browse', 's-add', 's-cards', 's-review', 's-done',
+  var SCREENS = ['s-first', 's-landing', 's-paste', 's-today', 's-decks', 's-deck', 's-browse', 's-add', 's-catalog', 's-cards', 's-review', 's-done',
     's-you', 's-account', 's-classes', 's-class', 's-settings', 's-stats', 's-slipping', 's-about'];
-  var TAB_OF = { 's-today': 'today', 's-decks': 'decks', 's-deck': 'decks', 's-browse': 'decks', 's-add': 'decks', 's-cards': 'cards' };
+  var TAB_OF = { 's-today': 'today', 's-decks': 'decks', 's-deck': 'decks', 's-browse': 'decks', 's-add': 'decks', 's-catalog': 'decks', 's-cards': 'cards' };
   var NO_TABS = { 's-first': 1, 's-landing': 1, 's-paste': 1, 's-review': 1, 's-done': 1 };
-  var SCREEN_TITLES = { 's-first': 'Welcome', 's-landing': 'Shared deck', 's-paste': 'Paste a link or code', 's-today': 'Today', 's-decks': 'Decks', 's-deck': 'Deck', 's-browse': 'Browse cards', 's-add': 'Add a deck', 's-cards': 'My cards', 's-review': 'Review', 's-done': 'Session complete', 's-you': 'You', 's-account': 'Account', 's-classes': 'Classes', 's-class': 'Class view', 's-settings': 'Settings', 's-stats': 'Progress', 's-slipping': 'Cards that keep slipping', 's-about': 'About Kurikaeshi' };
+  var SCREEN_TITLES = { 's-first': 'Welcome', 's-landing': 'Shared deck', 's-paste': 'Paste a link or code', 's-today': 'Today', 's-decks': 'Decks', 's-deck': 'Deck', 's-browse': 'Browse cards', 's-add': 'Add a deck', 's-catalog': 'Decks you can add', 's-cards': 'My cards', 's-review': 'Review', 's-done': 'Session complete', 's-you': 'You', 's-account': 'Account', 's-classes': 'Classes', 's-class': 'Class view', 's-settings': 'Settings', 's-stats': 'Progress', 's-slipping': 'Cards that keep slipping', 's-about': 'About Kurikaeshi' };
   var screen = 's-today', youFrom = 'today', pasteFrom = 'first', renderGeneration = 0, screenTimer = null, poppingReview = false;
   function clearClassView() {
     loadedExports = [];
@@ -3634,7 +3662,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         h += '<div class="act static"><span>' + esc(it.label) + '</span>' + (it.count != null ? '<span class="c">' + esc(it.count) + '</span>' : '') + '</div>';
         return;
       }
-      h += '<button class="act' + (it.warn ? ' warnact' : '') + (it.nav ? ' nav' : '') + '" type="button" data-i="' + i + '"' + (it.id ? ' id="' + esc(it.id) + '"' : '') + (it.disabled ? ' disabled' : '') + '>' +
+      h += '<button class="act' + (it.warn ? ' warnact' : '') + (it.nav ? ' nav' : '') + (it.stick ? ' stick' : '') + '" type="button" data-i="' + i + '"' + (it.id ? ' id="' + esc(it.id) + '"' : '') + (it.disabled ? ' disabled' : '') + '>' +
         '<span>' + esc(it.label) + '</span>' + (it.count != null ? '<span class="c">' + esc(it.count) + '</span>' : '') + '</button>';
     });
     sh.innerHTML = h;
@@ -4023,24 +4051,36 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     return lines.join('\n');
   }
 
-  /* ── share: the system sheet, else the clipboard, else select-and-copy ── */
-  function shareLink(url, what, host) {
-    var copy = function () {
-      var fallback = function () {
-        if (host) {
-          host.innerHTML = '<input type="text" class="textin" readonly value="' + esc(url) + '" aria-label="The link">';
-          var i = host.querySelector('input'); i.focus(); i.select();
-        }
-        toast('Copy the link by hand: it is selected');
-      };
-      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(function () { toast('Link copied'); }, fallback);
-      else fallback();
+  /* ── share: the clipboard first, then the system sheet if the phone has one, else select-and-copy ── */
+  // The link is copied and its toast shown BEFORE the sheet is asked for, so one tap always answers
+  // (2026-09-20, B-98: a device can expose navigator.share with no sheet behind it, and the promise
+  // then never settles — the first tap showed nothing and the second was refused as still in
+  // progress). While the sheet is up the button reads Sharing… and is released when the sheet
+  // settles or after ten seconds, whichever comes first. A cancelled or refused sheet needs nothing
+  // more: the link is already on the clipboard.
+  function shareLink(url, what, host, btn) {
+    var fallback = function () {
+      if (host) {
+        host.innerHTML = '<input type="text" class="textin" readonly value="' + esc(url) + '" aria-label="The link">';
+        var i = host.querySelector('input'); i.focus(); i.select();
+      }
+      toast('Copy the link by hand: it is selected');
     };
-    if (navigator.share) navigator.share({ title: what, url: url }).then(function () { toast('Link shared'); }, function (e) {
-      if (e && e.name === 'AbortError') return;
-      copy();
-    });
-    else copy();
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(function () { toast('Link copied'); }, fallback);
+    else fallback();
+    if (!navigator.share) return;
+    var label = btn ? btn.textContent : '', released = false, timer = null;
+    var release = function () {
+      if (released) return;
+      released = true;
+      if (timer) { clearTimeout(timer); timer = null; }
+      if (btn) { btn.disabled = false; btn.textContent = label; }
+    };
+    if (btn) { btn.disabled = true; btn.textContent = 'Sharing…'; }
+    timer = setTimeout(release, window.__kurikaeshiShareWait || 10000);
+    var sheet;
+    try { sheet = navigator.share({ title: what, url: url }); } catch (e) { release(); return; }
+    Promise.resolve(sheet).then(function () { release(); toast('Link shared'); }, release);
   }
   function deckLink(v) { return PUBLIC_URL + '?deck=' + (/^https?:/.test(v) ? encodeURIComponent(v) : v); }
   function joinLink(c) { return PUBLIC_URL + '?join=' + c.code; }
@@ -4369,7 +4409,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     historyRows.forEach(function (entry) {
       items.push({ label: fmtCardDate(store.dayKey(entry.t)) + ' · ' + labels[entry.g], count: fmtIvl(entry.i), static: true });
     });
-    items.push({ label: 'Close', on: function () {} });
+    // Close stays at the sheet's foot however long the history above it (item 73, 2026-09-20): a reader
+    // of assistive technology, or a thumb, meets it as the sheet opens, not after a scroll.
+    items.push({ label: 'Close', on: function () {}, stick: true });
     openSheet(anchor, 'Card details', items, cardSidesHtml(current, !!withAnswer));
   }
   function openReviewMore(anchor) {
@@ -4918,7 +4960,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<div class="row"><span class="k">Again rate</span><span class="v">' + (s.answered ? Math.round(s.again / s.answered * 100) + '%' : '0%') + '</span></div>' +
       '<div class="row"><span class="k">Time</span><span class="v">' + fmtSpent(s.elapsed) + '</span></div>' +
       '</div>' +
-      '<p class="micro">Today · ' + plural(t.cards, 'card') + ' · ' + plural(t.answers, 'answer') + ' · Studied ' + plural(daysStudied(), 'day') + '</p>';
+      '<p class="micro">Today · ' + plural(t.cards, 'card') + ' · ' + plural(t.answers, 'answer') + '</p>' +
+      // The day count is all-time and says so on a line of its own; it used to ride the Today line,
+      // one scope under another's label (2026-09-20).
+      '<p class="micro">Studied ' + plural(daysStudied(), 'day') + ' in all</p>';
     h += '<div class="stack">' + (reason === 'stopped'
       ? '<button class="primary" id="dn-continue" type="button">Continue this session (' + left + ')</button><button class="ghost" id="dn-home" type="button">Back to today</button>'
       : '<button class="primary" id="dn-home" type="button">Back to today</button>') + '</div>';
@@ -5250,6 +5295,12 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var ctx = { states: store.allStates(), today: store.countsToday(), budget: store.intakeBudget(), reviewsUsed: store.reviewLimitUsed(store.dayKey(Date.now())) };
     var options = deckOptionsFor();
     var s = rowStats(id, null, { ctx: ctx }), own = id === OWN_PACK_ID;
+    // DESIGN-0.8.1 (item 84, B-97): the update door a catalog install needs is not a url — it is
+    // the page's own catalog row for the same id, read the same way the row's word was. A class
+    // row is never this door (item 81's guard, symmetrical here).
+    var catRow = catalogRow(id);
+    var updateDoor = r.url ? 'url' : ((catRow && catRow.access !== 'class') ? 'catalog' : null);
+    var catUpdate = updateDoor === 'catalog' && catalogInstallState(catRow, r) === 'update';
     var heading = $('d-title');
     heading.textContent = r.title;
     heading.removeAttribute('aria-label');
@@ -5274,9 +5325,12 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<div id="d-msg" class="msg" hidden></div><div id="d-linkhost"></div>' +
       '<button class="ghost" id="d-options" type="button"><span>Deck options</span></button>' +
       '<button class="ghost" id="d-browse" type="button"><span>Browse cards</span></button>' +
-      '<button class="ghost" id="d-share" type="button"><span>Share deck</span></button>' +
+      // Share is offered only for the learner's own cards, or a deck with a public address to link to
+      // (item 81, 2026-09-20). A deck that came by class code, by someone else's share code or from a
+      // file is somebody else's body: no button, and shareDeck itself refuses it below.
+      (own || r.url ? '<button class="ghost" id="d-share" type="button"><span>Share deck</span></button>' : '') +
       (own ? '<button class="ghost" id="d-cards" type="button"><span>Open cards</span></button>' : '') +
-      (r.url ? '<button class="ghost" id="d-update" type="button"><span>Check for update</span></button>' : '') +
+      (updateDoor ? '<button class="ghost" id="d-update" type="button"><span>' + (catUpdate ? 'Update deck' : 'Check for update') + '</span></button>' : '') +
       (own ? '' : '<button class="ghost" id="d-remove" type="button"><span>Remove deck</span></button>') +
       '</div>';
     $('d-body').innerHTML = h;
@@ -5285,11 +5339,25 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     });
     $('d-options').addEventListener('click', function () { openDeckOptions($('d-options'), id); });
     $('d-browse').addEventListener('click', function () { renderBrowse(); show('s-browse'); });
-    $('d-share').addEventListener('click', function () { shareDeck(id, $('d-share')); });
+    var dsh = $('d-share'); if (dsh) dsh.addEventListener('click', function () { shareDeck(id, dsh); });
     var dc = $('d-cards'); if (dc) dc.addEventListener('click', function () { goTab('cards'); });
     var du = $('d-update'); if (du) du.addEventListener('click', function () {
+      // A catalog deck signed out (or whose session expired since install) meets the same sheet a
+      // fresh catalog tap would show, not an error (item 84's neighbour, item 90): the account is
+      // what is missing, and it is free to fix from here.
+      if (updateDoor === 'catalog' && !(SYNC_READY && account.signedIn)) {
+        openSheet(du, r.title, [
+          { label: 'Sign in', on: function (b) { pendingCatalog = id; signIn(b); } },
+          { label: 'Not now', on: function () {} }
+        ], '<p>This deck is sent only to a signed-in account. Signing in is free and takes about a minute.' + (isStandalone() ? ' Sign-in opens in your browser.' : '') + '</p>');
+        return;
+      }
       busy(du, 'Checking…');
-      installFromUrl(r.url, function (res) {
+      var afterUpdate = function (res) {
+        // The server can still hold the edition the page build has already moved past (item 84's
+        // race): say so honestly rather than the ordinary re-add sentence, which would read as
+        // nothing changed when the learner was told something had.
+        if (res.ok && res.status === 'unchanged' && catUpdate) res = { ok: true, status: 'unchanged', id: res.id, msg: 'This deck has not changed yet. Try again later.' };
         if (res.ok) {
           renderDeck(id);
           setMsg('d-msg', res.msg, false);
@@ -5297,8 +5365,16 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
           if (freshUpdate) { try { freshUpdate.focus({ preventScroll: true }); } catch (e) { freshUpdate.focus(); } }
           return;
         }
-        du.disabled = false; du.textContent = 'Check for update'; setMsg('d-msg', res.msg, true);
-      });
+        du.disabled = false; du.textContent = catUpdate ? 'Update deck' : 'Check for update'; setMsg('d-msg', res.msg, true);
+      };
+      if (updateDoor === 'url') { installFromUrl(r.url, afterUpdate); return; }
+      // The catalog door: the same signed-in read catalogInstall uses, extracted once and called
+      // from both (C.3 — no new server line, no per-row read added).
+      authClient().then(function () { return fetchCatalogPack(authTransport, id); }).then(function (resp) {
+        if (!resp || !resp.pack) { afterUpdate({ ok: false, msg: 'This deck is no longer available. Choose another deck.' }); return; }
+        if (JSON.stringify(resp.pack).length > DECK_TEXT_MAX) { afterUpdate({ ok: false, msg: DECK_TOO_BIG }); return; }
+        afterUpdate(installPackObject(resp.pack, {}));
+      }).catch(function (e) { afterUpdate({ ok: false, msg: friendlyError(e) }); });
     });
     var dr = $('d-remove'); if (dr) dr.addEventListener('click', function () {
       confirmSheet({ anchor: dr, title: 'Removing this deck keeps your answers, so adding it again resumes where you were.', action: 'Remove deck', cancel: 'Keep deck', onConfirm: function () {
@@ -5313,12 +5389,13 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var r = packStore.list().filter(function (x) { return x.id === id; })[0] || {};
     var pk = DECK.packs[id] || {};
     var host = $('d-linkhost');
-    // A deck that already has a code is that link; a hosted deck (the public one) is a link to
-    // its address. Everything else — the learner's own cards, or a deck that came from a file —
-    // is shared by code: the document goes up under this account and the link opens a copy for
-    // whoever signs in. Only its owner can update it, and re-sharing keeps the code.
-    if (pk.shareCode) { shareLink(deckLink(pk.shareCode), r.title, host); return; }
-    if (r.url && id !== OWN_PACK_ID) { shareLink(deckLink(r.url), r.title, host); return; }
+    // Only two decks are the learner's to share (item 81, 2026-09-20): her own cards, which go up
+    // under her account and open by code for whoever signs in, and a hosted deck, which is a link to
+    // its public address. A deck that came by class code, by someone else's code or from a file is
+    // somebody else's body, and this refuses it before any button, sign-in or upload — the server
+    // refuses the same id on its side (share_pack).
+    if (id !== OWN_PACK_ID && !r.url) { setMsg('d-msg', 'This deck cannot be shared from here. Whoever gave it to you is the one who shares it.', false); return; }
+    if (r.url && id !== OWN_PACK_ID) { shareLink(deckLink(r.url), r.title, host, btn); return; }
     if (!SYNC_READY || !account.signedIn || !sync) {
       setMsg('d-msg', 'Sharing needs an account, so the link has somewhere to point.', false);
       host.innerHTML = '<button class="primary" id="d-signin" type="button">Sign in</button>' + (isStandalone() ? '<p class="note">Sign-in opens in your browser.</p>' : '');
@@ -5336,9 +5413,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     sync.sharePack(doc).then(function (res) {
       btn.disabled = false; btn.textContent = 'Share deck';
       if (id === OWN_PACK_ID) saveAccount({ shareCode: res.code });
-      shareLink(deckLink(res.code), r.title, host);
+      shareLink(deckLink(res.code), r.title, host, btn);
     }).catch(function (e) { btn.disabled = false; btn.textContent = 'Share deck'; setMsg('d-msg', friendlyError(e), true); });
   }
+  window.__kurikaeshiShareDeck = shareDeck;   // the walk calls it on a deck that offers no Share button, to prove the refusal is the function's own
 
   /* ── installing a deck: an object, an address, a file, pasted text, a code ── */
   // The ceiling a deck has to pass BEFORE it is decoded. packs.js sets TEXT_PACK_MAX and
@@ -5477,11 +5555,97 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     show('s-decks');
     toast(res.status === 'unchanged' ? 'You already have this deck' : res.msg, { label: 'Open deck', on: function () { renderDeck(res.id); show('s-deck'); } });
   }
+  /* ── decks you can add: the catalog, inlined at build, never fetched ── */
+  // One row per deck the site knows. What a tap costs is printed ON the row, before the tap (MC-59):
+  // an open-licensed deck installs for anyone; a publisher's own list needs a free account and the
+  // row says so; an instructor's own deck reaches her class by its code and the row says that. The
+  // list itself never needs the network, so it renders offline; only an install does, and then the
+  // install path's own sentences say what happened.
+  var pendingCatalog = null;
+  var CATALOG_WORDS = { installed: 'Installed', update: 'Update ready', account: 'Needs sign-in', class: 'By class code', ready: '' };
+  function catalogRows() { return typeof CATALOG !== 'undefined' && Array.isArray(CATALOG) ? CATALOG : []; }
+  function catalogRow(id) { return catalogRows().filter(function (r) { return r.id === id; })[0] || null; }
+  // DESIGN-0.8.1 (item 84, B-97): a catalog install carries no url, so the old "Check for
+  // update" button, which only appeared for a url, never saw it, and the row never said which
+  // edition was on the device. catalogInstallState (packs.js) is the fourth word — install /
+  // installed / update — compared from facts already on the device: the inlined row's edition
+  // against whatever is installed. A class row never reaches it: its own door (item 81) is the
+  // only one it may go through.
+  function catalogState(row) {
+    if (packStore.has(row.id)) return row.access === 'class' ? 'installed' : catalogInstallState(row, packStore.get(row.id));
+    if (row.access === 'class') return 'class';
+    if (row.access === 'issuer' && !(SYNC_READY && account.signedIn)) return 'account';
+    return 'ready';
+  }
+  function renderCatalog() {
+    var host = $('ct-body');
+    var rows = catalogRows();
+    var chev = '<svg class="chev" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4l6 6-6 6"/></svg>';
+    var h = '<div class="prose"><p>Tap a deck to add it, or to open one you already have. A row that needs a free account, or a code from whoever teaches the course, says so before you tap.</p><div id="ct-status" class="msg" hidden></div></div>';
+    h += '<ul class="list">' + rows.map(function (row) {
+      var word = CATALOG_WORDS[catalogState(row)];
+      var lang = fieldLanguage(row.title, '', row.language || '');
+      // The row prints the edition the learner HOLDS once installed, the page build's otherwise
+      // (DESIGN-0.8.1, item 84): both facts are already on the device, so this reads correctly
+      // with no network at all.
+      var installedRow = packStore.get(row.id);
+      var shownVersion = (installedRow && installedRow.version) ? installedRow.version : row.version;
+      return '<li><button class="drow" type="button" data-cat="' + esc(row.id) + '">' +
+        '<span class="t"' + (lang ? ' lang="' + esc(lang) + '"' : '') + '>' + esc(row.title) + '</span>' + (word ? '<span class="sub"> ' + esc(word) + '</span>' : '') +
+        '<span class="m">' + plural(row.cards, 'card') + (row.lessons ? ' · ' + plural(row.lessons, 'lesson') : '') + '</span>' +
+        '<span class="m">' + esc(row.source) + (shownVersion ? ' · ' + esc(shownVersion) : '') + ' · ' + esc(row.terms) + '</span>' + chev + '</button></li>';
+    }).join('') + '</ul>';
+    host.innerHTML = h;
+    prepareMessages(host);
+    Array.prototype.forEach.call(host.querySelectorAll('[data-cat]'), function (b) {
+      b.addEventListener('click', function () { catalogTap(b.getAttribute('data-cat'), b); });
+    });
+  }
+  function catalogTap(id, button) {
+    var row = catalogRow(id);
+    if (!row) return;
+    var state = catalogState(row);
+    // A row already on the device opens the deck, whether or not a newer edition is known
+    // (DESIGN-0.8.1): the row's job is to say so, never a blank screen, and the deck screen is
+    // where the update action itself lives (C.3), not a second tap through the install door.
+    if (state === 'installed' || state === 'update') { renderDeck(row.id); show('s-deck'); return; }
+    if (state === 'class') { openPaste('add'); return; }
+    if (state === 'account') {
+      // The sheet says, in one sentence, what the account is for; the intent rides the sign-in redirect.
+      openSheet(button, row.title, [
+        { label: 'Sign in', on: function (b) { pendingCatalog = row.id; signIn(b); } },
+        { label: 'Not now', on: function () {} }
+      ], '<p>This deck is sent only to a signed-in account. Signing in is free and takes about a minute.' + (isStandalone() ? ' Sign-in opens in your browser.' : '') + '</p>');
+      return;
+    }
+    catalogInstall(row, button);
+  }
+  function catalogInstall(row, button) {
+    var restore = button ? busy(button, 'Getting the deck…') : function () {};
+    var done = function (res) {
+      if (res.ok) { finishAddInstall(res); return; }
+      restore();
+      setMsg('ct-status', res.msg, true);
+    };
+    if (row.access === 'open') { installFromUrl(row.url, done); return; }
+    if (row.access !== 'issuer') { done({ ok: false, msg: 'This deck reaches you through its class. Open link or code, and enter the class code.' }); return; }
+    // A signed-in read through the account service: the body is served to the identity, never to the web.
+    authClient().then(function () { return fetchCatalogPack(authTransport, row.id); }).then(function (r) {
+      if (!r || !r.pack) { done({ ok: false, msg: 'This deck is no longer available. Choose another deck.' }); return; }
+      if (JSON.stringify(r.pack).length > DECK_TEXT_MAX) { done({ ok: false, msg: DECK_TOO_BIG }); return; }
+      done(installPackObject(r.pack, {}));
+    }).catch(function (e) { done({ ok: false, msg: friendlyError(e) }); });
+  }
+
   function renderAdd() {
     var host = $('ad-body');
     var hasPublic = packStore.has(LEGACY_PACK_ID);
     var fetchToken = 0;
+    // The doorway to the catalog says what the tap does and how many decks wait behind it, verb first, with the
+    // deck rows' chevron; as a plain title it was read as a heading over the three rows beneath (use run 13, 2026-09-20).
+    var chev = '<svg class="chev" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4l6 6-6 6"/></svg>';
     host.innerHTML = '<div class="answers" style="padding-top:16px">' +
+      '<button class="answer-row nav" id="ad-catalog" type="button"><span class="t">See the ' + plural(catalogRows().length, 'deck') + '</span><br><span class="s">Some need a free account or a class code; each row says which before you tap.</span>' + chev + '</button>' +
       '<button class="answer-row" id="ad-public" type="button"><span class="t">Study JAPN 309 kanji</span><br><span class="s">' + (hasPublic ? 'Already on this device' : 'Kanji Look and Learn, lessons 1 to 8. One tap, and it can be removed later.') + '</span></button>' +
       '<button class="answer-row" id="ad-paste" type="button"><span class="t">Open link or code</span><br><span class="s">A deck link, a deck code, or a six-character class code</span></button>' +
       '<button class="answer-row" id="ad-file" type="button"><span class="t">Add from a file</span><br><span class="s">A deck file someone sent you</span></button>' +
@@ -5492,6 +5656,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<input type="file" id="pk-file" accept="application/json,.json" hidden>' +
       '<label class="field" style="margin-top:24px"><span class="lbl">Or paste a deck as text</span><textarea class="textin" id="pk-paste" placeholder="The deck file’s contents"></textarea></label>' +
       '<button class="ghost" id="pk-pastebtn" type="button"><span>Add pasted deck</span></button></div>';
+    $('ad-catalog').addEventListener('click', function () { renderCatalog(); show('s-catalog'); });
     $('ad-public').addEventListener('click', function () {
       if (hasPublic) { renderDeck(LEGACY_PACK_ID); show('s-deck'); return; }
       var restorePublic = busy($('ad-public'), 'Getting the deck…');
@@ -6766,6 +6931,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var st = {};
     if (pendingJoin) st.join = pendingJoin;
     if (pendingDeck) st.deck = pendingDeck;
+    if (pendingCatalog) st.catalog = pendingCatalog;   // the catalog deck tapped before signing in
     authClient().then(function (c) { return c.loginWithRedirect({ appState: st }); })
       .catch(function (e) { saveAccount({ lastError: friendlyError(e) }); renderAccount(); show('s-account'); });
   }
@@ -7208,6 +7374,14 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       var recentLabel = fmtCardDate(recentDate);
       recentRows += row(recentLabel, plural(answerDays.get(recentKey) || 0, 'answer'));
     }
+    // A window with nothing in it, over a record that has something: name the day that counts, in the day
+    // rows' own date form, so Days studied above has a day to point to (use run 13, 2026-09-20: one studied
+    // day eleven days back read as seven zero rows under a count of 1).
+    var recentTotal = 0;
+    for (var gi = 0; gi < 7; gi++) recentTotal += answerDays.get(store.addDays(firstKey, -gi)) || 0;
+    var lastStudiedKey = '';
+    answerDays.forEach(function (count, key) { if (count > 0 && key > lastStudiedKey) lastStudiedKey = key; });
+    var recentGap = (recentTotal === 0 && lastStudiedKey) ? '<p class="note" id="st-recent-gap">Nothing in the last 7 days. Last studied ' + esc(fmtCardDate(lastStudiedKey)) + '.</p>' : '';
     var upcoming = forecast(DECK, store, 28, Date.now(), { states: states }, deckOptionsFor());
     var laterReviews = upcoming.slice(7).reduce(function (sum, count) { return sum + count; }, 0);
     var upcomingRows = upcoming.slice(0, 7).map(function (k, i) {
@@ -7218,8 +7392,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     }).join('') + row('The three weeks after', plural(laterReviews, 'review'));
     $('st-body').innerHTML = '<div class="prose">' +
       '<h2 class="sec">Today</h2><div class="rows">' +
+      // Every figure here is today's (countsToday). Days studied is an all-time count and sits under
+      // All-time only; it used to print here too, under a heading that said otherwise (2026-09-20).
       row('Cards answered', t.cards + ' cards · ' + t.answers + ' answers') + row('New introduced', t.newCards) +
-      row('Time', fmtSpent(t.ms)) + row('Days studied', daysStudied()) + '</div>' +
+      row('Time', fmtSpent(t.ms)) + '</div>' +
       '<h2 class="sec">All decks</h2><div class="rows">' +
       row('Decks', packStore.list().length) + row('Cards', DECK.cards.length) +
       row('Not started', n) + row('Learning', l) + row('In review', r) +
@@ -7229,7 +7405,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<h2 class="sec">All-time</h2><div class="rows">' +
       row('Answers', store.answers().length) + row('Cards touched', touched.size) + row('Days studied', daysStudied()) + '</div>' +
       '<h2 class="sec">By deck</h2><div class="rows" id="st-by-deck">' + deckRows + '</div>' +
-      '<h2 class="sec">Recent days</h2><div class="rows" id="st-recent">' + recentRows + '</div>' +
+      '<h2 class="sec">Recent days</h2><div class="rows" id="st-recent">' + recentRows + '</div>' + recentGap +
       '<h2 class="sec">Coming up</h2>' +
       '<p class="note">Reviews the schedule already holds for each of the next four weeks. New cards are not counted; their pace is the minutes you set.</p>' +
       '<div class="rows" id="st-upcoming">' + upcomingRows + '</div>' +
@@ -7264,7 +7440,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
   /* ── About: the only screen allowed to explain itself ──────────── */
   function renderAbout() {
-    var attrs = packStore.list().map(function (p) { var pk = DECK.packs[p.id]; return pk && pk.attribution ? esc(pk.attribution) : ''; }).filter(Boolean);
+    // The source and the edition together, the second of the two places a publisher's deck states them
+    // (the catalog row is the first). The decision that opened the catalog promised both under About, and
+    // until 2026-09-20 (item 92) only the source was printed.
+    var attrs = packStore.list().map(function (p) { var pk = DECK.packs[p.id]; return pk && pk.attribution ? esc(pk.attribution) + (pk.version ? ' · Deck version ' + esc(pk.version) : '') : ''; }).filter(Boolean);
     var here = (location.href || '').indexOf(PUBLIC_URL) === 0;
     $('ab-body').innerHTML = '<div class="prose">' +
       '<p>Kurikaeshi, <span lang="ja">繰り返し</span>, means repetition. It shows you a few cards each day and brings back the ones you get wrong sooner, the ones you know later. Finishing the day’s cards is the whole job; coming back tomorrow is the point.</p>' +
@@ -7770,8 +7949,15 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         saveAccount({ signedIn: true, expired: false, sub: u.sub || '', lastSub: '', name: u.name || u.nickname || '', email: u.email || '', lastError: null, goneNotice: null });
         if (appState && appState.join) pendingJoin = appState.join;
         if (appState && appState.deck) pendingDeck = appState.deck;
+        if (appState && appState.catalog) pendingCatalog = appState.catalog;
         if (pendingDeck) {
           var d = pendingDeck; pendingDeck = null; openDeckLink(d);
+        } else if (pendingCatalog) {
+          // The deck tapped in the catalog before sign-in: back to its row, and the install the tap asked for.
+          var cid = pendingCatalog; pendingCatalog = null;
+          renderCatalog(); show('s-catalog');
+          var crow = catalogRow(cid);
+          if (crow) catalogInstall(crow, $('ct-body').querySelector('[data-cat="' + cid + '"]'));
         } else if (pendingJoin) {
           classesView.join = { code: pendingJoin, step: 1 }; pendingJoin = null; renderClasses(); show('s-classes');
         } else { renderAccount(); show('s-account'); }
@@ -8055,7 +8241,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<div class="row"><span class="k">Who</span><span class="v">The instructor of this class, once they approve you.</span></div>' +
       '<div class="row"><span class="k">Until</span><span class="v">You leave, they remove you, or the class ends. Leaving closes their view, including what was shared before.</span></div>' +
       '</div>' +
-      '<p class="note">This app is not run by your school. Joining is your own choice; if a course needs a record of your studying, the export in Settings is yours to hand over instead.</p>' +
+      // The export is offered as the alternative only with what it holds said plainly: it carries MORE than
+      // joining shares, not less (item 83, 2026-09-20). A check reads the export's keys against this sentence.
+      '<p class="note">This app is not run by your school. Joining is your own choice; if a course needs a record of your studying, the export in Settings is a file you hand over yourself. Know that it carries more than joining shares: your reviews of every deck, which decks you have, your own cards, the cards you retired or held out, and your settings.</p>' +
       '<label class="chk"><input type="checkbox" id="j-consent"><span>I understand what is shared, and I choose to share it.</span></label>' +
       '<div id="cl-status" class="msg" hidden></div>' +
       '<div class="stack" style="padding:0"><button class="primary" id="j-join" type="button" disabled>Join ' + esc(j.code) + ' and share</button>' +
@@ -8163,7 +8351,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       body.innerHTML = h;
       var fail = function (e) { setMsg('cl-status', friendlyError(e), true); };
       $('cd-back').addEventListener('click', function () { classesView.open = null; renderClasses(); });
-      var sl = $('cd-sharelink'); if (sl) sl.addEventListener('click', function () { shareLink(joinLink(c), c.title, $('cd-linkhost')); });
+      var sl = $('cd-sharelink'); if (sl) sl.addEventListener('click', function () { shareLink(joinLink(c), c.title, $('cd-linkhost'), sl); });
       var rs = $('cd-reset'); if (rs) rs.addEventListener('click', function () {
         confirmSheet({ anchor: rs, title: 'A new code retires the current code. Students already on the roster stay.', action: 'Make new code', cancel: 'Keep current code', onConfirm: function () {
           sync.resetClassCode(c.id).then(function (code) {
@@ -8277,6 +8465,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   $('br-back').addEventListener('click', function () { renderDeck(openDeck); show('s-deck'); });
 
   $('ad-back').addEventListener('click', function () { goTab('decks'); });
+  $('ct-back').addEventListener('click', function () { renderAdd(); show('s-add'); });
   $('ps-back').addEventListener('click', function () { if (pasteFrom === 'first') { renderFirst(); show('s-first'); } else { renderAdd(); show('s-add'); } });
   document.addEventListener('click', function (ev) {
     if (ev.target && ev.target.closest && ev.target.closest('#ld-choose')) clearDeckLink();
@@ -8412,6 +8601,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     else if (id === 's-classes') renderClasses();
     else if (id === 's-class') renderClass();
     else if (id === 's-add') renderAdd();
+    else if (id === 's-catalog') renderCatalog();
     else if (id === 's-first') renderFirst();
     show(id, { fromHistory: true });
   });
@@ -8488,7 +8678,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.7.8";
+  var APP_V = "0.8.1";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
