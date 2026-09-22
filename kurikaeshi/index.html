@@ -793,7 +793,7 @@ function readPreview(adapter) {
   }
 }
 
-const LOG_FIELDS = ['c', 't', 'g', 'k', 's', 'd', 'i', 'u', 'e'];
+const LOG_FIELDS = ['c', 't', 'g', 'k', 's', 'd', 'i', 'u', 'e', 'v'];
 
 function packLog(rows) {
   return { v: 2, log: rows.map((entry) => LOG_FIELDS.map((field) => entry[field] === undefined ? null : entry[field])) };
@@ -2582,7 +2582,7 @@ function memoryTransport(server, user) {
       }
       if (name === 'get_shared_pack') { const r = server.shared.get(String(args.p_code || '').trim().toUpperCase()); return r ? [{ title: r.title, cards: r.cards, updated_at: r.updated_at, pack: args.p_full ? r.pack : null }] : []; }
       
-      if (name === 'get_catalog_pack') { const r = server.catalog.get(String(args.p_id || '').trim()); return r && (r.access === 'open' || r.access === 'issuer') ? [{ title: r.title, cards: r.cards, updated_at: r.updated_at || stamp(), pack: r.pack }] : []; }
+      if (name === 'get_catalog_pack') { const r = server.catalog.get(String(args.p_id || '').trim()); return r && (r.access === 'open' || r.access === 'account') ? [{ title: r.title, cards: r.cards, updated_at: r.updated_at || stamp(), pack: r.pack }] : []; }
       if (name === 'unshare_pack') { let n = 0; for (const [k, r] of [...server.shared]) if (r.owner_id === user && r.pack_id === args.p_pack_id) { server.shared.delete(k); n++; } return n; }
       if (name === 'erase_my_reviews') {
         server.erasures.set(user, Date.now());
@@ -3089,7 +3089,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 <script>
 (function () {
   'use strict';
-  var APP_VERSION = '0.8.1';
+  var APP_VERSION = '0.8.3';
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -3097,7 +3097,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // (a square bracket anywhere) mean accounts are off: the page then never touches the network
   // except to install a deck on the learner's tap. Nothing here is a secret by design.
   var CONFIG = {"auth0":{"domain":"dev-rxe3mje4y1suwccw.us.auth0.com","clientId":"EpM3qKZqHIjpumcmmsuXUUaxSHibqXi3","audience":"https://kurikaeshi/api"},"dataApi":"https://ep-shiny-union-ay3o428i.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1","contact":""};
-  var CATALOG = [{"id":"japn309-kll-l1-l8","access":"open","title":"JAPN 309 · Kanji Look and Learn · Lessons 1–8","language":"ja","source":"KANJIDIC2 and JMdict, EDRDG","terms":"Open-licensed. Free, no account needed.","cards":683,"lessons":8,"version":"1.1.1","url":"https://ferrelldevin.github.io/studykit/kurikaeshi/packs/japn309-kll-l1-l8.json"},{"id":"irodori-a2-1-vocab","access":"issuer","title":"Irodori Elementary 1 · Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. The source is named here, and again under About Kurikaeshi.","cards":2382,"lessons":18,"version":"1.0.0"},{"id":"japn111f-vocab","access":"class","title":"JAPN 111F · Vocabulary and Expressions · Lists 1–16","language":"ja","source":"The course instructor","terms":"Made for the class. Join with the class code.","cards":992,"lessons":16},{"id":"japn212-kanji","access":"class","title":"JAPN 212 · Kanji · Lessons 1–17","language":"ja","source":"The course instructor, readings from KANJIDIC2","terms":"Made for the class. Join with the class code.","cards":218,"lessons":13},{"id":"japn212-vocab","access":"class","title":"JAPN 212 · Vocabulary · Lessons 1–9, 11–13, 17","language":"ja","source":"The course instructor","terms":"Made for the class. Join with the class code.","cards":960,"lessons":13},{"id":"japn301-vocab","access":"class","title":"JAPN 301 · Irodori Elementary 2 · Vocabulary","language":"ja","source":"The course instructor","terms":"Made for the class. Join with the class code.","cards":3540,"lessons":18}];
+  var CATALOG = [{"id":"japn309-kll-l1-l8","access":"open","title":"JAPN 309 · Kanji Look and Learn · Lessons 1–8","language":"ja","source":"KANJIDIC2 and JMdict, EDRDG","terms":"Open-licensed. Free, no account needed.","cards":683,"lessons":8,"version":"1.1.1","url":"https://ferrelldevin.github.io/studykit/kurikaeshi/packs/japn309-kll-l1-l8.json"},{"id":"irodori-a2-1-vocab","access":"account","title":"Irodori Elementary 1 · Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. The source is named here, and again under About Kurikaeshi.","cards":2382,"lessons":18,"version":"1.0.0"},{"id":"japn301-vocab","access":"account","title":"Irodori Elementary 2 · Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. The source is named here, and again under About Kurikaeshi.","cards":3540,"lessons":18,"version":"1.0.1"}];
   var SYNC_READY = !!(CONFIG && CONFIG.auth0 && CONFIG.dataApi && !/\[/.test(JSON.stringify(CONFIG)));
   var $ = function (id) { return document.getElementById(id); };
   // Everything interpolated into markup from a pack goes through this. Packs are trusted and
@@ -5296,10 +5296,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var options = deckOptionsFor();
     var s = rowStats(id, null, { ctx: ctx }), own = id === OWN_PACK_ID;
     // DESIGN-0.8.1 (item 84, B-97): the update door a catalog install needs is not a url — it is
-    // the page's own catalog row for the same id, read the same way the row's word was. A class
-    // row is never this door (item 81's guard, symmetrical here).
+    // the page's own catalog row for the same id, read the same way the row's word was. Every
+    // catalog row is this door (item 91, 2026-09-21): a deck the catalog does not carry has none.
     var catRow = catalogRow(id);
-    var updateDoor = r.url ? 'url' : ((catRow && catRow.access !== 'class') ? 'catalog' : null);
+    var updateDoor = r.url ? 'url' : (catRow ? 'catalog' : null);
     var catUpdate = updateDoor === 'catalog' && catalogInstallState(catRow, r) === 'update';
     var heading = $('d-title');
     heading.textContent = r.title;
@@ -5556,32 +5556,30 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     toast(res.status === 'unchanged' ? 'You already have this deck' : res.msg, { label: 'Open deck', on: function () { renderDeck(res.id); show('s-deck'); } });
   }
   /* ── decks you can add: the catalog, inlined at build, never fetched ── */
-  // One row per deck the site knows. What a tap costs is printed ON the row, before the tap (MC-59):
-  // an open-licensed deck installs for anyone; a publisher's own list needs a free account and the
-  // row says so; an instructor's own deck reaches her class by its code and the row says that. The
-  // list itself never needs the network, so it renders offline; only an install does, and then the
-  // install path's own sentences say what happened.
+  // One row per deck the site knows, and every row installs by the same tap (item 91, 2026-09-21).
+  // What a tap costs is printed ON the row, before the tap (MC-59): an open-licensed deck installs
+  // for anyone; every other deck needs a free account and the row says so. The list itself never
+  // needs the network, so it renders offline; only an install does, and then the install path's
+  // own sentences say what happened.
   var pendingCatalog = null;
-  var CATALOG_WORDS = { installed: 'Installed', update: 'Update ready', account: 'Needs sign-in', class: 'By class code', ready: '' };
+  var CATALOG_WORDS = { installed: 'Installed', update: 'Update ready', account: 'Needs sign-in', ready: '' };
   function catalogRows() { return typeof CATALOG !== 'undefined' && Array.isArray(CATALOG) ? CATALOG : []; }
   function catalogRow(id) { return catalogRows().filter(function (r) { return r.id === id; })[0] || null; }
   // DESIGN-0.8.1 (item 84, B-97): a catalog install carries no url, so the old "Check for
   // update" button, which only appeared for a url, never saw it, and the row never said which
   // edition was on the device. catalogInstallState (packs.js) is the fourth word — install /
   // installed / update — compared from facts already on the device: the inlined row's edition
-  // against whatever is installed. A class row never reaches it: its own door (item 81) is the
-  // only one it may go through.
+  // against whatever is installed. Every row reaches it: there is one install door.
   function catalogState(row) {
-    if (packStore.has(row.id)) return row.access === 'class' ? 'installed' : catalogInstallState(row, packStore.get(row.id));
-    if (row.access === 'class') return 'class';
-    if (row.access === 'issuer' && !(SYNC_READY && account.signedIn)) return 'account';
+    if (packStore.has(row.id)) return catalogInstallState(row, packStore.get(row.id));
+    if (row.access === 'account' && !(SYNC_READY && account.signedIn)) return 'account';
     return 'ready';
   }
   function renderCatalog() {
     var host = $('ct-body');
     var rows = catalogRows();
     var chev = '<svg class="chev" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4l6 6-6 6"/></svg>';
-    var h = '<div class="prose"><p>Tap a deck to add it, or to open one you already have. A row that needs a free account, or a code from whoever teaches the course, says so before you tap.</p><div id="ct-status" class="msg" hidden></div></div>';
+    var h = '<div class="prose"><p>Tap a deck to add it, or to open one you already have. A deck that needs a free account says so before you tap.</p><div id="ct-status" class="msg" hidden></div></div>';
     h += '<ul class="list">' + rows.map(function (row) {
       var word = CATALOG_WORDS[catalogState(row)];
       var lang = fieldLanguage(row.title, '', row.language || '');
@@ -5609,7 +5607,6 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     // (DESIGN-0.8.1): the row's job is to say so, never a blank screen, and the deck screen is
     // where the update action itself lives (C.3), not a second tap through the install door.
     if (state === 'installed' || state === 'update') { renderDeck(row.id); show('s-deck'); return; }
-    if (state === 'class') { openPaste('add'); return; }
     if (state === 'account') {
       // The sheet says, in one sentence, what the account is for; the intent rides the sign-in redirect.
       openSheet(button, row.title, [
@@ -5627,9 +5624,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       restore();
       setMsg('ct-status', res.msg, true);
     };
+    // One branch per place a body lives: the public file for an open row, the signed-in read for
+    // every other row. The body served to the identity never reaches the web.
     if (row.access === 'open') { installFromUrl(row.url, done); return; }
-    if (row.access !== 'issuer') { done({ ok: false, msg: 'This deck reaches you through its class. Open link or code, and enter the class code.' }); return; }
-    // A signed-in read through the account service: the body is served to the identity, never to the web.
     authClient().then(function () { return fetchCatalogPack(authTransport, row.id); }).then(function (r) {
       if (!r || !r.pack) { done({ ok: false, msg: 'This deck is no longer available. Choose another deck.' }); return; }
       if (JSON.stringify(r.pack).length > DECK_TEXT_MAX) { done({ ok: false, msg: DECK_TOO_BIG }); return; }
@@ -5645,7 +5642,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     // deck rows' chevron; as a plain title it was read as a heading over the three rows beneath (use run 13, 2026-09-20).
     var chev = '<svg class="chev" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4l6 6-6 6"/></svg>';
     host.innerHTML = '<div class="answers" style="padding-top:16px">' +
-      '<button class="answer-row nav" id="ad-catalog" type="button"><span class="t">See the ' + plural(catalogRows().length, 'deck') + '</span><br><span class="s">Some need a free account or a class code; each row says which before you tap.</span>' + chev + '</button>' +
+      '<button class="answer-row nav" id="ad-catalog" type="button"><span class="t">See the ' + plural(catalogRows().length, 'deck') + '</span><br><span class="s">Some need a free account; each row says which before you tap.</span>' + chev + '</button>' +
       '<button class="answer-row" id="ad-public" type="button"><span class="t">Study JAPN 309 kanji</span><br><span class="s">' + (hasPublic ? 'Already on this device' : 'Kanji Look and Learn, lessons 1 to 8. One tap, and it can be removed later.') + '</span></button>' +
       '<button class="answer-row" id="ad-paste" type="button"><span class="t">Open link or code</span><br><span class="s">A deck link, a deck code, or a six-character class code</span></button>' +
       '<button class="answer-row" id="ad-file" type="button"><span class="t">Add from a file</span><br><span class="s">A deck file someone sent you</span></button>' +
@@ -6531,7 +6528,14 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       // never when (2026-09-16, round 53). While the day has room the card is in the set, since My cards come
       // first in the deck's order.
       var emptyDay = queueFor(ALL), emptyHold = emptyDay.newLeft === 0 ? newCardHold(emptyDay) : null;
-      h += '<div class="prose" style="padding-top:0"><h2 class="title">No cards of your own yet</h2><p class="note">Type a word and its meaning above. ' + (emptyHold ? 'Your card' + waitWords(1) + ': ' + emptyHold.words + '.' : 'Your card is in today’s session.') + '</p></div>';
+      // 2026-09-21 (item 98): with the last own card retired the pack is gone but its rows are not — they are
+      // listed under Retired below, read by ownRetiredRows(). The heading used to say he had no cards over
+      // that very list, and read as loss. It now reads the same rows the list does: no card in any state is
+      // the only case that says so. No search field is drawn here, so a query left over from the list is
+      // dropped rather than left to hide the Retired section the heading counts.
+      cardsView.q = '';
+      var retiredOwn = ownRetiredRows().length;
+      h += '<div class="prose" style="padding-top:0"><h2 class="title">' + (retiredOwn ? 'No active cards' : 'No cards of your own yet') + '</h2><p class="note">' + (retiredOwn ? plural(retiredOwn, 'retired card') + ' below. ' : '') + 'Type a word and its meaning above. ' + (emptyHold ? 'Your card' + waitWords(1) + ': ' + emptyHold.words + '.' : 'Your card is in today’s session.') + '</p></div>';
     } else {
       var n = pack.notes.length;
       h += '<div class="pad"><label class="sr-only" for="mc-q">Search your cards</label><input type="search" class="textin" id="mc-q" placeholder="Search your cards" value="' + esc(cardsView.q) + '"' + (ownLang() ? ' lang="' + esc(ownLang()) + '"' : '') + ' autocapitalize="off" autocomplete="off"></div>';
@@ -8678,7 +8682,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.8.1";
+  var APP_V = "0.8.3";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
