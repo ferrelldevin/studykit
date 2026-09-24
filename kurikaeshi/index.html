@@ -799,6 +799,12 @@ function packLog(rows) {
   return { v: 2, log: rows.map((entry) => LOG_FIELDS.map((field) => entry[field] === undefined ? null : entry[field])) };
 }
 
+const SAMPLE_ROW = (t) => ({ c: 'japn309-kll-l1-l8/k-1ja2yxc#0', t, g: 3, k: 1, s: 14.827193, d: 5.318402, i: 9, u: t + 9 * 86400000, e: 3400, v: '1.1.1' });
+function measuredRowLength() {
+  const t = 1758600000000;
+  return JSON.stringify(packLog([SAMPLE_ROW(t), SAMPLE_ROW(t + 1000)])).length - JSON.stringify(packLog([SAMPLE_ROW(t)])).length;
+}
+
 function unpackLog(value) {
   if (Array.isArray(value)) return value;
   if (!value || value.v !== 2 || !Array.isArray(value.log)) return [];
@@ -1028,7 +1034,8 @@ function makeStore(adapter) {
         try { value = adapter.get(key) || ''; } catch { value = ''; }
         return sum + key.length + String(value).length;
       }, 0);
-      const bytesPerEntry = log.length ? JSON.stringify(packLog(log)).length / log.length : 60;
+
+      const bytesPerEntry = log.length ? JSON.stringify(packLog(log)).length / log.length : measuredRowLength();
       const answers = Math.max(0, Math.floor((budget - used) / bytesPerEntry));
       return { used, budget, answers };
     },
@@ -1572,6 +1579,20 @@ function deriveCards(pack) {
   return cards;
 }
 
+function lessonKeys(pack) {
+  const keys = new Set();
+  for (const n of pack.notes || []) keys.add(n.lesson || '');
+  return [...keys].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+function initialOptions(pack, meta) {
+  const keys = lessonKeys(pack);
+  if (keys.length < 2) return {};
+  if (meta.lessons === 'none') return { lessonsOut: keys };
+  if (meta.lessons === 'first') return { lessonsOut: keys.slice(1) };
+  return {};
+}
+
 function directionCardIds(pack, typeId, ord) {
   const type = (pack.noteTypes || []).find((item) => item.id === typeId);
   if (!type || type.kind === 'cloze') return [];
@@ -1639,14 +1660,15 @@ function makePackStore(adapter) {
       const now = meta.now || Date.now();
       const next = { installed: state.installed.map((r) => ({ ...r })), data: { ...state.data } };
       const row = next.installed.find((r) => r.id === pack.id);
+      const carry = row ? carryLessonChoice(current, pack, row.options) : null;   
       const entry = { id: pack.id, version: pack.version, title: pack.title, url: pack.url || meta.url || null,
                       installedAt: row ? row.installedAt : now, updatedAt: now, language: pack.language || null,
-                      options: row ? { ...(row.options || {}) } : {} };
+                      options: row ? carry.options : initialOptions(pack, meta) };
       if (row) Object.assign(row, entry); else next.installed.push(entry);
       next.data[pack.id] = pack;
       if (!persist(next)) return { ...plan, ok: false, apply: false, msg: 'This device could not save the deck. Export my progress, under You then Settings, keeps a copy; then free some storage and try again.' };
       state = next;
-      return { ...plan, ok: true };
+      return { ...plan, ok: true, lessonsAdded: carry ? carry.added.length : 0 };
     },
 
     setOptions(id, patch) {
@@ -1686,6 +1708,16 @@ function deckFrom(packs) {
 }
 
 
+function carryLessonChoice(oldPack, newPack, options) {
+  const o = { ...(options || {}) };
+  if (!Array.isArray(o.lessonsOut)) return { options: o, added: [] };
+  const before = new Set(lessonKeys(oldPack || { notes: [] }));
+  const added = lessonKeys(newPack).filter((k) => !before.has(k));
+  const out = o.lessonsOut.map((k) => String(k == null ? '' : k));
+  o.lessonsOut = out.concat(added.filter((k) => !out.includes(k)));
+  return { options: o, added };
+}
+
 
 const SOON_DAYS = 3;
 
@@ -1721,6 +1753,14 @@ function buildQueue(deck, store, opts = {}) {
   const deckOptions = opts.deckOptions || {};
   const optionsFor = (id) => deckOptions[id] || {};
   const isPaused = (id) => !!optionsFor(id).paused;
+
+  const outOf = (id) => { const list = optionsFor(id).lessonsOut; return Array.isArray(list) && list.length ? new Set(list.map((k) => String(k == null ? '' : k))) : null; };
+  const outSets = {};
+  const inRotation = (c) => {
+    if (lesson != null) return true;
+    if (!(c.pack in outSets)) outSets[c.pack] = outOf(c.pack);
+    return !outSets[c.pack] || !outSets[c.pack].has(String(c.lesson == null ? '' : c.lesson));
+  };
 
   const isSuspended = typeof store.isSuspended === 'function' ? (id) => store.isSuspended(id) : () => false;
 
@@ -1770,9 +1810,10 @@ function buildQueue(deck, store, opts = {}) {
   const dayEnd = store.dayStart(store.addDays(todayK, 1)) - 1;
   const soonEnd = store.dayStart(store.addDays(todayK, SOON_DAYS + 1)) - 1;   
   const todayStartMs = store.dayStart(todayK);
+  let outOfRotation = 0;   
   for (const c of pool) {
     const s = states.get(c.id) || { state: 'new' };
-    if (s.state === 'new') { fresh.push(c); continue; }
+    if (s.state === 'new') { if (inRotation(c)) fresh.push(c); else outOfRotation++; continue; }
     if (s.due != null && s.due > now && s.due <= soonEnd) soon++;
 
     if (owedRepeat(s, store, now)) { owed.push(c); continue; }
@@ -1851,7 +1892,7 @@ function buildQueue(deck, store, opts = {}) {
     queue: out,
     newLeft, reviewsLeft, budget, gapDays, backlog, intakePaused, newHeldByLimit, newCutByLimit,
 
-    counts: { fresh: fresh.length, newToday: freshQ.length, toStudyToday: out.length, due: due.length, learn: learn.length + learnInter.length + owed.length, soon, learningLater, buried, overCap, sameNote },
+    counts: { fresh: fresh.length, newToday: freshQ.length, toStudyToday: out.length, due: due.length, learn: learn.length + learnInter.length + owed.length, soon, learningLater, buried, overCap, sameNote, outOfRotation },
   };
 }
 
@@ -1955,6 +1996,17 @@ function intakeFloor(deck, store, now = Date.now(), packId = null, ctx = {}) {
     }
   }
   return binding;
+}
+
+function pruneUnseenNew(queue, store, pack, lesson) {
+  const key = String(lesson == null ? '' : lesson);
+  const kept = [];
+  let removed = 0;
+  for (const c of queue) {
+    const ofLesson = c && c.pack === pack && String(c.lesson == null ? '' : c.lesson) === key;
+    if (ofLesson && store.state(c.id).state === 'new') removed++; else kept.push(c);
+  }
+  return { queue: kept, removed };
 }
 
 
@@ -3089,7 +3141,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 <script>
 (function () {
   'use strict';
-  var APP_VERSION = '0.8.3';
+  var APP_VERSION = '0.8.4';
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -3877,6 +3929,56 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 
 
+  // One switch per lesson, modelled on the direction sheet above, but it enforces nothing by
+  // suspending: the switch is the install record's lessonsOut, and the engine reads it at its
+  // new-card site only. No last-one guard: every lesson may be out.
+  // Round 75 (finding 2): the switch's feedback is a line of the sheet itself, under the note and above
+  // the rows, never the page's toast, which floated over the sheet and hid a row. The line always holds
+  // a sentence (how many lessons are on, until a switch says what it did) and keeps two lines of room,
+  // so a sentence arriving never moves a row.
+  function openLessonSheet(anchor, id, redraw, said) {
+    var stats = rowStats(id, null);
+    if (!stats.lessons.length) return;
+    var sh = $('sheet'), sc = $('scrim');
+    var focusLesson = redraw && anchor && anchor.getAttribute ? anchor.getAttribute('data-lesson') : null;
+    if (!redraw) {
+      if (sheetTimer) { clearTimeout(sheetTimer); sheetTimer = null; }
+      sheetGeneration++;
+      sheetAnchor = anchor || null;
+    }
+    var onCount = stats.lessons.filter(function (row) { return !lessonOut(id, String(row.lesson == null ? '' : row.lesson)); }).length;
+    var standing = onCount + ' of ' + plural(stats.lessons.length, 'lesson') + (onCount === 1 ? ' is' : ' are') + ' on.';
+    var h = '<div class="sh-title">New cards by lesson</div>' +
+      '<div class="prose" style="padding-top:0"><p class="note" id="ls-note">New cards come only from the lessons you switch on. Cards you have already started keep coming back.</p>' +
+      '<p class="note" id="ls-msg" role="status" style="min-height:3em">' + esc(said || standing) + '</p></div>';
+    stats.lessons.forEach(function (row) {
+      var key = String(row.lesson == null ? '' : row.lesson);
+      var on = !lessonOut(id, key);
+      var label = key || 'No lesson';
+      var countLine = plural(row.total, 'card') + ' · ' + (row.learning + row.review) + ' started' + (on ? '' : ' · Turn on: ' + row.fresh + ' new');
+      h += '<button class="act direction-row lesson-row" type="button" role="switch" aria-label="' + esc(label + ' · ' + countLine) + '" aria-checked="' + (on ? 'true' : 'false') + '" data-lesson="' + esc(key) + '">' +
+        '<span class="direction-copy"><span class="direction-name">' + esc(label) + '</span><span class="direction-count">' + esc(countLine) + '</span></span>' +
+        '<span class="theme-switch" aria-hidden="true"></span></button>';
+    });
+    sh.innerHTML = h;
+    sh.setAttribute('aria-label', 'New cards by lesson');
+    Array.prototype.forEach.call(sh.querySelectorAll('button.lesson-row'), function (button) {
+      button.addEventListener('click', function () {
+        var turnOn = button.getAttribute('aria-checked') !== 'true';
+        var key = button.getAttribute('data-lesson'), said = '';
+        if (!setLessonRotation(id, key, turnOn, function (sentence) { said = sentence; })) return;
+        openLessonSheet(button, id, true, said || (key || 'No lesson') + ' is off. No new cards from it.');
+      });
+    });
+    if (!redraw) {
+      sc.hidden = false; sh.hidden = false; sh.classList.remove('closing', 'dragging', 'returning'); sh.style.transform = '';
+      history.pushState({ screen: screen, id: openDeck, sheet: true }, '', location.href);
+      requestAnimationFrame(function () { sc.classList.add('open'); sh.classList.add('open'); keepSheetBelowAnchor(anchor); });
+    }
+    var target = focusLesson == null ? sh.querySelector('button.lesson-row') : Array.prototype.filter.call(sh.querySelectorAll('button.lesson-row'), function (row) { return row.getAttribute('data-lesson') === focusLesson; })[0] || null;
+    if (target) { try { target.focus({ preventScroll: true }); } catch (e) { target.focus(); } }
+  }
+
   function openDeckOptions(anchor, id) {
     var row = packStore.list().filter(function (item) { return item.id === id; })[0];
     if (!row) return;
@@ -4095,6 +4197,58 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     opts = opts || {};
     return buildQueue(DECK, store, { pack: scope.pack, lesson: scope.lesson, ahead: opts.ahead || 0, aheadDays: opts.aheadDays || 0, deckOptions: opts.deckOptions || deckOptionsFor(), ctx: opts.ctx });
   }
+  /* ── lessons in your daily set: which lessons supply new cards ─────── */
+  // options.lessonsOut on the install record, on this device only. No key reads as every lesson in.
+  function lessonsOutFor(id) {
+    var o = deckOptionsFor()[id] || {};
+    return Array.isArray(o.lessonsOut) ? o.lessonsOut.map(function (k) { return String(k == null ? '' : k); }) : [];
+  }
+  function lessonOut(id, lesson) { return lessonsOutFor(id).indexOf(String(lesson == null ? '' : lesson)) >= 0; }
+  function allLessonsOut(id, lessons) {
+    return lessons.length > 0 && lessons.every(function (row) { return lessonOut(id, row.lesson); });
+  }
+  // True when some deck has every lesson out: Today's done lines then say where to choose.
+  function noLessonIn(ctx) {
+    return packStore.list().some(function (r) { return r.id !== OWN_PACK_ID && lessonsOutFor(r.id).length > 0 && allLessonsOut(r.id, rowStats(r.id, null, { ctx: ctx }).lessons); });
+  }
+  // Take a lesson out or put it back: one write to the install record, then the rows redraw. Nothing
+  // is suspended and no history moves; a card already started keeps reviewing whatever its lesson's state.
+  // `say` takes the switch's feedback: the lesson sheet writes it into its own line (round 75); the
+  // deck sheet's item, whose sheet has closed by then, leaves it to the toast.
+  function setLessonRotation(id, lesson, on, say) {
+    say = say || toast;
+    var key = String(lesson == null ? '' : lesson);
+    var next = lessonsOutFor(id).filter(function (k) { return k !== key; });
+    if (!on) next.push(key);
+    // Round 70 (2026-09-23, FAIL): once a choice exists it is never deleted — an explicit empty
+    // list (every existing lesson switched on) is written as [], not collapsed to null. Collapsing
+    // it made setOptions delete the key, so a later update's carry (packs.js:carryLessonChoice) found
+    // no map, read the deck as never-chosen, and let an added lesson in unchosen.
+    var result = packStore.setOptions(id, { lessonsOut: next });
+    if (!result.ok) { storageBroken = true; showStorageProblem(); return false; }
+    // Run 18 (2026-09-22): a sitting's queue is built when it starts, and "no new cards from here"
+    // must be true of the sitting the learner is in. A lesson switched off leaves every open sitting's
+    // pending queue without the new cards it had already picked from that lesson: what was answered
+    // stays in learning or repeat, a review is never touched, and Today's Continue count, read live
+    // from the sitting, drops with it. Switching a lesson on adds nothing to an open sitting; the
+    // next one picks it up.
+    if (!on) [session, stoppedSession, justStopped].filter(function (s, i, a) { return !!s && a.indexOf(s) === i; }).forEach(function (s) { s.queue = pruneUnseenNew(s.queue, store, id, key).queue; });
+    renderDecks();
+    if (openDeck === id && screen === 's-deck') renderDeck(id);
+    // Round 72 (2026-09-23): a lesson switched on changed Today from Done for today to a start
+    // button with nothing said. The switch's own feedback says what it added, counted from the
+    // day's queue; with a sitting open it says where the new cards go instead, since an open
+    // sitting keeps the queue it started with (run 18). The tile itself carries no paragraph.
+    if (on) {
+      var label = key || 'No lesson';
+      if (session || stoppedSession || justStopped) say(label + ' is on. New cards from it join your next sitting.');
+      else {
+        var fresh = todayShare({ pack: id, lesson: key }).counts.newToday;
+        say(fresh ? 'Today has ' + plural(fresh, 'new card') + ' from ' + label + '.' : label + ' is on. Today has no new cards from it.');
+      }
+    }
+    return true;
+  }
   // A deck's or a lesson's part of today's set: the cards of Today's one queue that belong to the scope,
   // in Today's order, with the day's own figures (the allowance, the gap) carried over. The new-card
   // allowance and the review limit belong to the day, so a queue built for one scope claims all of them:
@@ -4311,6 +4465,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (!left) { toToday(); return; }
     session = s; show('s-review'); nextCard();
   }
+  window.__kurikaeshiStoppedSitting = function () {   // the walk reads the parked sitting's three lists by card id (run 18)
+    var s = stoppedToday(), ids = function (a) { return a.map(function (c) { return c.id; }); };
+    return s ? { queue: ids(s.queue), learning: ids(s.learning.map(function (x) { return x.card; })), repeat: ids(s.repeat) } : null;
+  };
   window.__kurikaeshiSession = function () { return session ? { total: session.total, left: remaining(session), showings: sittingWork([card].concat(session.queue, session.repeat, session.learning.map(function (x) { return x.card; })), store, { schedules: session.mode !== 'practice' }).showings, mode: session.mode, scope: session.scope, answered: session.answered, day: session.day, undoBlocked: !!session.undoBlocked } : null; };   // the walk reads the sitting
   function startToday() { startSession(queueFor(ALL).queue, ALL, 'today'); }
   function startNow(scope) { startSession(todayShare(scope).queue, scope, 'today'); }
@@ -5095,6 +5253,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       // first may itself be over the limit: "it shares a note with a card in today's set" could be false, and was
       // "it" for two cards (2026-09-16, round 53 review).
       if (c.sameNote) lines.push(plural(c.sameNote, 'card waits', 'cards wait') + ': only one card of a note is studied at a time.');
+      // New cards held back by the learner's own choice of lessons, said only while that choice holds some back.
+      if (c.outOfRotation) {
+        lines.push('New cards come only from the lessons you chose.');
+        if (noLessonIn(ctx)) lines.push('Open a deck under Decks and choose lessons for new cards.');
+      }
       var ownDone = ownWaitingLine(b, ctx.states);   // 2026-09-15: and the cards of the learner's own that wait
       if (ownDone) lines.push(ownDone);
       h += '<div class="tile done" id="t-done"><h2 class="display">Done for today</h2><p>' + lines.join(' ') + '</p></div>';
@@ -5156,13 +5319,38 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (keep) { keep.hidden = !showKeep; keep.textContent = showKeep ? 'Safari clears what is saved here after seven days of browsing in which you do not use Kurikaeshi. To keep it, add Kurikaeshi to your Home Screen and open it from there, or sign in.' : ''; }
     var full = $('t-full');
     var room = store.roomLeft(['bw08.packs.v1', 'bw08.account.v1', 'bw08.sync.v1']);
-    if (!full && room.answers < 3000) {
-      full = document.createElement('p');
-      full.id = 't-full'; full.className = 'msg';
-      full.textContent = 'This device is getting full. Export my progress, under You then Settings, keeps a copy.';
-      var prose = $('t-body').querySelector('.prose');
-      if (prose) prose.insertBefore(full, prose.firstChild);
-    } else if (full && room.answers >= 3000) full.parentNode.removeChild(full);
+    var nearFull = room.answers < 3000;
+    if (nearFull) {
+      if (!full) {
+        full = document.createElement('p');
+        full.id = 't-full'; full.className = 'msg';
+        var prose = $('t-body').querySelector('.prose');
+        if (prose) prose.insertBefore(full, prose.firstChild);
+      }
+      // roomLeft() above reports what is actually left on this device, so the three sentences
+      // below only ever describe a state the app can prove. Signed in: the account already
+      // holds a durable copy, so the promise is that exporting keeps a copy on this device too
+      // — 0.8.5's device-side trim has not shipped yet, so this must never promise Kurikaeshi
+      // will quietly keep going on its own (DESIGN-0.8.5-DURABLE-HISTORY.md §E). Signed out, the
+      // two sentences say only what this store does (round 72): roomLeft() is a planning figure,
+      // so at zero an answer still saves while the browser accepts the write, and a refused write
+      // shows STORAGE_BAD where the learner is; an export copies the log and removes no row, so it
+      // frees no room. Nothing here promises a recovery the code does not perform. Signed in, the same
+      // two states, and the account holds only what sync has sent: the sentence claims only answers
+      // already synced, and names what sync.pending() still holds once sync is known and it is more
+      // than none — the same count the status line prints below it. Syncing frees no room either.
+      var accountSays = '';
+      if (account.signedIn) {
+        var unsent = sync ? sync.pending().length : 0;
+        accountSays = ' Answers already synced are in your account.' + (unsent ? ' ' + plural(unsent, 'answer') + (unsent === 1 ? ' is' : ' are') + ' waiting to sync.' : '');
+      }
+      var exportSays = ' Export my progress, under You then Settings, keeps a copy of your answers; it frees no room.';
+      if (room.answers <= 0) {
+        full.textContent = 'This device has used the room Kurikaeshi plans for. New answers keep saving while the browser accepts them, and Kurikaeshi tells you if one is not saved.' + accountSays + exportSays;
+      } else {
+        full.textContent = 'This device is filling up.' + accountSays + exportSays;
+      }
+    } else if (full) full.parentNode.removeChild(full);
     if (storageBroken) { el.textContent = STORAGE_BAD; return; }
     if (authUnavailable) { el.textContent = 'Sign-in is not available right now; your answers are kept here.'; return; }
     if (!SYNC_READY) { el.textContent = 'Saved on this device.'; return; }
@@ -5225,7 +5413,13 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var todays = Math.max(0, c.toStudyToday || 0);
     var when = s.started + ' of ' + s.total + ' started';
     if (c.paused) when += ' · paused';
-    else {
+    else if (c.out) {
+      // A lesson out of the daily set, or a deck whose every lesson is: its started cards still come
+      // back and the row counts them; the new cards it would supply are not offered, so it does not
+      // print them as new.
+      if (todays) when += ' · ' + todays + ' to study today';
+      when += ' · no new cards from here';
+    } else {
       if (todays) when += ' · ' + todays + ' to study today';
       if (fresh) when += ' · ' + fresh + ' new';
       // The set as it stands, not the rest of the day: a started card held by the review limit, burying or one card
@@ -5256,8 +5450,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         var pk = DECK.packs[r.id] || {};
         var scope = { pack: r.id, lesson: null };
         var counts = todayShare(scope, { all: dayAll }).counts;
+        var stats = rowStats(r.id, null, { ctx: ctx });
         counts.paused = !!(r.options && r.options.paused);
-        return rowHtml('deck', r.id, r.title, pk.language, rowStats(r.id, null), counts, null);
+        counts.out = r.id !== OWN_PACK_ID && allLessonsOut(r.id, stats.lessons);
+        return rowHtml('deck', r.id, r.title, pk.language, stats, counts, null);
       }).join('') + '</ul>';
       h += '<div class="stack" style="margin-top:16px"><button class="ghost" id="dk-add" type="button"><span>Add a deck</span></button></div>';
     }
@@ -5280,6 +5476,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (o.soon) items.push({ label: 'Review ahead: next ' + SOON_DAYS + ' days', count: '(' + o.soon + ')', on: function () { startAhead(scope); } });
     if (o.practise) items.push({ label: 'Practice all', count: '(' + o.practise + ')', on: function () { startPractise(scope); } });
     if (!scope.lesson && directionTypes(scope.pack).length) items.push({ label: 'Choose what cards ask', on: function (button) { openDirectionSheet(button, scope.pack); } });
+    // A paused deck has every card out already, and its lesson sheet keeps its one control, Close.
+    if (scope.lesson != null && scope.pack !== OWN_PACK_ID && !(deckOptionsFor()[scope.pack] || {}).paused) {
+      var out = lessonOut(scope.pack, scope.lesson);
+      items.push({ label: out ? 'Start new cards here' : 'Stop new cards here', on: function () { setLessonRotation(scope.pack, scope.lesson, out); } });
+    }
     if (withOpen) items.push({ label: 'Open deck', count: null, nav: true, on: function () { renderDeck(scope.pack); show('s-deck'); } });
     if (!items.filter(Boolean).length) { items.push({ label: 'Nothing to study here yet', static: true }); items.push({ label: 'Close', on: function () {} }); }
     openSheet(anchor, scopeTitle(scope), items);
@@ -5315,10 +5516,14 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<div class="micro">' + s.started + ' of ' + s.total + ' started' + (s.retired ? ' · ' + s.retired + ' retired' : '') + (s.directionOff ? ' · ' + s.directionOff + ' direction off' : '') + '</div>' +
       '</div>';
     var dayAll = queueFor(ALL, { ctx: ctx, deckOptions: options });   // one queue for the day, divided among the lesson rows
+    // Run 17 (2026-09-22): the chooser was found last, in the action stack below the lesson list, so the
+    // tester met a lesson row's sheet first. It leads the list now, first control under the deck's header line.
+    if (!own && s.lessons.length) h += '<div class="stack" style="margin-top:12px"><button class="ghost" id="d-lessons" type="button"><span>New cards by lesson</span></button></div>';
     h += '<ul class="list">' + s.lessons.map(function (row) {
       var L = row.lesson || (own ? 'Ungrouped' : 'No lesson');
       var due = todayShare({ pack: id, lesson: row.lesson }, { all: dayAll }).counts;
       due.paused = !!(options[id] && options[id].paused);
+      due.out = !own && lessonOut(id, row.lesson);
       return rowHtml('lesson', row.lesson, L, null, { total: row.total, started: row.learning + row.review, fresh: row.fresh, retired: row.retired, directionOff: row.directionOff, heldOut: row.heldOut, suspended: row.suspended }, due, null);   // a lesson row names held-out cards as its deck row does
     }).join('') + '</ul>';
     h += '<div class="stack" style="margin-top:16px" id="d-acts">' +
@@ -5337,6 +5542,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     Array.prototype.forEach.call($('d-body').querySelectorAll('[data-row]'), function (b) {
       b.addEventListener('click', function () { deckSheet({ pack: id, lesson: b.getAttribute('data-row') }, b, false); });
     });
+    var dl = $('d-lessons'); if (dl) dl.addEventListener('click', function () { openLessonSheet(dl, id); });
     $('d-options').addEventListener('click', function () { openDeckOptions($('d-options'), id); });
     $('d-browse').addEventListener('click', function () { renderBrowse(); show('s-browse'); });
     var dsh = $('d-share'); if (dsh) dsh.addEventListener('click', function () { shareDeck(id, dsh); });
@@ -5377,7 +5583,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       }).catch(function (e) { afterUpdate({ ok: false, msg: friendlyError(e) }); });
     });
     var dr = $('d-remove'); if (dr) dr.addEventListener('click', function () {
-      confirmSheet({ anchor: dr, title: 'Removing this deck keeps your answers, so adding it again resumes where you were.', action: 'Remove deck', cancel: 'Keep deck', onConfirm: function () {
+      confirmSheet({ anchor: dr, title: 'Removing this deck keeps your answers, so adding it again resumes where you were.' + (lessonsOutFor(id).length ? ' Your choice of lessons for new cards is not kept.' : ''), action: 'Remove deck', cancel: 'Keep deck', onConfirm: function () {
         // A removal the browser could not write is not a removal (once-over m5): say so and stay.
         if (!packStore.remove(id)) { storageBroken = true; showStorageProblem(); return; }
         refreshDeck(); indexNotes();
@@ -5505,11 +5711,19 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     }
     refreshDeck(); indexNotes();
     clearDeckLink();
+    // A deck with two or more lessons is told, at install, that its lessons can be chosen. From the
+    // catalog list nothing is in the daily set until the learner chooses, so the sentence asks; on any
+    // other path every lesson, or lesson 1, is already in, so it offers.
+    var lessonCount = plan.reason === 'install' ? lessonKeys(obj).length : 0;
+    var invite = lessonCount >= 2 ? ' · ' + plural(lessonCount, 'lesson') + ((meta || {}).lessons === 'none' ? '. Choose which lessons to study.' : '. You can choose which lessons you study.') : '';
+    // Round 69 (2026-09-22): a lesson an update adds lands off when a choice exists (packs.js carries
+    // it), and the update sentence says so first — what the learner gets, before the counts.
+    var offLessons = plan.reason === 'update' && saved.lessonsAdded ? plural(saved.lessonsAdded, 'new lesson') + ', off until you switch ' + (saved.lessonsAdded === 1 ? 'it' : 'them') + ' on. ' : '';
     return { ok: true, status: plan.reason === 'install' ? 'installed' : 'updated', id: obj.id, msg: plan.reason === 'install'
-      ? 'Deck added · ' + plural(deriveCards(obj).length, 'card')
-      : 'Deck updated · ' + plural(plan.changed, 'note') + ' changed, ' + plural(plan.unsuspend.length - returning, 'card') + ' added, ' + plural(plan.suspend.length, 'card') + ' held out. Your answers are kept.' };
+      ? 'Deck added · ' + plural(deriveCards(obj).length, 'card') + invite
+      : 'Deck updated · ' + offLessons + plural(plan.changed, 'note') + ' changed, ' + plural(plan.unsuspend.length - returning, 'card') + ' added, ' + plural(plan.suspend.length, 'card') + ' held out. Your answers are kept.' };
   }
-  function installFromUrl(url, done) {
+  function installFromUrl(url, done, meta) {
     // A network call on the learner's tap, never on the load path. The marker is the contract
     // the assembler checks for. The timeout is the escape: a hung fetch used to hold the landing
     // screen open forever, and a reader with no button is a reader who leaves.
@@ -5520,7 +5734,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         if (!r.ok) { var problem = new Error('http'); problem.deckHttp = true; throw problem; }
         return readDeckJson(r);
       })
-      .then(function (obj) { done(installPackObject(obj, { url: remote.url })); })
+      .then(function (obj) { done(installPackObject(obj, Object.assign({ url: remote.url }, meta || {}))); })
       // Four causes, four sentences: a deck past the ceiling, a link the server would not answer,
       // a body that is not a deck, and no connection at all. Only the last is worth retrying as it
       // stands, so only the last says so (2026-09-13).
@@ -5529,7 +5743,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // A published deck keeps its own id when it arrives by code (a course pack sent on by its
   // instructor: a re-share lands as an update, and a class pack with the same id is the same
   // deck). A learner's OWN cards arrive keyed by their code, never as this device's editable pack.
-  function installSharedDoc(code, doc) {
+  function installSharedDoc(code, doc, meta) {
     // The transport hands this back already parsed: get_shared_pack answers one row through the
     // data API, and the row is what the server chose to store. There is nothing cheaper to ask
     // for first — the function takes a code and a full flag, returns title, cards, updated_at and
@@ -5539,14 +5753,14 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var src = doc.pack || {};
     var own = !src.id || src.id === OWN_PACK_ID;
     var pk = Object.assign({}, src, { id: own ? 'deck-' + String(code).toLowerCase() : src.id, url: null, shareCode: String(code).toUpperCase() });
-    return installPackObject(pk, {});
+    return installPackObject(pk, meta || {});
   }
-  function installPublic(progressEl, done) {
+  function installPublic(progressEl, done, meta) {
     if (progressEl) { progressEl.hidden = false; progressEl.textContent = 'Getting the deck…'; }
     installFromUrl(PUBLIC_PACK_URL, function (res) {
       if (progressEl) progressEl.textContent = res.msg;
       done(res);
-    });
+    }, meta);
   }
   function flash(res) { setMsg('pk-status', res.msg, !res.ok); }
   function finishAddInstall(res) {
@@ -5626,11 +5840,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     };
     // One branch per place a body lives: the public file for an open row, the signed-in read for
     // every other row. The body served to the identity never reaches the web.
-    if (row.access === 'open') { installFromUrl(row.url, done); return; }
+    if (row.access === 'open') { installFromUrl(row.url, done, { lessons: 'none' }); return; }
     authClient().then(function () { return fetchCatalogPack(authTransport, row.id); }).then(function (r) {
       if (!r || !r.pack) { done({ ok: false, msg: 'This deck is no longer available. Choose another deck.' }); return; }
       if (JSON.stringify(r.pack).length > DECK_TEXT_MAX) { done({ ok: false, msg: DECK_TOO_BIG }); return; }
-      done(installPackObject(r.pack, {}));
+      done(installPackObject(r.pack, { lessons: 'none' }));
     }).catch(function (e) { done({ ok: false, msg: friendlyError(e) }); });
   }
 
@@ -5657,7 +5871,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     $('ad-public').addEventListener('click', function () {
       if (hasPublic) { renderDeck(LEGACY_PACK_ID); show('s-deck'); return; }
       var restorePublic = busy($('ad-public'), 'Getting the deck…');
-      installPublic($('ad-progress'), function (res) { if (res.ok) finishAddInstall(res); else restorePublic(); });
+      installPublic($('ad-progress'), function (res) { if (res.ok) finishAddInstall(res); else restorePublic(); }, { lessons: 'first' });
     });
     $('ad-paste').addEventListener('click', function () { openPaste('add'); });
     $('ad-file').addEventListener('click', function () { $('pk-file').click(); });
@@ -5723,7 +5937,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         var scope = { pack: res.id || null, lesson: null };
         var q = queueFor(scope).queue;   // the first win before any orientation (MC-59): straight into this deck's cards
         if (q.length) startSession(q, scope, 'today'); else goTab('today');
-      });
+      }, { lessons: 'first' });
     });
     $('fo-paste').addEventListener('click', function () { openPaste('first'); });
     $('fo-own').addEventListener('click', function () { goTab('cards'); var f = $('qa-front'); if (f) f.focus(); });
@@ -5897,7 +6111,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
           if (landingAbort === controller) landingAbort = null;
           try { validatePack(obj); } catch (e) { throw landingError('not a deck'); }
           var d = describe(obj);
-          land(obj.title, deriveCards(obj).length, d.lessons, d.samples, obj.language || '', function (done) { done(installPackObject(obj, { url: value })); });
+          land(obj.title, deriveCards(obj).length, d.lessons, d.samples, obj.language || '', function (done) { done(installPackObject(obj, { url: value, lessons: 'first' })); });
         })
         .catch(function (e) {
           if (timer) clearTimeout(timer);
@@ -5920,7 +6134,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     authClient().then(function () { return fetchSharedPack(authTransport, value, false); }).then(function (r) {
       if (token !== landingToken) return;
       if (!r) { fail('gone'); return; }
-      land(r.title, r.cards || 0, 0, [], '', function (done) { fetchSharedPack(authTransport, value, true).then(function (full) { if (token !== landingToken) return; if (!full || !full.pack) { done({ ok: false, msg: 'This deck is no longer available. Choose a deck instead.' }); return; } done(installSharedDoc(value, full)); }).catch(function () { if (token === landingToken) done({ ok: false, msg: 'No connection. The deck could not be reached. Try the link again when you are online.' }); }); });
+      land(r.title, r.cards || 0, 0, [], '', function (done) { fetchSharedPack(authTransport, value, true).then(function (full) { if (token !== landingToken) return; if (!full || !full.pack) { done({ ok: false, msg: 'This deck is no longer available. Choose a deck instead.' }); return; } done(installSharedDoc(value, full, { lessons: 'first' })); }).catch(function () { if (token === landingToken) done({ ok: false, msg: 'No connection. The deck could not be reached. Try the link again when you are online.' }); }); });
     }).catch(function (e) { if (token !== landingToken) return; fail(kindOf(e)); });
   }
 
@@ -8682,7 +8896,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.8.3";
+  var APP_V = "0.8.4";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
