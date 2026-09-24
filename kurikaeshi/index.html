@@ -205,6 +205,13 @@ p{margin:0 0 var(--s-3)}
 .bar i{display:block;width:100%;height:4px;background:var(--accent);transform-origin:left;transition:transform var(--d-medium1) var(--ease-standard)}
 .drow .m{display:block;font-family:var(--f-mono);font-size:var(--t-micro);letter-spacing:.06em;color:var(--ink-mute);font-variant-numeric:tabular-nums}
 .drow .sub{font-size:var(--t-label);color:var(--ink-mute);font-weight:400}
+/* DESIGN-0.9 change 3: a catalog row's access word is a Label line of its own that never wraps; its source is one Label sentence in prose, not Micro. */
+.drow .word{display:block;font-size:var(--t-label);font-weight:500;line-height:1.5;white-space:nowrap;color:var(--ink-soft)}
+.drow .word.done{color:var(--ink-mute)}
+.drow .src{display:block;font-size:var(--t-label);font-weight:400;line-height:1.5;color:var(--ink-mute)}
+#ct-status[hidden]{min-height:calc(1.5 * var(--t-label));margin:0;padding:0}
+/* DESIGN-0.9 change 4: the Keep this progress row keeps the spacing of the note it replaced, 8 under the status line and 12 over the line below. */
+#t-keepwrap{margin:var(--s-2) 0 var(--s-3)}
 .crow{display:flex;align-items:center;gap:var(--s-2);min-height:56px;padding:var(--s-2) var(--s-2) var(--s-2) var(--s-4);border-bottom:1px solid var(--hairline)}
 .crow .txt{flex:1;min-width:0;text-align:left;transition:background-color var(--d-short2) var(--ease-standard)}
 .crow .txt:active{background:var(--surface-2)}
@@ -326,6 +333,7 @@ button.row:active{background:var(--surface-2)}
 .ans .r-glyph{font-size:var(--t-glyph-long);line-height:1.3}
 .r-headline{font-family:var(--f-display);font-size:var(--t-display);line-height:1.3;max-width:22ch;font-weight:600}
 .ans .r-headline:not([lang]){font-family:var(--f-body);font-size:var(--t-body);font-weight:400;line-height:1.55;max-width:30ch}
+.ans > .r-headline:not([lang]):first-child{font-size:var(--t-title);font-weight:600;line-height:1.35}   /* DESIGN-0.9 change 1: a Latin answer field leads at Title, weight not size (E.7 group 1) */
 .r-headline[lang]{font-family:var(--f-ja);font-size:var(--t-ja-reading);line-height:1.5;font-weight:500}
 .r-text{font-size:var(--t-body);max-width:30ch}
 .r-text[lang]{font-size:var(--t-ja-sentence);line-height:1.9;max-width:20ch}
@@ -3141,15 +3149,15 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 <script>
 (function () {
   'use strict';
-  var APP_VERSION = '0.8.4';
+  var APP_VERSION = '0.9.0';
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
   // The account service's PUBLIC identifiers, injected at build from config.json. Placeholders
   // (a square bracket anywhere) mean accounts are off: the page then never touches the network
   // except to install a deck on the learner's tap. Nothing here is a secret by design.
-  var CONFIG = {"auth0":{"domain":"dev-rxe3mje4y1suwccw.us.auth0.com","clientId":"EpM3qKZqHIjpumcmmsuXUUaxSHibqXi3","audience":"https://kurikaeshi/api"},"dataApi":"https://ep-shiny-union-ay3o428i.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1","contact":""};
-  var CATALOG = [{"id":"japn309-kll-l1-l8","access":"open","title":"JAPN 309 · Kanji Look and Learn · Lessons 1–8","language":"ja","source":"KANJIDIC2 and JMdict, EDRDG","terms":"Open-licensed. Free, no account needed.","cards":683,"lessons":8,"version":"1.1.1","url":"https://ferrelldevin.github.io/studykit/kurikaeshi/packs/japn309-kll-l1-l8.json"},{"id":"irodori-a2-1-vocab","access":"account","title":"Irodori Elementary 1 · Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. The source is named here, and again under About Kurikaeshi.","cards":2382,"lessons":18,"version":"1.0.0"},{"id":"japn301-vocab","access":"account","title":"Irodori Elementary 2 · Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. The source is named here, and again under About Kurikaeshi.","cards":3540,"lessons":18,"version":"1.0.1"}];
+  var CONFIG = {"auth0":{"domain":"dev-rxe3mje4y1suwccw.us.auth0.com","clientId":"EpM3qKZqHIjpumcmmsuXUUaxSHibqXi3","audience":"https://kurikaeshi/api"},"dataApi":"https://ep-shiny-union-ay3o428i.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1","contact":"ferrelldevin01+kurikaeshi@gmail.com"};
+  var CATALOG = [{"id":"japn309-kll-l1-l8","access":"open","title":"JAPN 309 · Kanji Look and Learn · Lessons 1–8","language":"ja","source":"KANJIDIC2 and JMdict, EDRDG","terms":"Free, no account needed.","cards":683,"lessons":8,"version":"1.1.1","url":"https://ferrelldevin.github.io/studykit/kurikaeshi/packs/japn309-kll-l1-l8.json"},{"id":"irodori-a2-1-vocab","access":"account","title":"Irodori Elementary 1 · Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. Source named here and under About Kurikaeshi.","cards":2382,"lessons":18,"version":"1.0.0"},{"id":"japn301-vocab","access":"account","title":"Irodori Elementary 2 · Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. Source named here and under About Kurikaeshi.","cards":3540,"lessons":18,"version":"1.0.1"},{"id":"japn111f-vocab","access":"account","title":"JAPN 111F · Vocabulary and Expressions · Lists 1–16","language":"ja","source":"The JAPN 111F instructor, Old Dominion University","terms":"Free. Shared with the permission of the JAPN 111F instructor.","cards":992,"lessons":16,"version":"1.0.2"},{"id":"japn212-vocab","access":"account","title":"JAPN 212 · Vocabulary · Lessons 1–9, 11–13, 17","language":"ja","source":"The JAPN 212 instructor, Old Dominion University","terms":"Free. Shared with the permission of the JAPN 212 instructor.","cards":960,"lessons":13,"version":"1.1.2"},{"id":"japn212-kanji","access":"account","title":"JAPN 212 · Kanji · Lessons 1–17 · Unchecked transcription","language":"ja","source":"The JAPN 212 instructor's list; KANJIDIC2, EDRDG","terms":"Free. Shared with the permission of the JAPN 212 instructor.","cards":218,"lessons":13,"version":"1.0.2"},{"id":"japn309-class","access":"account","title":"JAPN 309 · Class kanji (from her slides)","language":"ja","source":"The JAPN 309 instructor's drill sheets and slides; KANJIDIC2 and JMdict, EDRDG","terms":"Free. Shared with the permission of the JAPN 309 instructor.","cards":510,"lessons":10,"version":"1.0.2"}];
   var SYNC_READY = !!(CONFIG && CONFIG.auth0 && CONFIG.dataApi && !/\[/.test(JSON.stringify(CONFIG)));
   var $ = function (id) { return document.getElementById(id); };
   // Everything interpolated into markup from a pack goes through this. Packs are trusted and
@@ -4753,7 +4761,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var japanese = /[\u3005\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff]/.test(String(value));
     // One Play control per card: on the front beside the Japanese prompt (whatever its field is
     // called — an own card's is 'front'), on the answer beside the first Japanese line.
-    if (japanese && (onAnswer || (!onAnswer && name === promptName))) {
+    // DESIGN-0.9 Q2 (2026-09-24): not on the front when the answer is the prompt's pronunciation
+    // (a Reading card, 一つ → ひとつ), because speaking the prompt would say the answer.
+    if (japanese && (onAnswer || (!onAnswer && name === promptName && !frontSaysAnswer))) {
       var control = sayButton(value);
       if (control) piece = '<div class="r-say-line">' + piece + control + '</div>';
     }
@@ -4774,9 +4784,16 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   }
 
   var renderingOwnCard = false;   // set per card by drawCard; read by renderField's Glyph inference
+  // Set per card by drawCard: the answer is kana alone, so it is how the prompt is said (DESIGN-0.9 Q2).
+  var frontSaysAnswer = false;
+  function spokenForm(value) {
+    var s = sayText(value).replace(/[\s、。・（）()〜~]/g, '');
+    return !!s && /^[\u3040-\u309f\u30a0-\u30ff]+$/.test(s);
+  }
   function drawCard() {
     glossHeld = false;
     sayBuilt = false;
+    frontSaysAnswer = false;
     var n = card ? noteOf(card) : null;
     var nt = n ? typeOf(n) : null;
     var f = n && n.fields;
@@ -4791,6 +4808,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     }
     var st = store.state(card.id);
     renderingOwnCard = n.pack === OWN_PACK_ID;
+    frontSaysAnswer = !cloze && spokenForm(f[tmpl.answer]);
     var pk = DECK.packs[n.pack] || {}, lang = pk.language || '';
     var q = '<div class="tag">' + (st.state === 'new' ? 'New · ' : '') + (session.mode === 'practice' ? 'Practice · ' : '') + esc(n.lesson || pk.title) + (typeof tmpl.name === 'string' && tmpl.name ? ' · ' + esc(tmpl.name) : '') + (cloze ? ' ' + card.ord : '') +
       (st.leech ? ' <span class="leech">keeps slipping</span>' : '') + '</div>';
@@ -5278,7 +5296,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     }
     // 2026-09-12: the caveat is a note, not a figure. .status is the mono Micro role, which carries
     // counts and one-line facts; a 190-character sentence set in it ran six lines of monospace.
-    h += '</div><div class="status" id="t-status" role="status"></div><div class="note pad" id="t-keep" role="status" hidden></div>' +
+    // DESIGN-0.9 change 4 (the operator's Q1, 2026-09-20): the seven-day caveat is one tap deeper, never
+    // deleted. Today carries one row in the You-screen grammar; renderStatus decides when it shows.
+    h += '</div><div class="status" id="t-status" role="status"></div>' +
+      '<div class="group keep" id="t-keepwrap" hidden><button class="group-row nav" id="t-keep" type="button" hidden><span>Keep this progress</span>' +
+      '<svg class="chev" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4l6 6-6 6"/></svg></button></div>' +
       '<div class="micro pad" id="t-tomorrow">Tomorrow: ' + (tomorrow ? plural(tomorrow, 'card') : 'nothing due') + '</div>';
     if (!n && !continuing) h += '<div class="offers" id="t-offers"></div>';
     host.innerHTML = h;
@@ -5297,6 +5319,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     });
     renderStatus();
   }
+  var KEEP_SENTENCE = 'Safari clears what is saved here after seven days of browsing in which you do not use Kurikaeshi. To keep it, add Kurikaeshi to your Home Screen and open it from there, or sign in.';
   function renderStatus() {
     var el = $('t-status'); if (!el) return;
     // The seven-day warning lives BENEATH the status line, not in it: the status is one line at
@@ -5316,7 +5339,17 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var ua = navigator.userAgent || '';
     var safariTab = /iPhone|iPad|iPod/.test(ua) && /Safari\//.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua) && !isStandalone();
     var showKeep = !!keep && !storageBroken && (!SYNC_READY || !account.signedIn) && safariTab;
-    if (keep) { keep.hidden = !showKeep; keep.textContent = showKeep ? 'Safari clears what is saved here after seven days of browsing in which you do not use Kurikaeshi. To keep it, add Kurikaeshi to your Home Screen and open it from there, or sign in.' : ''; }
+    // DESIGN-0.9 change 4: the sentence is unchanged and lives in the sheet the row opens.
+    if (keep) {
+      keep.hidden = !showKeep;
+      if ($('t-keepwrap')) $('t-keepwrap').hidden = !showKeep;
+      keep.onclick = showKeep ? function () {
+        openSheet(keep, KEEP_SENTENCE, [
+          SYNC_READY ? { label: 'Sign in', on: function (b) { signIn(b); } } : null,
+          { label: 'Not now', on: function () {} }
+        ]);
+      } : null;
+    }
     var full = $('t-full');
     var room = store.roomLeft(['bw08.packs.v1', 'bw08.account.v1', 'bw08.sync.v1']);
     var nearFull = room.answers < 3000;
@@ -5795,17 +5828,16 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var chev = '<svg class="chev" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4l6 6-6 6"/></svg>';
     var h = '<div class="prose"><p>Tap a deck to add it, or to open one you already have. A deck that needs a free account says so before you tap.</p><div id="ct-status" class="msg" hidden></div></div>';
     h += '<ul class="list">' + rows.map(function (row) {
-      var word = CATALOG_WORDS[catalogState(row)];
+      var state = catalogState(row), word = CATALOG_WORDS[state];
       var lang = fieldLanguage(row.title, '', row.language || '');
-      // The row prints the edition the learner HOLDS once installed, the page build's otherwise
-      // (DESIGN-0.8.1, item 84): both facts are already on the device, so this reads correctly
-      // with no network at all.
-      var installedRow = packStore.get(row.id);
-      var shownVersion = (installedRow && installedRow.version) ? installedRow.version : row.version;
+      // DESIGN-0.9 change 3 (2026-09-24), the row grammar of C.1, G.2 and E.5: the title; the access
+      // word on its own line; one Micro count line; the source as one Label sentence. No edition on
+      // the row (G.2): the one a learner holds is under About as Deck version (the 0.8.1 update path),
+      // and the page still carries each row's edition as data for the update door (DESIGN-0.8.1).
       return '<li><button class="drow" type="button" data-cat="' + esc(row.id) + '">' +
-        '<span class="t"' + (lang ? ' lang="' + esc(lang) + '"' : '') + '>' + esc(row.title) + '</span>' + (word ? '<span class="sub"> ' + esc(word) + '</span>' : '') +
+        '<span class="t"' + (lang ? ' lang="' + esc(lang) + '"' : '') + '>' + esc(row.title) + '</span>' + (word ? '<span class="word' + (state === 'installed' ? ' done' : '') + '">' + esc(word) + '</span>' : '') +
         '<span class="m">' + plural(row.cards, 'card') + (row.lessons ? ' · ' + plural(row.lessons, 'lesson') : '') + '</span>' +
-        '<span class="m">' + esc(row.source) + (shownVersion ? ' · ' + esc(shownVersion) : '') + ' · ' + esc(row.terms) + '</span>' + chev + '</button></li>';
+        '<span class="src">' + esc(row.source) + '. ' + esc(row.terms) + '</span>' + chev + '</button></li>';
     }).join('') + '</ul>';
     host.innerHTML = h;
     prepareMessages(host);
@@ -6733,7 +6765,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       // 2026-09-12: the count carries the mono role, the row does not — button{font:inherit} handed the
       // family and the tracking to Study now, the one control on this screen that was not Plex Sans.
       '<div class="cnt" id="qa-count" role="status"' + (cardsView.added ? '' : ' hidden') + '><span class="micro">' + plural(cardsView.added, 'card') + ' added</span></div>' +
-      '<div class="acts" style="margin-top:12px"><button class="ghost" id="mc-other" type="button">Add other card types</button><button class="ghost" id="mc-import" type="button">Import cards</button></div>' +
+      '<div class="acts" style="margin-top:12px"><button class="ghost" id="mc-other" type="button">More card types</button><button class="ghost" id="mc-import" type="button">Import cards</button></div>' +
       '</div>';
     if (cardsView.notice) { h += '<div class="prose" style="padding-top:0"><div class="msg">' + esc(cardsView.notice) + '</div></div>'; cardsView.notice = null; }
     if (repairedRows) { h += '<div class="prose" style="padding-top:0"><div class="msg">' + esc(repairWords(repairedRows, repairedSaved)) + '</div></div>'; repairedRows = 0; }
@@ -7617,7 +7649,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<h2 class="sec">All decks</h2><div class="rows">' +
       row('Decks', packStore.list().length) + row('Cards', DECK.cards.length) +
       row('Not started', n) + row('Learning', l) + row('In review', r) +
-      row('Interval of 3 weeks or more', mature) + '<button class="row" type="button" id="st-slipping"><span class="k">keeps slipping</span><span class="v">' + leeches + '</span></button>' + row('Retired', retiredTotal()) + row('Direction off', off) + '</div>' +
+      row('Interval of 3 weeks or more', mature) + '<button class="row" type="button" id="st-slipping"><span class="k">Keeps slipping</span><span class="v">' + leeches + '</span></button>' + row('Retired', retiredTotal()) + row('Direction off', off) + '</div>' +
       '<p class="note">Direction off: cards of a direction you turned off in the deck’s settings. Held out by deck updates: cards of a note a deck update removed; they return if the note does. Interval of 3 weeks or more: cards the schedule now spaces three weeks or more apart. It is the Interval that Card details shows, not how long you have known them. Retired counts cards, as every row here does. A word you add as Vocabulary or Both ways is two cards, one each way, and retiring it retires both.</p>' +
       '<h2 class="sec">Your record</h2>' + calendarHtml +
       '<h2 class="sec">All-time</h2><div class="rows">' +
@@ -8231,7 +8263,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         '<h2 class="sec">Sign out</h2><p class="note">Signing out keeps everything on this device and forgets what was uploaded; nothing is deleted anywhere.</p>' +
         '<button class="ghost" id="ac-signout" type="button"><span>Sign out</span></button>' +
         '<h2 class="sec">Delete</h2><p class="note">This removes everything the app stored for your account on the server: your reviews, your own cards, your class memberships, and any class you created with its roster. Instructors lose their view of your reviews. This device keeps its copy unless you also erase progress in Settings. ' +
-        (CONFIG.contact ? 'Your sign-in identity itself is held by the sign-in page; to have it removed too, write to ' + esc(CONFIG.contact) + '.' : 'Your sign-in identity itself is held by the sign-in page; ask whoever runs this site to remove it.') + '</p>' +
+        'Your sign-in identity itself is held by the sign-in page; to have it removed too, write to the address below.</p>' +
+        // B-58: the address as plain text a learner can select and copy, on its own line so a
+        // long-press takes the address and no sentence around it. build-app.mjs refuses a build with
+        // accounts switched on and no address, so there is no empty-contact sentence left to show.
+        '<p class="note">' + esc(CONFIG.contact) + '</p>' +
         '<button class="danger" id="ac-delete" type="button">Delete my account data</button>';
     }
     $('ac-body').innerHTML = '<div class="prose">' + h + '</div>';
@@ -8896,7 +8932,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.8.4";
+  var APP_V = "0.9.0";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
