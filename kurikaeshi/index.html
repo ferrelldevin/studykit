@@ -443,6 +443,17 @@ ruby[data-reading="hidden"] rt{visibility:hidden}
 #sheet .sh-card .r-glyph.long{font-size:var(--t-specimen)}
 #sheet .sh-card .r-headline{font-size:var(--t-title)}
 #sheet .sh-card .r-headline[lang]{font-size:var(--t-ja-sentence)}
+/* 0.9.1: what a lesson holds, under its sheet's title and its Browse heading. Label type, never Micro
+   (DESIGN-0.9); a Japanese run inside keeps the Japanese face and its 20px (DESIGN-0.7 C.2). A generated
+   summary is one line per note type, cut behind an ellipsis; a written description wraps. */
+#sheet .sh-lead{padding:0 var(--s-4) var(--s-3);border-bottom:1px solid var(--hairline)}
+.lsum{margin:0;font-size:var(--t-label);font-weight:400;line-height:1.5;color:var(--ink-soft)}
+.lsum .ln{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lsum.written .ln{white-space:normal;overflow:visible}
+.lsum [lang]{font-size:var(--t-ja-sentence);line-height:1.5}
+.br-lesson{padding-bottom:0}
+.br-lesson .lsum{margin-bottom:var(--s-1)}
+.crow .b .lans[lang]{font-size:var(--t-ja-sentence);line-height:1.4}
 #sheet div.act.static{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);width:100%;min-height:56px;padding:0 var(--s-4);font-size:var(--t-body);color:var(--ink);border-bottom:1px solid var(--hairline)}
 #sheet button.act{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);width:100%;min-height:56px;padding:0 var(--s-4);font-size:var(--t-body);font-weight:400;color:var(--ink);transition:background-color var(--d-short2) var(--ease-standard)}
 #sheet button.act.stick{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--hairline)}
@@ -1504,7 +1515,44 @@ function validatePack(p) {
     if (!Array.isArray(p.milestones)) bad('milestones must be an array');
     for (const m of p.milestones) if (!m || typeof m.id !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(m.due || '')) bad('every milestone needs an id and an ISO due date');
   }
+
+  if (p.lessonInfo != null) {
+    if (typeof p.lessonInfo !== 'object' || Array.isArray(p.lessonInfo)) bad('lessonInfo must be an object of lesson → { description }');
+    const keys = new Set(lessonKeys(p));
+    for (const [key, info] of Object.entries(p.lessonInfo)) {
+      if (!keys.has(key)) bad(`lessonInfo names "${key}", which is not a lesson of this pack`);
+      if (!info || typeof info !== 'object' || Array.isArray(info)) bad(`lessonInfo "${key}" must be an object with a description`);
+      for (const k of Object.keys(info)) if (k !== 'description') bad(`lessonInfo "${key}" has "${k}"; only description is allowed`);
+      const d = info.description;
+      if (typeof d !== 'string' || !d.trim()) bad(`lessonInfo "${key}" needs a non-empty description`);
+      if (d.trim() !== d) bad(`lessonInfo "${key}": the description starts or ends with a space`);
+      if (d.length > LESSON_DESCRIPTION_MAX) bad(`lessonInfo "${key}": the description is ${d.length} characters; at most ${LESSON_DESCRIPTION_MAX}`);
+    }
+  }
   return true;
+}
+
+const LESSON_DESCRIPTION_MAX = 200;
+
+function lessonSummary(pack, key) {
+  const k = String(key == null ? '' : key);
+  const info = pack && pack.lessonInfo && Object.prototype.hasOwnProperty.call(pack.lessonInfo, k) ? pack.lessonInfo[k] : null;
+  if (info && typeof info.description === 'string' && info.description.trim()) return { written: true, lines: [info.description.trim()] };
+  const lines = [];
+  for (const t of (pack && pack.noteTypes) || []) {
+    if (lines.length >= 3) break;
+    const notes = ((pack && pack.notes) || []).filter((n) => n && n.type === t.id && (n.lesson || '') === k);
+    if (!notes.length) continue;
+    const field = t.templates && t.templates[0] ? t.templates[0].prompt : null;
+    const prompts = notes.map((n) => {
+      const v = field && n.fields ? n.fields[field] : '';
+      return String(t.kind === 'cloze' ? clozeFilled(v) : (v == null ? '' : v)).replace(/\s+/g, ' ').trim();
+    }).filter(Boolean);
+
+    const cards = notes.reduce((sum, n) => sum + (t.kind === 'cloze' ? clozeOrds(field && n.fields ? n.fields[field] : '').length : t.templates.length), 0);
+    lines.push(`${t.name || t.id} · ${cards} card${cards === 1 ? '' : 's'} · ${prompts.slice(0, 6).join(', ')}${prompts.length > 6 ? '…' : ''}`);
+  }
+  return { written: false, lines };
 }
 
 function repairRetired(pack) {
@@ -1628,7 +1676,12 @@ function planUpdate(installed, candidate) {
 
   const suspend = [...oldCards].filter((id) => !newCards.has(id));
   const unsuspend = [...newCards].filter((id) => !oldCards.has(id));
-  return { apply: true, reason: 'update', changed, added, removed, suspend, unsuspend };
+
+  const described = (p) => { const out = new Map(); for (const [k, v] of Object.entries((p && p.lessonInfo) || {})) if (v && typeof v.description === 'string') out.set(k, v.description); return out; };
+  const was = described(installed), now = described(candidate);
+  let lessonInfoChanged = 0;
+  for (const k of new Set([...was.keys(), ...now.keys()])) if (was.get(k) !== now.get(k)) lessonInfoChanged++;
+  return { apply: true, reason: 'update', changed, added, removed, suspend, unsuspend, lessonInfoChanged };
 }
 
 function makePackStore(adapter) {
@@ -3149,7 +3202,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 <script>
 (function () {
   'use strict';
-  var APP_VERSION = '0.9.0';
+  var APP_VERSION = '0.9.1';
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -3157,7 +3210,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // (a square bracket anywhere) mean accounts are off: the page then never touches the network
   // except to install a deck on the learner's tap. Nothing here is a secret by design.
   var CONFIG = {"auth0":{"domain":"dev-rxe3mje4y1suwccw.us.auth0.com","clientId":"EpM3qKZqHIjpumcmmsuXUUaxSHibqXi3","audience":"https://kurikaeshi/api"},"dataApi":"https://ep-shiny-union-ay3o428i.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1","contact":"ferrelldevin01+kurikaeshi@gmail.com"};
-  var CATALOG = [{"id":"japn309-kll-l1-l8","access":"open","title":"JAPN 309 · Kanji Look and Learn · Lessons 1–8","language":"ja","source":"KANJIDIC2 and JMdict, EDRDG","terms":"Free, no account needed.","cards":683,"lessons":8,"version":"1.1.1","url":"https://ferrelldevin.github.io/studykit/kurikaeshi/packs/japn309-kll-l1-l8.json"},{"id":"irodori-a2-1-vocab","access":"account","title":"Irodori Elementary 1 · Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. Source named here and under About Kurikaeshi.","cards":2382,"lessons":18,"version":"1.0.0"},{"id":"japn301-vocab","access":"account","title":"Irodori Elementary 2 · Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. Source named here and under About Kurikaeshi.","cards":3540,"lessons":18,"version":"1.0.1"},{"id":"japn111f-vocab","access":"account","title":"JAPN 111F · Vocabulary and Expressions · Lists 1–16","language":"ja","source":"The JAPN 111F instructor, Old Dominion University","terms":"Free. Shared with the permission of the JAPN 111F instructor.","cards":992,"lessons":16,"version":"1.0.2"},{"id":"japn212-vocab","access":"account","title":"JAPN 212 · Vocabulary · Lessons 1–9, 11–13, 17","language":"ja","source":"The JAPN 212 instructor, Old Dominion University","terms":"Free. Shared with the permission of the JAPN 212 instructor.","cards":960,"lessons":13,"version":"1.1.2"},{"id":"japn212-kanji","access":"account","title":"JAPN 212 · Kanji · Lessons 1–17 · Unchecked transcription","language":"ja","source":"The JAPN 212 instructor's list; KANJIDIC2, EDRDG","terms":"Free. Shared with the permission of the JAPN 212 instructor.","cards":218,"lessons":13,"version":"1.0.2"},{"id":"japn309-class","access":"account","title":"JAPN 309 · Class kanji (from her slides)","language":"ja","source":"The JAPN 309 instructor's drill sheets and slides; KANJIDIC2 and JMdict, EDRDG","terms":"Free. Shared with the permission of the JAPN 309 instructor.","cards":510,"lessons":10,"version":"1.0.2"}];
+  var CATALOG = [{"id":"japn309-kll-l1-l8","access":"open","title":"JAPN 309 · Kanji Look and Learn · Lessons 1–8","language":"ja","source":"KANJIDIC2 and JMdict, EDRDG","terms":"Free, no account needed.","cards":683,"lessons":8,"version":"1.1.1","url":"https://ferrelldevin.github.io/studykit/kurikaeshi/packs/japn309-kll-l1-l8.json"},{"id":"irodori-a2-1-vocab","access":"account","title":"Irodori Elementary 1 · Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. Source named here and, once added, under About Kurikaeshi.","cards":2382,"lessons":18,"version":"1.0.0"},{"id":"japn301-vocab","access":"account","title":"Irodori Elementary 2 · Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. Source named here and, once added, under About Kurikaeshi.","cards":3540,"lessons":18,"version":"1.0.1"},{"id":"japn111f-vocab","access":"account","title":"JAPN 111F · Vocabulary and Expressions · Lists 1–16","language":"ja","source":"The JAPN 111F instructor, Old Dominion University","terms":"Free. Shared with the permission of the JAPN 111F instructor.","cards":992,"lessons":16,"version":"1.0.2"},{"id":"japn212-vocab","access":"account","title":"JAPN 212 · Vocabulary · Lessons 1–9, 11–13, 17","language":"ja","source":"The JAPN 212 instructor, Old Dominion University","terms":"Free. Shared with the permission of the JAPN 212 instructor.","cards":960,"lessons":13,"version":"1.1.2"},{"id":"japn212-kanji","access":"account","title":"JAPN 212 · Kanji · Lessons 1–17 · Unchecked transcription","language":"ja","source":"The JAPN 212 instructor's list; KANJIDIC2, EDRDG","terms":"Free. Shared with the permission of the JAPN 212 instructor.","cards":218,"lessons":13,"version":"1.0.2"},{"id":"japn309-class","access":"account","title":"JAPN 309 · Class kanji (from her slides)","language":"ja","source":"The JAPN 309 instructor's drill sheets and slides; KANJIDIC2 and JMdict, EDRDG","terms":"Free. Shared with the permission of the JAPN 309 instructor.","cards":510,"lessons":10,"version":"1.1.1"}];
   var SYNC_READY = !!(CONFIG && CONFIG.auth0 && CONFIG.dataApi && !/\[/.test(JSON.stringify(CONFIG)));
   var $ = function (id) { return document.getElementById(id); };
   // Everything interpolated into markup from a pack goes through this. Packs are trusted and
@@ -3584,6 +3637,15 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (!target) return;
     try { target.focus({ preventScroll: true }); } catch (e) { target.focus(); }
   }
+  // 0.9.1 (I7): a screen's history entry names what it shows — the deck on s-deck and s-browse, and on
+  // s-browse the lesson too (null is the whole deck) — so Back and a restored entry redraw that scope.
+  function screenState(id, extra) {
+    var st = { screen: id, id: (id === 's-deck' || id === 's-browse') ? openDeck : null };
+    if (id === 's-browse') st.lesson = browseView ? browseView.lesson : null;
+    if (extra) Object.keys(extra).forEach(function (k) { st[k] = extra[k]; });
+    return st;
+  }
+  function lessonLabel(packId, lesson) { return lesson || (packId === OWN_PACK_ID ? 'Ungrouped' : 'No lesson'); }
   function show(id, options) {
     options = options || {};
     if (SCREENS.indexOf(id) < 0) id = 's-today';
@@ -3615,8 +3677,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       if (active === t) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
     });
     screen = id;
-    document.title = (SCREEN_TITLES[id] || 'Kurikaeshi') + ' · Kurikaeshi';
-    var state = { screen: id, id: (id === 's-deck' || id === 's-browse') ? openDeck : null };
+    document.title = (id === 's-browse' && browseView && browseView.lesson != null ? lessonLabel(openDeck, browseView.lesson) : (SCREEN_TITLES[id] || 'Kurikaeshi')) + ' · Kurikaeshi';
+    var state = screenState(id);
     if (!options.fromHistory) {
       // A sheet puts an entry on the stack so that Back closes it. Navigating from inside the
       // sheet must consume that entry rather than stack on it, or Back needs two presses to leave
@@ -3709,13 +3771,14 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // `lead`: rendered markup shown under the title, before the items — a card's own two sides on its
   // details sheet. Every item label is escaped here, so a block of rendered HTML has to arrive apart
   // from the items, the way the direction sheet builds its own rows.
-  function openSheet(anchor, title, items, lead) {
+  // `leadClass` (0.9.1): a lead that is not a card's two sides — a lesson's summary — sets its own block class.
+  function openSheet(anchor, title, items, lead, leadClass) {
     var sh = $('sheet'), sc = $('scrim');
     if (sheetTimer) { clearTimeout(sheetTimer); sheetTimer = null; }
     sheetGeneration++;
     sheetAnchor = anchor || null;
     var h = title ? '<div class="sh-title">' + esc(title) + '</div>' : '';
-    if (lead) h += '<div class="sh-card">' + lead + '</div>';
+    if (lead) h += '<div class="' + (leadClass || 'sh-card') + '">' + lead + '</div>';
     items = items.filter(Boolean);
     items.forEach(function (it, i) {
       if (it.static) {   // a fact the sheet shows: text, reachable by a reader, never a dimmed control
@@ -3735,7 +3798,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         closeSheet(false, true);
         // The sheet's own entry becomes the screen underneath it, marked so that a navigation this
         // action starts replaces it rather than stacking a second copy of that screen.
-        history.replaceState({ screen: screen, id: screen === 's-deck' ? openDeck : null, fromSheet: true }, '', location.href);
+        history.replaceState(screenState(screen, { fromSheet: true }), '', location.href);
         if (it && it.on) it.on(b);
         if (screen === beforeScreen && history.state && history.state.fromSheet) history.back();
       });
@@ -3743,7 +3806,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     sc.hidden = false; sh.hidden = false; sh.classList.remove('closing', 'dragging', 'returning'); sh.style.transform = '';
     // A tapped row near the bottom would sit under the sheet: bring it just above the lip after the sheet has a measurable height.
     if (anchor && anchor.scrollIntoView) { try { anchor.scrollIntoView({ block: 'nearest' }); } catch (e) { /* older engines */ } }
-    history.pushState({ screen: screen, id: screen === 's-deck' ? openDeck : null, sheet: true }, '', location.href);
+    history.pushState(screenState(screen, { sheet: true }), '', location.href);
     requestAnimationFrame(function () { sc.classList.add('open'); sh.classList.add('open'); keepSheetBelowAnchor(anchor); });
     var first = sheetFocusables()[0];
     // Focus without scrolling: the sheet is still translated below the app in this frame, and a
@@ -5241,6 +5304,13 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var h = '<div class="prose">';
     if (continuing) {
       h += '<button class="tile" id="t-start" type="button"><span class="t1">Continue this session (' + continuing + ')</span><span class="fold"></span><span class="t2">' + paceLine(continuing) + '</span></button>';
+      // B-132 (0.9.1): the tile counts this session and a Decks row counts today's set, which a lesson
+      // switched on grows while an open session keeps the queue it started with (run 18). When today's
+      // set holds cards the session does not, the line says so in the Decks row's own words.
+      var inSitting = {};
+      stopped.queue.concat(stopped.repeat, stopped.learning.map(function (x) { return x.card; })).forEach(function (c) { if (c) inSitting[c.id] = true; });
+      var afterSitting = b.queue.filter(function (c) { return !inSitting[c.id]; }).length;
+      if (afterSitting) h += '<p class="note" id="t-after">' + n + ' to study today; ' + afterSitting + ' of them ' + (afterSitting === 1 ? 'starts' : 'start') + ' after this session.</p>';
       if (b.intakePaused && b.gapDays >= 3 && b.backlog > 0) {
         h += '<p class="micro" id="t-gap">You were away ' + plural(b.gapDays, 'day') + '. ' + plural(b.backlog, 'card is', 'cards are') + ' waiting; today\'s set is ' + n + ' of them.</p>';
       }
@@ -5442,6 +5512,17 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   function rowInnerHtml(cls, id, title, lang, s, c, sub) {
     var ratio = s.total ? s.started / s.total : 0;
     var fill = s.started ? Math.max(0.007, ratio) : 0;
+    var when = rowWhen(s, c);
+    var resolved = fieldLanguage(title, '', lang);
+    return '<button class="drow ' + cls + '" type="button" data-row="' + esc(id) + '">' +   // the name is the row's own text in order: the lang-marked title, then its figures
+      '<span class="t"' + (resolved ? ' lang="' + esc(resolved) + '"' : '') + '>' + esc(title) + '</span>' + (sub ? '<span class="sub"> ' + esc(sub) + '</span>' : '') +
+      (s.total ? '<span class="bar"><i style="transform:scaleX(' + fill + ')"></i></span>' : '') +
+      '<span class="m">' + when + '</span>' +
+      '<svg class="chev" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4l6 6-6 6"/></svg></button>';
+  }
+  // A row's one line of figures (0.9.1: its own function, so a lesson's Browse view prints the same line
+  // its row prints, from the same two inputs — I8).
+  function rowWhen(s, c) {
     var fresh = Math.max(0, s.fresh == null ? s.total - s.started : s.fresh);   // total is the studyable count: held-out cards are outside it
     var todays = Math.max(0, c.toStudyToday || 0);
     var when = s.started + ' of ' + s.total + ' started';
@@ -5462,12 +5543,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (s.retired) when += ' · ' + s.retired + ' retired';
     if (s.directionOff) when += ' · ' + s.directionOff + ' direction off';
     if (s.heldOut) when += ' · ' + s.heldOut + ' held out by a deck update';
-    var resolved = fieldLanguage(title, '', lang);
-    return '<button class="drow ' + cls + '" type="button" data-row="' + esc(id) + '">' +   // the name is the row's own text in order: the lang-marked title, then its figures
-      '<span class="t"' + (resolved ? ' lang="' + esc(resolved) + '"' : '') + '>' + esc(title) + '</span>' + (sub ? '<span class="sub"> ' + esc(sub) + '</span>' : '') +
-      (s.total ? '<span class="bar"><i style="transform:scaleX(' + fill + ')"></i></span>' : '') +
-      '<span class="m">' + when + '</span>' +
-      '<svg class="chev" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4l6 6-6 6"/></svg></button>';
+    return when;
   }
   function renderDecks() {
     var host = $('dk-body');
@@ -5508,6 +5584,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (o.learn) items.push({ label: 'Learn new', count: '(' + o.learn + ')', on: function () { startLearn(scope); } });
     if (o.soon) items.push({ label: 'Review ahead: next ' + SOON_DAYS + ' days', count: '(' + o.soon + ')', on: function () { startAhead(scope); } });
     if (o.practise) items.push({ label: 'Practice all', count: '(' + o.practise + ')', on: function () { startPractise(scope); } });
+    // 0.9.1 (the operator, 2026-09-24): a lesson's sheet says what the lesson holds and opens its cards.
+    var lessonCardCount = scope.lesson != null ? lessonCards(scope.pack, scope.lesson).length : 0;
+    var browseItem = lessonCardCount ? { label: 'Browse cards', count: '(' + lessonCardCount + ')', nav: true, on: function () { openBrowse(scope.pack, scope.lesson); } } : null;
+    if (browseItem) items.push(browseItem);
     if (!scope.lesson && directionTypes(scope.pack).length) items.push({ label: 'Choose what cards ask', on: function (button) { openDirectionSheet(button, scope.pack); } });
     // A paused deck has every card out already, and its lesson sheet keeps its one control, Close.
     if (scope.lesson != null && scope.pack !== OWN_PACK_ID && !(deckOptionsFor()[scope.pack] || {}).paused) {
@@ -5515,8 +5595,43 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       items.push({ label: out ? 'Start new cards here' : 'Stop new cards here', on: function () { setLessonRotation(scope.pack, scope.lesson, out); } });
     }
     if (withOpen) items.push({ label: 'Open deck', count: null, nav: true, on: function () { renderDeck(scope.pack); show('s-deck'); } });
-    if (!items.filter(Boolean).length) { items.push({ label: 'Nothing to study here yet', static: true }); items.push({ label: 'Close', on: function () {} }); }
-    openSheet(anchor, scopeTitle(scope), items);
+    // Nothing to study (a paused deck's lesson, say): the sheet says so and keeps Close. Browse cards is not
+    // studying, so it neither counts as something to study nor goes away (0.9.1).
+    if (!items.filter(function (it) { return it && it !== browseItem; }).length) { items.unshift({ label: 'Nothing to study here yet', static: true }); items.push({ label: 'Close', on: function () {} }); }
+    openSheet(anchor, scopeTitle(scope), items, scope.lesson != null ? lessonSummaryHtml(scope.pack, scope.lesson) : '', 'sh-lead');
+  }
+  // 0.9.1: what a lesson holds. packs.js's lessonSummary gives the author's description or a
+  // summary read off the lesson's own notes; this draws it in Label type, one block per line, with every
+  // Japanese run marked so it keeps the Japanese face and size.
+  function lessonCards(packId, lesson) {
+    var key = String(lesson == null ? '' : lesson);
+    return DECK.cards.filter(function (c) { return c.pack === packId && c.lesson === key; });
+  }
+  function jaRuns(text, packLang) {
+    var lang = /^(ja|zh)/i.test(packLang || '') ? packLang : 'ja';
+    return esc(text).replace(/[⺀-⿟々぀-ゟ゠-ヿ㐀-鿿](?:[\s、,]*[⺀-⿟々぀-ゟ゠-ヿ㐀-鿿])*/g, function (run) { return '<span lang="' + esc(lang) + '">' + run + '</span>'; });
+  }
+  function lessonSummaryHtml(packId, lesson) {
+    var pk = DECK.packs[packId];
+    if (!pk) return '';
+    var s = lessonSummary(pk, lesson);
+    if (!s.lines.length) return '';
+    return '<p class="lsum' + (s.written ? ' written' : '') + '">' + s.lines.map(function (line) { return '<span class="ln">' + jaRuns(line, pk.language) + '</span>'; }).join('') + '</p>';
+  }
+  // A lesson row's own figures, computed as renderDeck computes them for that row (I8).
+  function lessonRowStats(row) {
+    return { total: row.total, started: row.learning + row.review, fresh: row.fresh, retired: row.retired, directionOff: row.directionOff, heldOut: row.heldOut, suspended: row.suspended };
+  }
+  function lessonRowWhen(packId, lesson) {
+    var ctx = { states: store.allStates(), today: store.countsToday(), budget: store.intakeBudget(), reviewsUsed: store.reviewLimitUsed(store.dayKey(Date.now())) };
+    var options = deckOptionsFor(), own = packId === OWN_PACK_ID;
+    var dayAll = queueFor(ALL, { ctx: ctx, deckOptions: options });
+    var row = rowStats(packId, lesson, { ctx: ctx }).lessons[0];
+    if (!row) return '';
+    var due = todayShare({ pack: packId, lesson: lesson }, { all: dayAll }).counts;
+    due.paused = !!(options[packId] && options[packId].paused);
+    due.out = !own && lessonOut(packId, lesson);
+    return rowWhen(lessonRowStats(row), due);
   }
 
   /* ── one deck: its lessons, share, remove ──────────────────────── */
@@ -5557,7 +5672,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       var due = todayShare({ pack: id, lesson: row.lesson }, { all: dayAll }).counts;
       due.paused = !!(options[id] && options[id].paused);
       due.out = !own && lessonOut(id, row.lesson);
-      return rowHtml('lesson', row.lesson, L, null, { total: row.total, started: row.learning + row.review, fresh: row.fresh, retired: row.retired, directionOff: row.directionOff, heldOut: row.heldOut, suspended: row.suspended }, due, null);   // a lesson row names held-out cards as its deck row does
+      return rowHtml('lesson', row.lesson, L, null, lessonRowStats(row), due, null);   // a lesson row names held-out cards as its deck row does
     }).join('') + '</ul>';
     h += '<div class="stack" style="margin-top:16px" id="d-acts">' +
       '<div id="d-msg" class="msg" hidden></div><div id="d-linkhost"></div>' +
@@ -5577,7 +5692,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     });
     var dl = $('d-lessons'); if (dl) dl.addEventListener('click', function () { openLessonSheet(dl, id); });
     $('d-options').addEventListener('click', function () { openDeckOptions($('d-options'), id); });
-    $('d-browse').addEventListener('click', function () { renderBrowse(); show('s-browse'); });
+    $('d-browse').addEventListener('click', function () { openBrowse(id, null); });
     var dsh = $('d-share'); if (dsh) dsh.addEventListener('click', function () { shareDeck(id, dsh); });
     var dc = $('d-cards'); if (dc) dc.addEventListener('click', function () { goTab('cards'); });
     var du = $('d-update'); if (du) du.addEventListener('click', function () {
@@ -5754,7 +5869,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var offLessons = plan.reason === 'update' && saved.lessonsAdded ? plural(saved.lessonsAdded, 'new lesson') + ', off until you switch ' + (saved.lessonsAdded === 1 ? 'it' : 'them') + ' on. ' : '';
     return { ok: true, status: plan.reason === 'install' ? 'installed' : 'updated', id: obj.id, msg: plan.reason === 'install'
       ? 'Deck added · ' + plural(deriveCards(obj).length, 'card') + invite
-      : 'Deck updated · ' + offLessons + plural(plan.changed, 'note') + ' changed, ' + plural(plan.unsuspend.length - returning, 'card') + ' added, ' + plural(plan.suspend.length, 'card') + ' held out. Your answers are kept.' };
+      : 'Deck updated · ' + offLessons + (plan.lessonInfoChanged ? plural(plan.lessonInfoChanged, 'lesson description') + ' changed, ' : '') + plural(plan.changed, 'note') + ' changed, ' + plural(plan.unsuspend.length - returning, 'card') + ' added, ' + plural(plan.suspend.length, 'card') + ' held out. Your answers are kept.' };
   }
   function installFromUrl(url, done, meta) {
     // A network call on the learner's tap, never on the load path. The marker is the contract
@@ -6203,7 +6318,24 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 
 
-  var browseView = { q: '', filter: 'all', listOffset: 0, searchTimer: null };
+  // `pack` and `lesson` are the scope (0.9.1): a deck, and a lesson of it or null for the whole deck.
+  var browseView = { q: '', filter: 'all', listOffset: 0, searchTimer: null, pack: null, lesson: null };
+  // Every way into Browse names its scope (I7): the deck screen's button (the whole deck), a lesson sheet's
+  // Browse cards (that lesson), and a history entry (whatever it recorded). A way in starts clean — no
+  // search, no filter, the first page — except a history entry redrawing the scope already shown, which
+  // is the same view coming back (closing a card's details lands here) and keeps what was typed.
+  function openBrowse(pack, lesson, opts) {
+    opts = opts || {};
+    var key = lesson == null ? null : String(lesson);
+    var same = browseView.pack === pack && browseView.lesson === key;
+    if (!(opts.keep && same)) {
+      browseView.q = ''; browseView.filter = 'all'; browseView.listOffset = 0;
+      if (browseView.searchTimer) { clearTimeout(browseView.searchTimer); browseView.searchTimer = null; }
+    }
+    openDeck = pack; browseView.pack = pack; browseView.lesson = key;
+    renderBrowse();
+    if (!opts.fromHistory) show('s-browse');
+  }
   function browseSearchText(current) {
     var n = noteOf(current), face = browseFace(current);
     if (!n) return String(face.front || '');
@@ -6213,36 +6345,54 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     });
     return [face.front, n.lesson || ''].concat(fields, n.tags || []).join('\n');
   }
-  // 2026-09-12: two questions, two answers. `bucket` is what a chip filters on, and Due means today's
-  // queue there because that is the set a learner taps Due to see. `census` is what the summary line
-  // counts, and it follows the card's own schedule — the same thing the row's own word says. Reading
-  // the summary off the queue put four started cards in no name at all, so six figures over 683 cards
-  // added up to 679 with the total printed on the very next line.
-  function browseState(current, states, dueIds) {
-    if (store.isRetired(current.id)) return { word: 'Retired', bucket: 'retired', census: 'retired' };
-    if (store.isSuspended(current.id)) return isDirectionOff(current) ? { word: 'Direction off', bucket: 'direction', census: 'direction' } : { word: 'Held out', bucket: 'held', census: 'held' };
+  // Two layers (the operator's final rule, 2026-09-24, after three tester runs).
+  // STATE partitions every card, one each, read off the card's own record: New, Learning (relearning after
+  // Again included), Due today (a review due or overdue), Due later (a review for a later day), Retired,
+  // Direction off, Held out. The state chips list these, the census counts them, and they add up to the
+  // total. There is no Waiting: a review due now that today's limits hold back is Due today by its schedule,
+  // and the overlay below says whether today's set holds it.
+  // TODAY is an overlay, not a state: `todaySet` is the scope's part of today's queue (todayShare, the set
+  // the row's "to study today" counts and Study now serves). A card in it keeps its state and gains a
+  // suffix, "· today", or "· once more today" for a repeat owed (owedRepeat). The Today chip lists the set
+  // and the census names its size apart from the state counts, never as one of them.
+  function browseState(current, states, todaySet) {
+    var info;
+    if (store.isRetired(current.id)) info = { word: 'Retired', bucket: 'retired' };
+    else if (store.isSuspended(current.id)) info = isDirectionOff(current) ? { word: 'Direction off', bucket: 'direction' } : { word: 'Held out', bucket: 'held' };
     var st = states.get(current.id) || { state: 'new', due: null };
-    var bucket = dueIds.has(current.id) ? 'due' : (st.state === 'new' ? 'new' : (st.state === 'learning' || st.state === 'relearning' ? 'learning' : 'later'));   // a review card not in today's queue is due later: under All only
-    if (st.state === 'new') return { word: 'New', bucket: bucket, census: 'new' };
-    if (st.state === 'learning' || st.state === 'relearning') return { word: 'Learning', bucket: bucket, census: 'learning' };
-    var today = store.dayKey(Date.now());
-    var dueKey = st.due == null ? today : store.dayKey(st.due);
-    if (dueKey <= today) return { word: 'Due today', bucket: bucket, census: 'due' };
-    var days = Math.max(1, Math.round((store.dayStart(dueKey) - store.dayStart(today)) / 86400e3));
-    if (days < 14) return { word: 'Due in ' + plural(days, 'day'), bucket: bucket, census: 'due' };
-    return { word: 'Due ' + DAY_NAMES[new Date(store.dayStart(dueKey)).getDay()], bucket: bucket, census: 'due' };
+    if (!info) {
+      if (st.state === 'new') info = { word: 'New', bucket: 'new' };
+      else if (st.state === 'learning' || st.state === 'relearning') info = { word: 'Learning', bucket: 'learning' };
+      else {
+        var today = store.dayKey(Date.now());
+        var dueKey = st.due == null ? today : store.dayKey(st.due);
+        var days = Math.max(1, Math.round((store.dayStart(dueKey) - store.dayStart(today)) / 86400e3));
+        info = dueKey <= today ? { word: 'Due today', bucket: 'due' }
+          : { word: days < 14 ? 'Due in ' + plural(days, 'day') : 'Due ' + DAY_NAMES[new Date(store.dayStart(dueKey)).getDay()], bucket: 'later' };
+      }
+    }
+    info.today = !!(todaySet && todaySet.has(current.id));
+    info.suffix = info.today ? (owedRepeat(st, store, Date.now()) ? ' · once more today' : ' · today') : '';
+    return info;
   }
-  function browseCards(states, dueIds) {
+  var BROWSE_STATES = [['new', 'New', 'new'], ['learning', 'Learning', 'learning'], ['due', 'Due today', 'due today'], ['later', 'Due later', 'due later'], ['retired', 'Retired', 'retired'], ['direction', 'Direction off', 'direction off'], ['held', 'Held out', 'held out']];
+  // The scope's part of today's queue, asked of the queue itself with the options the rows use.
+  function browseTodaySet(ctx) {
+    return new Set(todayShare({ pack: openDeck, lesson: browseView.lesson }, { ctx: ctx, deckOptions: deckOptionsFor() }).queue.map(function (current) { return current.id; }));
+  }
+  function browseCards(states, todaySet) {
     var query = String(browseView.q || '').trim().toLocaleLowerCase();
     return DECK.cards.filter(function (current) {
-      if (current.pack !== openDeck || (query && browseSearchText(current).toLocaleLowerCase().indexOf(query) < 0)) return false;
-      return browseView.filter === 'all' || browseState(current, states, dueIds).bucket === browseView.filter;
+      if (current.pack !== openDeck || (browseView.lesson != null && current.lesson !== browseView.lesson) || (query && browseSearchText(current).toLocaleLowerCase().indexOf(query) < 0)) return false;
+      if (browseView.filter === 'all') return true;
+      if (browseView.filter === 'today') return todaySet.has(current.id);   // the overlay's chip: today's set, whatever each card's state
+      return browseState(current, states, todaySet).bucket === browseView.filter;
     });
   }
   // 2026-09-13: a browsed deck's list has the same shape as the learner's own, so it is drawn the
   // same way — row by row, one that cannot be drawn standing for itself alone.
-  function safeBrowseRow(current, states, dueIds) {
-    try { return browseCardRowHtml(current, states, dueIds); }
+  function safeBrowseRow(current, states, todaySet) {
+    try { return browseCardRowHtml(current, states, todaySet); }
     catch (e) {
       try { recordProblem('drawing a card in a deck list', e, null); } catch (ignore) { /* the row still stands in */ }
       return '<div class="crow unshown"><span class="txt"><span class="a">This card could not be shown.</span>' +
@@ -6253,12 +6403,15 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var host = $('br-results');
     if (!host) return;
     var ctx = { states: states || store.allStates(), today: store.countsToday(), budget: store.intakeBudget(), reviewsUsed: store.reviewLimitUsed(store.dayKey(Date.now())) };
-    var dueIds = new Set(todayShare({ pack: openDeck, lesson: null }, { ctx: ctx }).queue.map(function (current) { return current.id; }));   // the deck's part of today's set, which its row counts
-    var whole = DECK.cards.filter(function (current) { return current.pack === openDeck; });
-    var totals = { new: 0, learning: 0, due: 0, retired: 0, direction: 0, held: 0 };
+    var lesson = browseView.lesson;   // null: the whole deck; a key: that lesson alone (0.9.1)
+    var inScope = function (current) { return current.pack === openDeck && (lesson == null || current.lesson === lesson); };
+    var whole = DECK.cards.filter(inScope);
+    var todaySet = browseTodaySet(ctx);
+    var totals = { new: 0, learning: 0, due: 0, later: 0, retired: 0, direction: 0, held: 0 }, inToday = 0;
     whole.forEach(function (current) {
-      var info = browseState(current, ctx.states, dueIds);
-      if (info.census in totals) totals[info.census]++;   // the six names partition the deck's live cards, which the list beneath shows
+      var info = browseState(current, ctx.states, todaySet);
+      if (info.bucket in totals) totals[info.bucket]++;   // the seven states partition the scope's live cards, which the list beneath shows
+      if (info.today) inToday++;   // the overlay, counted apart: never one of the seven
     });
     // 2026-09-16 (0.7.7): a note retired from My cards leaves the deck's cards for the pack's retired rows, so this
     // census never saw it, and Browse read 0 retired where the deck's own row and Progress read 1. Its cards are
@@ -6267,19 +6420,24 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (openPack && (openPack.retired || []).length) {
       var inCensus = new Set(whole.map(function (current) { return current.id; }));
       deriveCards(Object.assign({}, openPack, { notes: openPack.retired, retired: [] })).forEach(function (current) {
-        if (inCensus.has(current.id)) return;
+        if (inCensus.has(current.id) || (lesson != null && current.lesson !== lesson)) return;
         inCensus.add(current.id);
         totals.retired++;
         retiredElsewhere++;
       });
     }
-    var cards = browseCards(ctx.states, dueIds);
+    var cards = browseCards(ctx.states, todaySet);
+    // Pages add up (a tester run, 2026-09-24): Show more appends the next 200 below the rows already shown, so the list is
+    // its whole set once, in order, and the rows above the button stay where they were. `listOffset` is the
+    // start of the last page shown. It used to replace the list with the next page, while the focus that
+    // follows a tap looked for the first new row past the old count, landed on the new page's last row and
+    // scrolled there: a learner in L.3 landed in L.5, and the top of the list then began at L.8.
     var offset = Math.max(0, browseView.listOffset || 0);
     if (offset >= cards.length && offset) offset = browseView.listOffset = Math.max(0, Math.floor((Math.max(0, cards.length - 1)) / 200) * 200);
-    var page = cards.slice(offset, offset + 200);
-    var h = '<p class="micro pad" id="br-summary">' + totals.new + ' new · ' + totals.learning + ' learning · ' + totals.due + ' due · ' + totals.retired + ' retired · ' + totals.direction + ' direction off · ' + totals.held + ' held out</p>' +
+    var page = cards.slice(0, offset + 200);
+    var h = '<p class="micro pad" id="br-summary">' + BROWSE_STATES.map(function (s) { return totals[s[0]] + ' ' + s[2]; }).join(' · ') + '; ' + inToday + ' today</p>' +
       '<p class="micro pad" id="br-count" role="status">' + plural(cards.length, 'card') + '</p><ul class="list" id="br-list">' +
-      page.map(function (current) { return '<li>' + safeBrowseRow(current, ctx.states, dueIds) + '</li>'; }).join('');
+      page.map(function (current) { return '<li>' + safeBrowseRow(current, ctx.states, todaySet) + '</li>'; }).join('');
     if (!page.length) h += '<p class="note pad">Nothing matches.</p>';
     if (retiredElsewhere && openDeck === OWN_PACK_ID && (browseView.filter === 'all' || browseView.filter === 'retired')) {
       h += '<p class="note pad">' + (retiredElsewhere === 1
@@ -6289,6 +6447,19 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (offset + 200 < cards.length) h += '<button class="textbtn" type="button" data-browse-more>Show more</button>';
     host.innerHTML = h + '</div>';
   }
+  // Show more: the next page only, inserted after the rows already shown and before the button, which goes
+  // when the set is done. The rows above are left as they are, so a phone keeps the heights it laid out and
+  // the list does not shift under the thumb (a full redraw re-estimated every row above: 410px in one tap).
+  function appendBrowsePage(button) {
+    var states = store.allStates();
+    var ctx = { states: states, today: store.countsToday(), budget: store.intakeBudget(), reviewsUsed: store.reviewLimitUsed(store.dayKey(Date.now())) };
+    var todaySet = browseTodaySet(ctx);
+    var cards = browseCards(states, todaySet);
+    var offset = Math.max(0, browseView.listOffset || 0);
+    var next = cards.slice(offset, offset + 200);
+    button.insertAdjacentHTML('beforebegin', next.map(function (current) { return '<li>' + safeBrowseRow(current, states, todaySet) + '</li>'; }).join(''));
+    if (offset + 200 >= cards.length) button.remove();
+  }
 
   function browseFace(current) {
     var n = noteOf(current), nt = n ? typeOf(n) : null;
@@ -6297,11 +6468,28 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var value = n && n.fields && field ? n.fields[field] : '';
     return { front: nt && nt.kind === 'cloze' ? clozeFilled(String(value || '')) : value, lesson: (n && n.lesson) || 'No lesson' };
   }
-  function browseCardRowHtml(current, states, dueIds) {
+  // A card's answer side as one line, for a lesson's list (0.9.1): the template's answer field, or a
+  // fill-in-the-blank card's own blank filled in.
+  function browseAnswer(current) {
+    var n = noteOf(current), nt = n ? typeOf(n) : null;
+    if (!n || !nt || !nt.templates) return '';
+    var value = '';
+    if (nt.kind === 'cloze') value = clozeSegments(String(n.fields[nt.templates[0].prompt] || '')).filter(function (seg) { return seg.cloze === current.ord; }).map(function (seg) { return seg.text; }).join(' … ');
+    else { var form = nt.templates[current.ord]; value = form && n.fields ? n.fields[form.answer] : ''; }
+    return String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+  }
+  // The whole deck's list names each card's lesson; a lesson's list, where the lesson is the heading,
+  // shows the answer in its place (0.9.1). Either way the state word closes the second line.
+  function browseCardRowHtml(current, states, todaySet) {
     var face = browseFace(current), pack = DECK.packs[current.pack] || {};
     var lang = fieldLanguage(face.front, '', pack.language || '');
-    var info = browseState(current, states, dueIds);
-    return '<div class="crow' + (info.bucket === 'retired' ? ' retired' : '') + '" data-card-id="' + esc(current.id) + '"><button class="txt" type="button" data-card="' + esc(current.id) + '"><span class="a"' + (lang ? ' lang="' + esc(lang) + '"' : '') + '>' + esc(face.front) + '</span><span class="b">' + esc(face.lesson) + ' · ' + esc(info.word) + '</span></button></div>';
+    var info = browseState(current, states, todaySet);
+    var second;
+    if (browseView.lesson != null) {
+      var answer = browseAnswer(current), answerLang = fieldLanguage(answer, '', pack.language || '');
+      second = '<span class="lans"' + (answerLang ? ' lang="' + esc(answerLang) + '"' : '') + '>' + esc(answer) + '</span> · ' + esc(info.word + info.suffix);
+    } else second = esc(face.lesson) + ' · ' + esc(info.word + info.suffix);
+    return '<div class="crow' + (info.bucket === 'retired' ? ' retired' : '') + '" data-card-id="' + esc(current.id) + '"><button class="txt" type="button" data-card="' + esc(current.id) + '"><span class="a"' + (lang ? ' lang="' + esc(lang) + '"' : '') + '>' + esc(face.front) + '</span><span class="b">' + second + '</span></button></div>';
   }
   function renderBrowse() {
     var host = $('br-body');
@@ -6309,9 +6497,27 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (!pack) { goTab('decks'); return; }
     var states = store.allStates();
     var lang = (DECK.packs[openDeck] || {}).language || '';
-    var filters = [{ id: 'all', label: 'All' }, { id: 'new', label: 'New' }, { id: 'learning', label: 'Learning' }, { id: 'due', label: 'Due' }, { id: 'retired', label: 'Retired' }];
-    host.innerHTML = '<div class="prose"><label class="sr-only" for="br-q">Search deck cards</label>' +
-      '<input type="search" class="textin" id="br-q" placeholder="Search deck cards" value="' + esc(browseView.q) + '"' +
+    // The scope (0.9.1): the whole deck under "Browse cards", or one lesson under its own name, with what
+    // it holds and its row's own line of figures beneath the heading.
+    if (browseView.pack !== openDeck) { browseView.pack = openDeck; browseView.lesson = null; }
+    var lesson = browseView.lesson;
+    var heading = $('br-title'), headingText = lesson == null ? 'Browse cards' : lessonLabel(openDeck, lesson);
+    heading.textContent = headingText;
+    var headingLang = lesson == null ? '' : fieldLanguage(headingText, '', lang);
+    if (headingLang) heading.setAttribute('lang', headingLang); else heading.removeAttribute('lang');
+    var scopeHead = lesson == null ? '' : '<div class="prose br-lesson" id="br-lesson">' + lessonSummaryHtml(openDeck, lesson) + '<p class="micro" id="br-figures">' + lessonRowWhen(openDeck, lesson) + '</p></div>';
+    var searchLabel = lesson == null ? 'Search deck cards' : 'Search lesson cards';
+    // All, then the overlay's Today, then one chip per state. Direction off and Held out are rare states and
+    // show their chip only while the scope holds such a card; the census names all seven either way.
+    var held = { direction: 0, held: 0 };
+    DECK.cards.forEach(function (current) {
+      if (current.pack !== openDeck || (lesson != null && current.lesson !== lesson) || store.isRetired(current.id) || !store.isSuspended(current.id)) return;
+      held[isDirectionOff(current) ? 'direction' : 'held']++;
+    });
+    var filters = [{ id: 'all', label: 'All' }, { id: 'today', label: 'Today' }].concat(BROWSE_STATES.filter(function (s) { return !(s[0] in held) || held[s[0]] > 0; }).map(function (s) { return { id: s[0], label: s[1] }; }));
+    if (!filters.some(function (f) { return f.id === browseView.filter; })) browseView.filter = 'all';
+    host.innerHTML = scopeHead + '<div class="prose"><label class="sr-only" for="br-q">' + searchLabel + '</label>' +
+      '<input type="search" class="textin" id="br-q" placeholder="' + searchLabel + '" value="' + esc(browseView.q) + '"' +
       (lang ? ' lang="' + esc(lang) + '"' : '') + ' autocapitalize="off" autocomplete="off">' +
       '<div class="filters" role="group" aria-label="Show">' + filters.map(function (item) {
         return '<button type="button" class="filter" data-browse-filter="' + item.id + '" aria-pressed="' + (browseView.filter === item.id ? 'true' : 'false') + '">' + item.label + '</button>';
@@ -6342,7 +6548,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         }
         if (target.hasAttribute('data-browse-more')) {
           var before = host.querySelectorAll('#br-list .crow').length;
-          browseView.listOffset = (browseView.listOffset || 0) + 200; renderBrowseList(store.allStates());
+          browseView.listOffset = (browseView.listOffset || 0) + 200; appendBrowsePage(target);
           var rows = host.querySelectorAll('#br-list .crow');
           var first = rows[Math.min(before, rows.length - 1)]; var focusTarget = first ? first.querySelector('[data-card]') : host.querySelector('[data-browse-more]');
           if (focusTarget) { try { focusTarget.focus({ preventScroll: true }); } catch (e) { focusTarget.focus(); } }
@@ -8842,7 +9048,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var st = ev.state || {};
     var id = SCREENS.indexOf(st.screen) >= 0 ? st.screen : 's-today';
     if (id === 's-deck' && st.id) renderDeck(st.id);
-    else if (id === 's-browse' && st.id) { openDeck = st.id; renderBrowse(); }
+    else if (id === 's-browse' && st.id) openBrowse(st.id, st.lesson == null ? null : st.lesson, { keep: true, fromHistory: true });
     else if (id === 's-today') renderToday();
     else if (id === 's-decks') renderDecks();
     else if (id === 's-cards') renderCards();
@@ -8932,7 +9138,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.9.0";
+  var APP_V = "0.9.1";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
