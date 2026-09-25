@@ -1,6 +1,6 @@
 // Kurikaeshi service worker, written by publish-studykit-bw08.mjs. Do not edit here.
-const VERSION = "0.9.1";
-const BUILD = "46d29d2229c2";
+const VERSION = "0.9.2";
+const BUILD = "82b616dc3d26";
 const CACHE = 'kurikaeshi-' + VERSION + '-' + BUILD;
 // './' is deliberately absent. It resolves to the same document as './index.html', so listing both
 // downloaded the whole page twice on every install and update, and the fetch handler below only

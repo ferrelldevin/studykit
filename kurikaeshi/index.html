@@ -3202,7 +3202,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 <script>
 (function () {
   'use strict';
-  var APP_VERSION = '0.9.1';
+  var APP_VERSION = '0.9.2';
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -3210,7 +3210,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // (a square bracket anywhere) mean accounts are off: the page then never touches the network
   // except to install a deck on the learner's tap. Nothing here is a secret by design.
   var CONFIG = {"auth0":{"domain":"dev-rxe3mje4y1suwccw.us.auth0.com","clientId":"EpM3qKZqHIjpumcmmsuXUUaxSHibqXi3","audience":"https://kurikaeshi/api"},"dataApi":"https://ep-shiny-union-ay3o428i.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1","contact":"ferrelldevin01+kurikaeshi@gmail.com"};
-  var CATALOG = [{"id":"japn309-kll-l1-l8","access":"open","title":"JAPN 309 · Kanji Look and Learn · Lessons 1–8","language":"ja","source":"KANJIDIC2 and JMdict, EDRDG","terms":"Free, no account needed.","cards":683,"lessons":8,"version":"1.1.1","url":"https://ferrelldevin.github.io/studykit/kurikaeshi/packs/japn309-kll-l1-l8.json"},{"id":"irodori-a2-1-vocab","access":"account","title":"Irodori Elementary 1 · Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. Source named here and, once added, under About Kurikaeshi.","cards":2382,"lessons":18,"version":"1.0.0"},{"id":"japn301-vocab","access":"account","title":"Irodori Elementary 2 · Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. Source named here and, once added, under About Kurikaeshi.","cards":3540,"lessons":18,"version":"1.0.1"},{"id":"japn111f-vocab","access":"account","title":"JAPN 111F · Vocabulary and Expressions · Lists 1–16","language":"ja","source":"The JAPN 111F instructor, Old Dominion University","terms":"Free. Shared with the permission of the JAPN 111F instructor.","cards":992,"lessons":16,"version":"1.0.2"},{"id":"japn212-vocab","access":"account","title":"JAPN 212 · Vocabulary · Lessons 1–9, 11–13, 17","language":"ja","source":"The JAPN 212 instructor, Old Dominion University","terms":"Free. Shared with the permission of the JAPN 212 instructor.","cards":960,"lessons":13,"version":"1.1.2"},{"id":"japn212-kanji","access":"account","title":"JAPN 212 · Kanji · Lessons 1–17 · Unchecked transcription","language":"ja","source":"The JAPN 212 instructor's list; KANJIDIC2, EDRDG","terms":"Free. Shared with the permission of the JAPN 212 instructor.","cards":218,"lessons":13,"version":"1.0.2"},{"id":"japn309-class","access":"account","title":"JAPN 309 · Class kanji (from her slides)","language":"ja","source":"The JAPN 309 instructor's drill sheets and slides; KANJIDIC2 and JMdict, EDRDG","terms":"Free. Shared with the permission of the JAPN 309 instructor.","cards":510,"lessons":10,"version":"1.1.1"}];
+  var CATALOG = [{"id":"irodori-a2-1-vocab","access":"account","title":"Irodori 1 Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. Source named here and, once added, under About Kurikaeshi.","cards":2382,"lessons":18,"version":"1.0.1"},{"id":"japn301-vocab","access":"account","title":"JAPN 301 · Irodori 2 Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. Source named here and, once added, under About Kurikaeshi.","cards":3540,"lessons":18,"version":"1.0.2"},{"id":"japn111f-vocab","access":"account","title":"JAPN 111F · Vocabulary · Lists 1–16","language":"ja","source":"The JAPN 111F instructor, Old Dominion University","terms":"Free. Shared with the permission of the JAPN 111F instructor.","cards":992,"lessons":16,"version":"1.0.3"},{"id":"japn212-vocab","access":"account","title":"JAPN 212 · Vocabulary · 13 lessons","language":"ja","source":"The JAPN 212 instructor, Old Dominion University","terms":"Free. Shared with the permission of the JAPN 212 instructor.","cards":960,"lessons":13,"version":"1.1.3"},{"id":"japn212-kanji","access":"account","title":"JAPN 212 · Kanji · 13 lessons","language":"ja","source":"The JAPN 212 instructor's list, transcribed by hand, not yet checked against her list; KANJIDIC2, EDRDG","terms":"Free. Shared with the permission of the JAPN 212 instructor.","cards":218,"lessons":13,"version":"1.0.3"},{"id":"japn309-class","access":"account","title":"JAPN 309 · Kanji · L.1–L.9 and radicals","language":"ja","source":"The JAPN 309 instructor's drill sheets and slides; KANJIDIC2 and JMdict, EDRDG","terms":"Free. Shared with the permission of the JAPN 309 instructor.","cards":510,"lessons":10,"version":"1.1.2"}];
   var SYNC_READY = !!(CONFIG && CONFIG.auth0 && CONFIG.dataApi && !/\[/.test(JSON.stringify(CONFIG)));
   var $ = function (id) { return document.getElementById(id); };
   // Everything interpolated into markup from a pack goes through this. Packs are trusted and
@@ -3235,7 +3235,21 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // No built-in deck since 0.4.0: the app ships empty and any course's deck installs on a tap
   // (outside read, round 1: a bundled deck entered another course's queue).
   var LEGACY_PACK_ID = 'japn309-kll-l1-l8';   // M1's card ids carried no pack prefix
-  var PUBLIC_PACK_URL = PUBLIC_URL + 'packs/' + LEGACY_PACK_ID + '.json';
+  // Decks once offered and retired (0.9.2, one catalog). catalog.js holds the same list, and the
+  // catalog check keeps the two equal. A phone that holds one keeps studying it and keeps its history, but
+  // it is never offered an update or a share, it says once that it is no longer offered, its removal
+  // sheet says it cannot be added again, and a link or a file bringing it back is refused.
+  var RETIRED_DECKS = ['japn309-kll-l1-l8'];
+  function isRetiredDeck(id) { return RETIRED_DECKS.indexOf(String(id || '')) >= 0; }
+  // A link to a retired deck, at the address it lived at or the one before it, answers "no longer
+  // available" without asking the network: the address is removed at go-live, and until then it
+  // must not hand the body back.
+  function isRetiredDeckUrl(u) {
+    var m = /^https:\/\/ferrelldevin\.github\.io\/studykit\/(?:kurikaeshi|japn309\/kanji-queue)\/packs\/([a-z0-9-]+)\.json(?:[?#].*)?$/i.exec(String(u || ''));
+    return !!m && isRetiredDeck(m[1].toLowerCase());
+  }
+  var RETIRED_LINE = 'This deck is no longer offered. It stays here with your progress until you remove it.';
+  var RETIRED_GONE = 'This deck is no longer available. Choose a deck instead.';
   var store = makeStore(adapter);
   var storageBroken = store.load({ legacyPackId: LEGACY_PACK_ID }) === false;   // M1 card ids gain their pack prefix, once
   var packStore = makePackStore(adapter);
@@ -5225,7 +5239,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
           '<button class="textbtn" id="dn-export" type="button">Download a progress file</button>' +
           '<button class="textbtn" id="dn-notnow" type="button">Not now</button></div>'
         : '<div class="offercard"><div class="title">Keep this progress on any device</div>' +
-          '<p>An account is optional. With one, today’s answers and your own cards follow you to another phone.</p>' +
+          '<p>Sign in, free, and today’s answers and your own cards follow you to another phone, and the course decks open to you. Your own cards and deck files keep working here without one.</p>' +
           '<button class="ghost" id="dn-signin" type="button">Sign in</button>' +
           '<button class="textbtn" id="dn-export" type="button">Download a progress file</button>' +
           '<button class="textbtn" id="dn-notnow" type="button">Not now</button></div>';
@@ -5550,8 +5564,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var list = packStore.list();
     var h = '';
     if (!list.length) {
-      h += '<div class="prose"><h2 class="display">No decks yet</h2><p>A deck is a set of cards. Choose one, paste a link, or write your own.</p>' +
-        '<button class="primary" id="dk-choose" type="button">Choose a deck</button></div>';
+      // 0.9.2: first open no longer carries a link row, so Add a deck is reachable from here with
+      // nothing installed: a learner's own deck by file, pasted text, link or code needs no sign-in.
+      h += '<div class="prose"><h2 class="display">No decks yet</h2><p>A deck is a set of cards. Choose one, add one from a link or a file, or write your own.</p>' +
+        '<button class="primary" id="dk-choose" type="button">Choose a deck</button>' +
+        '<div class="stack" style="margin-top:12px"><button class="ghost" id="dk-add" type="button"><span>Add a deck</span></button></div></div>';
     } else {
       var ctx = { states: store.allStates(), today: store.countsToday(), budget: store.intakeBudget(), reviewsUsed: store.reviewLimitUsed(store.dayKey(Date.now())) };
       var dayAll = queueFor(ALL, { ctx: ctx, deckOptions: deckOptionsFor() });   // one queue for the day, divided among the rows
@@ -5648,7 +5665,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     // the page's own catalog row for the same id, read the same way the row's word was. Every
     // catalog row is this door (item 91, 2026-09-21): a deck the catalog does not carry has none.
     var catRow = catalogRow(id);
-    var updateDoor = r.url ? 'url' : (catRow ? 'catalog' : null);
+    // A retired deck has no update door and no share (0.9.2): its address is gone and the catalog no
+    // longer carries it, so "Check for update" could only fail and a shared link would be dead.
+    var retired = isRetiredDeck(id);
+    var updateDoor = retired ? null : (r.url ? 'url' : (catRow ? 'catalog' : null));
     var catUpdate = updateDoor === 'catalog' && catalogInstallState(catRow, r) === 'update';
     var heading = $('d-title');
     heading.textContent = r.title;
@@ -5659,6 +5679,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var ratio = s.total ? s.started / s.total : 0;
     var fill = s.started ? Math.max(0.007, ratio) : 0;
     var h = '<div class="prose">' +
+      (retired ? '<p id="d-retired">' + esc(RETIRED_LINE) + '</p>' : '') +
       '<div class="micro">' + plural(s.total, 'card') + ' · ' + plural(s.lessons.length, own ? 'group' : 'lesson') + '</div>' +
       (s.total ? '<span class="bar"><i style="transform:scaleX(' + fill + ')"></i></span>' : '') +
       '<div class="micro">' + s.started + ' of ' + s.total + ' started' + (s.retired ? ' · ' + s.retired + ' retired' : '') + (s.directionOff ? ' · ' + s.directionOff + ' direction off' : '') + '</div>' +
@@ -5681,7 +5702,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       // Share is offered only for the learner's own cards, or a deck with a public address to link to
       // (item 81, 2026-09-20). A deck that came by class code, by someone else's share code or from a
       // file is somebody else's body: no button, and shareDeck itself refuses it below.
-      (own || r.url ? '<button class="ghost" id="d-share" type="button"><span>Share deck</span></button>' : '') +
+      (own || (r.url && !retired) ? '<button class="ghost" id="d-share" type="button"><span>Share deck</span></button>' : '') +
       (own ? '<button class="ghost" id="d-cards" type="button"><span>Open cards</span></button>' : '') +
       (updateDoor ? '<button class="ghost" id="d-update" type="button"><span>' + (catUpdate ? 'Update deck' : 'Check for update') + '</span></button>' : '') +
       (own ? '' : '<button class="ghost" id="d-remove" type="button"><span>Remove deck</span></button>') +
@@ -5731,7 +5752,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       }).catch(function (e) { afterUpdate({ ok: false, msg: friendlyError(e) }); });
     });
     var dr = $('d-remove'); if (dr) dr.addEventListener('click', function () {
-      confirmSheet({ anchor: dr, title: 'Removing this deck keeps your answers, so adding it again resumes where you were.' + (lessonsOutFor(id).length ? ' Your choice of lessons for new cards is not kept.' : ''), action: 'Remove deck', cancel: 'Keep deck', onConfirm: function () {
+      confirmSheet({ anchor: dr, title: (retired ? 'Removing this deck keeps your answers. Once removed, it cannot be added again.' : 'Removing this deck keeps your answers, so adding it again resumes where you were.') + (lessonsOutFor(id).length ? ' Your choice of lessons for new cards is not kept.' : ''), action: 'Remove deck', cancel: 'Keep deck', onConfirm: function () {
         // A removal the browser could not write is not a removal (once-over m5): say so and stay.
         if (!packStore.remove(id)) { storageBroken = true; showStorageProblem(); return; }
         refreshDeck(); indexNotes();
@@ -5748,6 +5769,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     // its public address. A deck that came by class code, by someone else's code or from a file is
     // somebody else's body, and this refuses it before any button, sign-in or upload — the server
     // refuses the same id on its side (share_pack).
+    if (isRetiredDeck(id)) { setMsg('d-msg', 'This deck is no longer offered, so it cannot be shared.', false); return; }
     if (id !== OWN_PACK_ID && !r.url) { setMsg('d-msg', 'This deck cannot be shared from here. Whoever gave it to you is the one who shares it.', false); return; }
     if (r.url && id !== OWN_PACK_ID) { shareLink(deckLink(r.url), r.title, host, btn); return; }
     if (!SYNC_READY || !account.signedIn || !sync) {
@@ -5828,6 +5850,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   }
   // Returns { ok, msg } and touches no DOM.
   function installPackObject(obj, meta) {
+    // A retired deck cannot be added again, by any way in (0.9.2): its removal sheet promised so.
+    if (obj && isRetiredDeck(obj.id)) return { ok: false, msg: RETIRED_GONE };
     var plan;
     try { plan = planUpdate(packStore.get(obj.id), obj); }
     catch (e) {
@@ -5877,6 +5901,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     // screen open forever, and a reader with no button is a reader who leaves.
     var remote = canonicalDeckUrl(url);
     if (!remote.ok) { done({ ok: false, msg: remote.msg }); return; }
+    if (isRetiredDeckUrl(remote.url)) { done({ ok: false, msg: RETIRED_GONE }); return; }
     /* network: user-initiated */ fetch(remote.url, { cache: 'no-store', signal: timeoutSignal(10000) })
       .then(function (r) {
         if (!r.ok) { var problem = new Error('http'); problem.deckHttp = true; throw problem; }
@@ -5903,13 +5928,6 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var pk = Object.assign({}, src, { id: own ? 'deck-' + String(code).toLowerCase() : src.id, url: null, shareCode: String(code).toUpperCase() });
     return installPackObject(pk, meta || {});
   }
-  function installPublic(progressEl, done, meta) {
-    if (progressEl) { progressEl.hidden = false; progressEl.textContent = 'Getting the deck…'; }
-    installFromUrl(PUBLIC_PACK_URL, function (res) {
-      if (progressEl) progressEl.textContent = res.msg;
-      done(res);
-    }, meta);
-  }
   function flash(res) { setMsg('pk-status', res.msg, !res.ok); }
   function finishAddInstall(res) {
     if (!res.ok) { flash(res); return; }
@@ -5919,8 +5937,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   }
   /* ── decks you can add: the catalog, inlined at build, never fetched ── */
   // One row per deck the site knows, and every row installs by the same tap (item 91, 2026-09-21).
-  // What a tap costs is printed ON the row, before the tap (MC-59): an open-licensed deck installs
-  // for anyone; every other deck needs a free account and the row says so. The list itself never
+  // What a tap costs is printed ON the row, before the tap (MC-59): every deck is sent to a signed-in
+  // account (0.9.2, one catalog), and a row signed out says Needs sign-in. The list itself never
   // needs the network, so it renders offline; only an install does, and then the install path's
   // own sentences say what happened.
   var pendingCatalog = null;
@@ -5941,7 +5959,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var host = $('ct-body');
     var rows = catalogRows();
     var chev = '<svg class="chev" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4l6 6-6 6"/></svg>';
-    var h = '<div class="prose"><p>Tap a deck to add it, or to open one you already have. A deck that needs a free account says so before you tap.</p><div id="ct-status" class="msg" hidden></div></div>';
+    var h = '<div class="prose"><p>Tap a deck to add it, or to open one you already have. Course decks are sent to a free account, so signing in comes first.</p><div id="ct-status" class="msg" hidden></div></div>';
     h += '<ul class="list">' + rows.map(function (row) {
       var state = catalogState(row), word = CATALOG_WORDS[state];
       var lang = fieldLanguage(row.title, '', row.language || '');
@@ -5985,9 +6003,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       restore();
       setMsg('ct-status', res.msg, true);
     };
-    // One branch per place a body lives: the public file for an open row, the signed-in read for
-    // every other row. The body served to the identity never reaches the web.
-    if (row.access === 'open') { installFromUrl(row.url, done, { lessons: 'none' }); return; }
+    // One door (0.9.2): the signed-in read. The body served to the identity never reaches the web.
     authClient().then(function () { return fetchCatalogPack(authTransport, row.id); }).then(function (r) {
       if (!r || !r.pack) { done({ ok: false, msg: 'This deck is no longer available. Choose another deck.' }); return; }
       if (JSON.stringify(r.pack).length > DECK_TEXT_MAX) { done({ ok: false, msg: DECK_TOO_BIG }); return; }
@@ -5997,14 +6013,12 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
   function renderAdd() {
     var host = $('ad-body');
-    var hasPublic = packStore.has(LEGACY_PACK_ID);
     var fetchToken = 0;
     // The doorway to the catalog says what the tap does and how many decks wait behind it, verb first, with the
     // deck rows' chevron; as a plain title it was read as a heading over the three rows beneath (use run 13, 2026-09-20).
     var chev = '<svg class="chev" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4l6 6-6 6"/></svg>';
     host.innerHTML = '<div class="answers" style="padding-top:16px">' +
-      '<button class="answer-row nav" id="ad-catalog" type="button"><span class="t">See the ' + plural(catalogRows().length, 'deck') + '</span><br><span class="s">Some need a free account; each row says which before you tap.</span>' + chev + '</button>' +
-      '<button class="answer-row" id="ad-public" type="button"><span class="t">Study JAPN 309 kanji</span><br><span class="s">' + (hasPublic ? 'Already on this device' : 'Kanji Look and Learn, lessons 1 to 8. One tap, and it can be removed later.') + '</span></button>' +
+      '<button class="answer-row nav" id="ad-catalog" type="button"><span class="t">See the ' + plural(catalogRows().length, 'deck') + '</span><br><span class="s">Course decks, sent to a free account once you sign in.</span>' + chev + '</button>' +
       '<button class="answer-row" id="ad-paste" type="button"><span class="t">Open link or code</span><br><span class="s">A deck link, a deck code, or a six-character class code</span></button>' +
       '<button class="answer-row" id="ad-file" type="button"><span class="t">Add from a file</span><br><span class="s">A deck file someone sent you</span></button>' +
       '</div><div class="progressline" id="ad-progress" hidden></div>' +
@@ -6015,11 +6029,6 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<label class="field" style="margin-top:24px"><span class="lbl">Or paste a deck as text</span><textarea class="textin" id="pk-paste" placeholder="The deck file’s contents"></textarea></label>' +
       '<button class="ghost" id="pk-pastebtn" type="button"><span>Add pasted deck</span></button></div>';
     $('ad-catalog').addEventListener('click', function () { renderCatalog(); show('s-catalog'); });
-    $('ad-public').addEventListener('click', function () {
-      if (hasPublic) { renderDeck(LEGACY_PACK_ID); show('s-deck'); return; }
-      var restorePublic = busy($('ad-public'), 'Getting the deck…');
-      installPublic($('ad-progress'), function (res) { if (res.ok) finishAddInstall(res); else restorePublic(); }, { lessons: 'first' });
-    });
     $('ad-paste').addEventListener('click', function () { openPaste('add'); });
     $('ad-file').addEventListener('click', function () { $('pk-file').click(); });
     $('pk-fetch').addEventListener('click', function () {
@@ -6061,32 +6070,30 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     });
   }
 
-  /* ── first open: one question, three answers that act ──────────── */
+  /* ── first open: one question, two answers that act (0.9.2, one catalog) ── */
+  // Every course deck is sent to a signed-in account, so a stranger's first screen offers the two
+  // things that lead somewhere: signing in, which comes back to the course decks, and writing their
+  // own cards, which needs nothing and reaches a first card in three taps. Signed in, the first
+  // answer opens the course decks directly. A course deck starts with no lesson in until one is
+  // chosen, as every catalog install does.
+  var pendingCatalogList = false;   // Sign in here was tapped: the course decks are where the redirect returns
   function renderFirst(from) {
+    var signedIn = SYNC_READY && account.signedIn;
     $('fo-body').innerHTML = (from ? '<header class="top"><button class="back" id="fo-back" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 6l-6 6 6 6"/></svg>Back</button></header>' : '') +
       '<div class="first"><h1 class="display" id="fo-title" tabindex="-1">What are you studying?</h1>' +
-      '<p>Kurikaeshi shows you a few cards a day and brings back the ones you miss. No account needed.</p><div class="answers">' +
-      '<button class="answer-row" id="fo-public" type="button"><span class="t">Study JAPN 309 kanji</span><br><span class="s">Study Kanji Look and Learn lessons 1 to 8.</span></button>' +
-      '<button class="answer-row" id="fo-paste" type="button"><span class="t">Open link or code</span><br><span class="s">Open a deck link, deck code or six-character class code.</span></button>' +
+      '<p>Kurikaeshi shows you a few cards a day and brings back the ones you miss.</p><div class="answers">' +
+      (signedIn
+        ? '<button class="answer-row" id="fo-catalog" type="button"><span class="t">Choose a course deck</span><br><span class="s">The decks for your course, sent to your account.</span></button>'
+        : '<button class="answer-row" id="fo-signin" type="button"><span class="t">Sign in</span><br><span class="s">Course decks are sent to a free account. It takes about a minute.</span></button>') +
       '<button class="answer-row" id="fo-own" type="button"><span class="t">Write my own cards</span><br><span class="s">Write a front and back in any language.</span></button>' +
       '</div><div class="msg" id="fo-progress" hidden></div></div>';
     var back = $('fo-back'); if (back) back.addEventListener('click', function () { goTab(from); });
-    $('fo-public').addEventListener('click', function () {
-      var restorePublic = busy($('fo-public'), 'Getting the deck…');
-      installPublic($('fo-progress'), function (res) {
-        if (!res.ok) {
-          restorePublic();
-          var sentence = res.msg;
-          if (/^No connection\./.test(sentence)) sentence += ' Tap Study JAPN 309 kanji to try again.';
-          setMsg('fo-progress', sentence, true);
-          return;
-        }
-        var scope = { pack: res.id || null, lesson: null };
-        var q = queueFor(scope).queue;   // the first win before any orientation (MC-59): straight into this deck's cards
-        if (q.length) startSession(q, scope, 'today'); else goTab('today');
-      }, { lessons: 'first' });
+    var cat = $('fo-catalog'); if (cat) cat.addEventListener('click', function () { renderCatalog(); show('s-catalog'); });
+    var si = $('fo-signin'); if (si) si.addEventListener('click', function () {
+      if (!SYNC_READY) { setMsg('fo-progress', 'Accounts are not available on this site. You can still write your own cards.', true); return; }
+      pendingCatalogList = true;
+      signIn(si);
     });
-    $('fo-paste').addEventListener('click', function () { openPaste('first'); });
     $('fo-own').addEventListener('click', function () { goTab('cards'); var f = $('qa-front'); if (f) f.focus(); });
   }
 
@@ -6238,6 +6245,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (remote) {
       if (!remote.ok) { fail('not a deck'); return; }
       value = remote.url;
+      // A retired deck's link says so without asking the network (0.9.2).
+      if (isRetiredDeckUrl(value)) { fail('gone'); return; }
       var controller = typeof AbortController === 'function' ? new AbortController() : null;
       var wait = window.__kurikaeshiFetchTimeout || 10000;
       var timer = controller ? setTimeout(function () { controller.abort(); }, wait) : null;
@@ -6257,6 +6266,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
           if (token !== landingToken) return;
           if (landingAbort === controller) landingAbort = null;
           try { validatePack(obj); } catch (e) { throw landingError('not a deck'); }
+          if (isRetiredDeck(obj.id)) throw landingError('gone');   // the same deck at any other address
           var d = describe(obj);
           land(obj.title, deriveCards(obj).length, d.lessons, d.samples, obj.language || '', function (done) { done(installPackObject(obj, { url: value, lessons: 'first' })); });
         })
@@ -6273,7 +6283,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     // landing asks for the free sign-in first, keeps the code across the redirect, and comes back here.
     if (!account.signedIn) {
       pendingDeck = value;
-      host.innerHTML = '<p>Opening a shared code needs an account. Signing in is free and takes about a minute. You can study ordinary decks without one.</p><div class="stack" style="width:100%;max-width:22rem"><button class="primary" id="ld-signin" type="button">Sign in</button><button class="ghost" id="ld-choose" type="button">Choose a deck instead</button>' + (isStandalone() ? '<p class="note">Sign-in opens in your browser.</p>' : '') + '</div>';
+      host.innerHTML = '<p>Opening a shared code needs an account. Signing in is free and takes about a minute. You can study your own cards without one.</p><div class="stack" style="width:100%;max-width:22rem"><button class="primary" id="ld-signin" type="button">Sign in</button><button class="ghost" id="ld-choose" type="button">Choose a deck instead</button>' + (isStandalone() ? '<p class="note">Sign-in opens in your browser.</p>' : '') + '</div>';
       $('ld-signin').addEventListener('click', function () { signIn($('ld-signin')); });
       $('ld-choose').addEventListener('click', choose);
       return;
@@ -6297,7 +6307,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       $('ld-body').setAttribute('data-purpose-line', remote ? 'url' : 'code');
       openDeckLinkBase(value);
       if (!kept && !remote && !account.signedIn) $('ld-body').insertAdjacentHTML('afterbegin', '<p class="msg bad">Open this link again after signing in; this device could not keep it.</p>');
-      if (remote && !$('ld-body').querySelector('[data-landing-purpose]')) $('ld-body').insertAdjacentHTML('afterbegin', '<p data-landing-purpose>Kurikaeshi shows you a few cards a day and brings back the ones you miss. No account needed.</p>');
+      if (remote && !$('ld-body').querySelector('[data-landing-purpose]')) $('ld-body').insertAdjacentHTML('afterbegin', '<p data-landing-purpose>Kurikaeshi shows you a few cards a day and brings back the ones you miss.</p>');
       return;
     }
     if (landingAbort) { landingAbort.abort(); landingAbort = null; }
@@ -6312,7 +6322,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   var landingPurposeWatch = new MutationObserver(function () {
     var host = $('ld-body');
     if (host.getAttribute('data-purpose-line') !== 'url' || host.querySelector('[data-landing-purpose]')) return;
-    host.insertAdjacentHTML('afterbegin', '<p data-landing-purpose>Kurikaeshi shows you a few cards a day and brings back the ones you miss. No account needed.</p>');
+    host.insertAdjacentHTML('afterbegin', '<p data-landing-purpose>Kurikaeshi shows you a few cards a day and brings back the ones you miss.</p>');
   });
   landingPurposeWatch.observe($('ld-body'), { childList: true });
 
@@ -7357,7 +7367,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       // returns to the installed window); the browser's is the path proven on the operator's own
       // phone and PC. So the installed copy hands sign-in to the browser and says what that
       // means, rather than trying the untested path on a stranger.
-      var notice = 'Sign-in works in your browser. Open Kurikaeshi in Safari or Chrome, sign in there, and study from there. This home-screen copy keeps working offline without an account, and keeps its progress here: to carry it over, export it in Settings and import it in the browser.';
+      var notice = 'Sign-in works in your browser. Open Kurikaeshi in Safari or Chrome, sign in there, and study from there. This home-screen copy keeps working offline with the cards it already holds, and keeps its progress here: to carry it over, export it in Settings and import it in the browser.';
       var w = null;
       try { w = window.open(PUBLIC_URL, '_blank'); } catch (e) { /* the sentence stands on its own; a null handle adds the link below */ }
       if (screen === 's-you' || screen === 's-account') {
@@ -7388,6 +7398,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (pendingJoin) st.join = pendingJoin;
     if (pendingDeck) st.deck = pendingDeck;
     if (pendingCatalog) st.catalog = pendingCatalog;   // the catalog deck tapped before signing in
+    if (pendingCatalogList) st.catalogList = true;     // Sign in on the first screen: back to the course decks
     authClient().then(function (c) { return c.loginWithRedirect({ appState: st }); })
       .catch(function (e) { saveAccount({ lastError: friendlyError(e) }); renderAccount(); show('s-account'); });
   }
@@ -8406,6 +8417,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         if (appState && appState.join) pendingJoin = appState.join;
         if (appState && appState.deck) pendingDeck = appState.deck;
         if (appState && appState.catalog) pendingCatalog = appState.catalog;
+        if (appState && appState.catalogList) pendingCatalogList = true;
         if (pendingDeck) {
           var d = pendingDeck; pendingDeck = null; openDeckLink(d);
         } else if (pendingCatalog) {
@@ -8414,6 +8426,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
           renderCatalog(); show('s-catalog');
           var crow = catalogRow(cid);
           if (crow) catalogInstall(crow, $('ct-body').querySelector('[data-cat="' + cid + '"]'));
+        } else if (pendingCatalogList) {
+          // Sign in on the first screen: the course decks are what it was for.
+          pendingCatalogList = false;
+          renderCatalog(); show('s-catalog');
         } else if (pendingJoin) {
           classesView.join = { code: pendingJoin, step: 1 }; pendingJoin = null; renderClasses(); show('s-classes');
         } else { renderAccount(); show('s-account'); }
@@ -8436,7 +8452,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   }
   function accountSummary() {
     if (!SYNC_READY) return 'Accounts are not available on this site. Everything stays on this device.';
-    if (!account.signedIn) return 'An account is optional. With one, your progress and your own cards follow you to another device, and you can join a class.';
+    if (!account.signedIn) return 'A free account opens the course decks, carries your progress and your own cards to another device, and lets you join a class. Your own cards and deck files work without one.';
     return 'Signed in' + (account.email ? ' as ' + account.email : '') + '. ' + (account.lastError ? account.lastError : 'Last sync ' + (account.lastSync ? relTime(account.lastSync) : 'not yet') + '.');
   }
   function renderAccount() {
@@ -8445,7 +8461,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       h = '<p>Accounts are not available on this site.</p>' +
         '<p class="note">Everything you do here stays on this device. To move to another device, export your progress from Settings and import it there.</p>';
     } else if (!account.signedIn || !sync) {
-      h = '<p>An account is optional. Studying needs none.</p>' +
+      h = '<p>Course decks need a free account. Your own cards and deck files work without one.</p>' +
         '<p class="note">With one, your progress and your own cards follow you to another device, and you can join a class with a code from your instructor.</p>' +
         '<h2 class="sec">What is stored</h2>' +
         '<p class="note">Your reviews (which card, when, the grade you gave, how long it took), the cards you wrote yourself, and which classes you joined. Nothing else: not your settings, not the course decks, and never a password. You sign in on the sign-in page, with a passkey or a one-time code sent to your email.</p>' +
@@ -9138,7 +9154,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.9.1";
+  var APP_V = "0.9.2";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
