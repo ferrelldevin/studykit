@@ -3202,7 +3202,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 <script>
 (function () {
   'use strict';
-  var APP_VERSION = '0.9.2';
+  var APP_VERSION = '0.9.3';
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -3332,6 +3332,24 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // The sign-in offer is shown once, after the first finished session EVER: no answer on this
   // device before this boot (the contract's onboarding rule; the flag lives in prefs).
   var FIRST_EVER = store.log.length === 0;
+  // Onboarding moments (0.9.3, MC-59, DESIGN-0.9.3): each moment id shows at most once per device
+  // (I3; G1's toast is exempt, it needs no id). A NEW prefs key would trip the import's "Some
+  // settings in the file could not be used" (DESIGN-0.9.3 §A), so this is its own key, never
+  // exported, never synced, and never read through store.prefs. The id is written BEFORE the
+  // moment shows, and the moment shows only when that write succeeds (I2) — a device that refuses
+  // storage shows nothing rather than showing the moment on every visit (W8).
+  var SEEN_KEY = 'bw08.seen.v1';
+  function seenHas(id) {
+    try { var arr = JSON.parse(adapter.get(SEEN_KEY) || '[]'); return Array.isArray(arr) && arr.indexOf(id) >= 0; } catch (e) { return false; }
+  }
+  var doneShown = 0;   // one per done screen shown, so a late upload never speaks on a later one
+  function seenOnce(id) {
+    var arr;
+    try { arr = JSON.parse(adapter.get(SEEN_KEY) || '[]'); if (!Array.isArray(arr)) arr = []; } catch (e) { arr = []; }
+    if (arr.indexOf(id) >= 0) return false;
+    arr.push(id);
+    return adapter.set(SEEN_KEY, JSON.stringify(arr));
+  }
 
   /* ── theme ─────────────────────────────────────────────────────── */
   var root = document.documentElement;
@@ -3518,6 +3536,15 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 
 
+  // A page the browser restores from its back/forward cache comes back exactly as it was left, so a
+  // button busy with a hand-off to another page (Sign in: "Opening the sign-in page…") would still be
+  // busy, and ten seconds later say "Still working" about work that ended when the page was left
+  // (seen in a use run, 2026-09-26). Every busy button is given back when such a page is shown again.
+  var busyRestores = [];
+  window.addEventListener('pageshow', function (e) {
+    if (!e || !e.persisted) return;
+    busyRestores.slice().forEach(function (restore) { restore(); });
+  });
   function busy(btn, text) {
     var old = btn.innerHTML, restored = false, notice = null, prior = null;
     var noticeTimer = null;
@@ -3532,7 +3559,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       notice = null;
     };
     var watch = typeof MutationObserver === 'function' ? new MutationObserver(function () {
-      if (!btn.disabled) { btn.classList.remove('busy'); clearNotice(); watch.disconnect(); }
+      if (!btn.disabled) { btn.classList.remove('busy'); clearNotice(); watch.disconnect(); var at = busyRestores.indexOf(restore); if (at >= 0) busyRestores.splice(at, 1); }
     }) : null;
     btn.disabled = true;
     btn.classList.add('busy');
@@ -3558,15 +3585,19 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         ? 'Still working. You can leave this screen; what happened will show in Account.'
         : 'Still working. Stay on this screen to see what happened.';
     }, window.__kurikaeshiBusyNotice || 10000);
-    return function () {
+    var restore = function () {
       if (restored) return;
       restored = true;
+      var at = busyRestores.indexOf(restore);
+      if (at >= 0) busyRestores.splice(at, 1);
       if (watch) watch.disconnect();
       clearNotice();
       btn.disabled = false;
       btn.classList.remove('busy');
       btn.innerHTML = old;
     };
+    busyRestores.push(restore);
+    return restore;
   }
   function setMsg(id, msg, bad) {
     var st = $(id);
@@ -4032,9 +4063,18 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       sheetAnchor = anchor || null;
     }
     var onCount = stats.lessons.filter(function (row) { return !lessonOut(id, String(row.lesson == null ? '' : row.lesson)); }).length;
-    var standing = onCount + ' of ' + plural(stats.lessons.length, 'lesson') + (onCount === 1 ? ' is' : ' are') + ' on.';
+    // 0.9.3 G3 (state-driven, no id — I1, I2): a fresh deck, nothing on and nothing started, gets
+    // the onboarding note; a lesson switched on or a card started returns it to the standing note.
+    // The all-off line replaces the standing count once nothing is on, rather than reading "0 of 9
+    // lessons are on."
+    var fresh = stats.started === 0 && onCount === 0;
+    var note = fresh ? 'Switch on the lessons your class has covered. New cards come only from these. You can change this any time.'
+      : 'New cards come only from the lessons you switch on. Cards you have already started keep coming back.';
+    var standing = onCount === 0 ? 'No lessons on. No new cards come from this deck.'
+      : onCount + ' of ' + plural(stats.lessons.length, 'lesson') + (onCount === 1 ? ' is' : ' are') + ' on.';
+    var studyN = offersFor({ pack: id, lesson: null }).today.queue.length;
     var h = '<div class="sh-title">New cards by lesson</div>' +
-      '<div class="prose" style="padding-top:0"><p class="note" id="ls-note">New cards come only from the lessons you switch on. Cards you have already started keep coming back.</p>' +
+      '<div class="prose" style="padding-top:0"><p class="note" id="ls-note">' + esc(note) + '</p>' +
       '<p class="note" id="ls-msg" role="status" style="min-height:3em">' + esc(said || standing) + '</p></div>';
     stats.lessons.forEach(function (row) {
       var key = String(row.lesson == null ? '' : row.lesson);
@@ -4045,6 +4085,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         '<span class="direction-copy"><span class="direction-name">' + esc(label) + '</span><span class="direction-count">' + esc(countLine) + '</span></span>' +
         '<span class="theme-switch" aria-hidden="true"></span></button>';
     });
+    // 0.9.3 G3: a sticky Study now at the sheet's foot once a switch has opened today's queue, so a
+    // lesson turned on leads straight to its first card without a second sheet (W3). It goes the
+    // moment the queue is empty again, same tap the deck sheet's own Study now uses.
+    if (studyN) h += '<button class="act stick" type="button" id="ls-study"><span>Study now</span><span class="c">(' + studyN + ')</span></button>';
     sh.innerHTML = h;
     sh.setAttribute('aria-label', 'New cards by lesson');
     Array.prototype.forEach.call(sh.querySelectorAll('button.lesson-row'), function (button) {
@@ -4054,6 +4098,14 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         if (!setLessonRotation(id, key, turnOn, function (sentence) { said = sentence; })) return;
         openLessonSheet(button, id, true, said || (key || 'No lesson') + ' is off. No new cards from it.');
       });
+    });
+    var studyBtn = $('ls-study');
+    if (studyBtn) studyBtn.addEventListener('click', function () {
+      var beforeScreen = screen;
+      closeSheet(false, true);
+      history.replaceState(screenState(screen, { fromSheet: true }), '', location.href);
+      startNow({ pack: id, lesson: null });
+      if (screen === beforeScreen && history.state && history.state.fromSheet) history.back();
     });
     if (!redraw) {
       sc.hidden = false; sh.hidden = false; sh.classList.remove('closing', 'dragging', 'returning'); sh.style.transform = '';
@@ -4295,6 +4347,19 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // True when some deck has every lesson out: Today's done lines then say where to choose.
   function noLessonIn(ctx) {
     return packStore.list().some(function (r) { return r.id !== OWN_PACK_ID && lessonsOutFor(r.id).length > 0 && allLessonsOut(r.id, rowStats(r.id, null, { ctx: ctx }).lessons); });
+  }
+  // 0.9.3 G3 (FM3): the deck behind a false "Done for today" — every lesson out AND nothing of it
+  // ever started, so there is nothing to continue either. The first one found is Today's tile; a
+  // learner with two such decks sees the one packStore lists first, same order Decks shows them.
+  function freshLessonDeck(ctx) {
+    var hit = null;
+    packStore.list().some(function (r) {
+      if (r.id === OWN_PACK_ID) return false;
+      var stats = rowStats(r.id, null, { ctx: ctx });
+      if (stats.started === 0 && lessonsOutFor(r.id).length > 0 && allLessonsOut(r.id, stats.lessons)) { hit = r; return true; }
+      return false;
+    });
+    return hit;
   }
   // Take a lesson out or put it back: one write to the install record, then the rows redraw. Nothing
   // is suspended and no history moves; a card already started keeps reviewing whatever its lesson's state.
@@ -5087,7 +5152,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (stoppedSession && stoppedSession !== session) stoppedSession.undoBlocked = true;
     if (grade === 1) session.again++;
     session.cards[card.id] = (session.cards[card.id] || 0) + 1;
-    session.entries.push({ c: card.id, g: grade, e: elapsed, n: wasNew ? 1 : 0 });
+    session.entries.push({ c: card.id, t: now, g: grade, e: elapsed, n: wasNew ? 1 : 0 });   // t: the stamp its log row carries, so the done screen can ask about these rows
     // A step (Again) comes back on its due time inside this sitting; that is what the learning
     // steps are for, and dropping it to tomorrow wastes the failure. A card seen for the first
     // time and graded Hard or Good comes back once more in the same sitting, the way Anki's
@@ -5203,7 +5268,14 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         : s.mode === 'practice' ? plural(sittingCards, 'card') + ' practiced.'
         : plural(sittingCards, 'card') + ' answered.') + waiting;
     }
-    var h = '<h2 class="display">' + head + '</h2><p>' + line + '</p>' +
+    // 0.9.3 G4 (id 'saved', I2/I3): the first finished session while signed in says the answers are
+    // kept and where to find them tomorrow. It is a claim about the account, so it waits for the upload
+    // this screen starts and shows only once that upload succeeds (finish(), below); a Practice sitting
+    // is never sent, so it never says it. Until then the slot is empty, and the id is spent only when
+    // the sentence shows (seenOnce writes first, so a refused write shows nothing, W8).
+    var wantsSaved = reason === 'finished' && s.mode !== 'practice' && s.answered > 0 && SYNC_READY && account.signedIn && !seenHas('saved');
+    var savedNote = wantsSaved ? '<p class="note" id="dn-saved" role="status" hidden></p>' : '';
+    var h = '<h2 class="display">' + head + '</h2><p>' + line + '</p>' + savedNote +
       // Every figure sits under a visible scope word. The rows are this sitting and nothing else; the
       // day is the Today line beneath them. One unlabelled block used to mix the day's answers with the
       // sitting's Again rate and time, and the three figures read as three that disagreed.
@@ -5285,7 +5357,30 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     card = null;
     session = null;
     show('s-done');
-    syncSoon();   // signed in: the session's reviews go up now, quietly; a failure shows on the Today line
+    // Signed in: the session's reviews go up now, quietly; a failure shows on the Today line. The saved
+    // sentence waits on this upload and on this same done screen still being the one shown.
+    var doneNow = ++doneShown;
+    // The claim is about THIS sitting's answers, so it is checked against them, keyed as sync.js keys a
+    // row (card id and stamp): every one must still be on this device (an erase matched from another
+    // device removes them) and none may still be waiting to go up. syncNow() hands back a sync already
+    // running, whose push may predate the last answers; if any is still waiting when it resolves, one
+    // more sync, begun now, is asked for, and the sentence waits on that.
+    var rowKey = function (e) { return e.c + '|' + e.t; };
+    var owed = wantsSaved ? (s.entries || []).map(rowKey) : [];
+    var allKept = function () { var kept = {}; store.log.forEach(function (e) { kept[rowKey(e)] = 1; }); return owed.length > 0 && owed.every(function (k) { return kept[k]; }); };
+    var stillOwed = function () { var left = {}; sync.pending().forEach(function (e) { left[rowKey(e)] = 1; }); return owed.some(function (k) { return left[k]; }); };
+    // "Your cards will be waiting" covers the learner's own cards too, so a sync whose own-pack step
+    // failed (packs 'failed': a merge this device could not store, never sent) is not a success here.
+    var uploaded = function (r) { return !!r && !r.detached && r.saved !== false && r.packs !== 'failed'; };
+    if (sync && account.signedIn) syncNow().then(function (r) {
+      return wantsSaved && uploaded(r) && allKept() && stillOwed() ? syncNow() : r;
+    }).then(function (r) {
+      if (!wantsSaved || !uploaded(r) || !allKept() || stillOwed()) return;
+      var slot = $('dn-saved');
+      if (doneNow !== doneShown || screen !== 's-done' || !account.signedIn || !slot || !seenOnce('saved')) return;
+      slot.textContent = 'Saved to your account. Open this link again tomorrow; your cards will be waiting.';
+      slot.hidden = false;
+    }).catch(function () { /* shown on the Today line */ });
   }
 
   /* ── Today: one tile, one line of truth, the offers when done ──── */
@@ -5316,6 +5411,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var continuing = stopped && stopped.answered > 0 && stopped.mode === 'today' ? reconcileSitting(stopped) : 0;
     if (stopped && !continuing) stoppedSession = null;   // spent: nothing left to continue, the ordinary tile
     var h = '<div class="prose">';
+    // 0.9.3 G5 (id 'return', I2): a device with an earlier day of answers and none yet today —
+    // shown once, dismissible, ahead of whichever tile follows.
+    var showReturn = t.answers === 0 && daysStudied() > 0 && seenOnce('return');
+    if (showReturn) h += '<p class="note" id="t-return" role="status">Cards you studied before come back just before you would forget them. Get one right and it waits longer next time.</p><button class="textbtn" id="t-return-ok" type="button">Got it</button>';
     if (continuing) {
       h += '<button class="tile" id="t-start" type="button"><span class="t1">Continue this session (' + continuing + ')</span><span class="fold"></span><span class="t2">' + paceLine(continuing) + '</span></button>';
       // B-132 (0.9.1): the tile counts this session and a Decks row counts today's set, which a lesson
@@ -5362,7 +5461,13 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       }
       var ownDone = ownWaitingLine(b, ctx.states);   // 2026-09-15: and the cards of the learner's own that wait
       if (ownDone) lines.push(ownDone);
-      h += '<div class="tile done" id="t-done"><h2 class="display">Done for today</h2><p>' + lines.join(' ') + '</p></div>';
+      // 0.9.3 G3 (FM3): a deck with no lesson on and nothing of it ever started is not "done" —
+      // nobody has studied it yet. The tile that would otherwise claim so is replaced with the
+      // choice that unblocks it, state-driven (I1: holds only while the state holds).
+      var freshDeck = freshLessonDeck(ctx);
+      h += freshDeck
+        ? '<div class="tile done" id="t-done"><h2 class="display">Choose lessons for new cards</h2><p>' + esc(freshDeck.title) + ' has no lesson switched on yet.</p><button class="ghost" id="t-lessons" type="button"><span>New cards by lesson</span></button></div>'
+        : '<div class="tile done" id="t-done"><h2 class="display">Done for today</h2><p>' + lines.join(' ') + '</p></div>';
     }
     if (target) {
       // 2026-09-12: count the same days the floor counts. intakeFloor treats the target's own day as a
@@ -5389,6 +5494,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (!n && !continuing) h += '<div class="offers" id="t-offers"></div>';
     host.innerHTML = h;
     var st = $('t-start'); if (st) st.addEventListener('click', continuing ? function () { resumeSession(stopped); } : startToday);
+    var tl = $('t-lessons'); if (tl) tl.addEventListener('click', function () { openLessonSheet(tl, freshDeck.id); });
+    var ro = $('t-return-ok'); if (ro) ro.addEventListener('click', function () { var note = $('t-return'); if (note) note.parentNode.removeChild(note); ro.parentNode.removeChild(ro); });
     // Only the tappable form of the line goes to the minutes; the held form is a plain sentence,
     // and a listener on it would offer a tap that leads somewhere it cannot help (2026-09-12).
     var milestone = $('t-milestone'); if (milestone && milestone.tagName === 'BUTTON') milestone.addEventListener('click', function () {
@@ -5402,6 +5509,13 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       offers.appendChild(b2);
     });
     renderStatus();
+  }
+  // 0.9.3 G6: the Keep sheet's own second door, for a device that never signs in — the steps
+  // to add Kurikaeshi to the Home Screen, and what a Home Screen copy cannot then do.
+  function openHomeScreenSheet(anchor) {
+    openSheet(anchor, 'How to add to the Home Screen', [
+      { label: 'Close', on: function () {} }
+    ], '<p>Tap Share, then Add to Home Screen, then open Kurikaeshi from there.</p><p>Course decks need an account, and a Home Screen copy cannot sign in, so they stay in your browser.</p>');
   }
   var KEEP_SENTENCE = 'Safari clears what is saved here after seven days of browsing in which you do not use Kurikaeshi. To keep it, add Kurikaeshi to your Home Screen and open it from there, or sign in.';
   function renderStatus() {
@@ -5430,6 +5544,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       keep.onclick = showKeep ? function () {
         openSheet(keep, KEEP_SENTENCE, [
           SYNC_READY ? { label: 'Sign in', on: function (b) { signIn(b); } } : null,
+          // 0.9.3 G6: the same signed-out, iPhone-Safari device the seven-day warning already
+          // reaches gets the two ways to keep this progress without an account.
+          { label: 'How to add to the Home Screen', nav: true, on: function (b) { openHomeScreenSheet(b); } },
+          { label: 'Download a progress file', on: function () { renderSettings(); show('s-settings'); $('i-export').click(); } },
           { label: 'Not now', on: function () {} }
         ]);
       } : null;
@@ -5891,7 +6009,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     // Round 69 (2026-09-22): a lesson an update adds lands off when a choice exists (packs.js carries
     // it), and the update sentence says so first — what the learner gets, before the counts.
     var offLessons = plan.reason === 'update' && saved.lessonsAdded ? plural(saved.lessonsAdded, 'new lesson') + ', off until you switch ' + (saved.lessonsAdded === 1 ? 'it' : 'them') + ' on. ' : '';
-    return { ok: true, status: plan.reason === 'install' ? 'installed' : 'updated', id: obj.id, msg: plan.reason === 'install'
+    return { ok: true, status: plan.reason === 'install' ? 'installed' : 'updated', id: obj.id, lessonCount: lessonCount, msg: plan.reason === 'install'
       ? 'Deck added · ' + plural(deriveCards(obj).length, 'card') + invite
       : 'Deck updated · ' + offLessons + (plan.lessonInfoChanged ? plural(plan.lessonInfoChanged, 'lesson description') + ' changed, ' : '') + plural(plan.changed, 'note') + ' changed, ' + plural(plan.unsuspend.length - returning, 'card') + ' added, ' + plural(plan.suspend.length, 'card') + ' held out. Your answers are kept.' };
   }
@@ -5945,6 +6063,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   var CATALOG_WORDS = { installed: 'Installed', update: 'Update ready', account: 'Needs sign-in', ready: '' };
   function catalogRows() { return typeof CATALOG !== 'undefined' && Array.isArray(CATALOG) ? CATALOG : []; }
   function catalogRow(id) { return catalogRows().filter(function (r) { return r.id === id; })[0] || null; }
+  // 0.9.3 G2: whether a catalog deck is already on the device, signed-in or not — the line above
+  // the list reads differently before the first one lands (state-driven, no id).
+  function hasCatalogDeckInstalled() {
+    return packStore.list().some(function (r) { return !!catalogRow(r.id); });
+  }
   // DESIGN-0.8.1 (item 84, B-97): a catalog install carries no url, so the old "Check for
   // update" button, which only appeared for a url, never saw it, and the row never said which
   // edition was on the device. catalogInstallState (packs.js) is the fourth word — install /
@@ -5959,7 +6082,12 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var host = $('ct-body');
     var rows = catalogRows();
     var chev = '<svg class="chev" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4l6 6-6 6"/></svg>';
-    var h = '<div class="prose"><p>Tap a deck to add it, or to open one you already have. Course decks are sent to a free account, so signing in comes first.</p><div id="ct-status" class="msg" hidden></div></div>';
+    // 0.9.3 G2: signed in with no catalog deck yet, the line points at the next step instead of
+    // repeating why an account is needed.
+    var freshCatalog = SYNC_READY && account.signedIn && !hasCatalogDeckInstalled();
+    var h = '<div class="prose"><p>' + (freshCatalog
+      ? 'Choose your course’s deck. Next you switch on the lessons your class has covered.'
+      : 'Tap a deck to add it, or to open one you already have. Course decks are sent to a free account, so signing in comes first.') + '</p><div id="ct-status" class="msg" hidden></div></div>';
     h += '<ul class="list">' + rows.map(function (row) {
       var state = catalogState(row), word = CATALOG_WORDS[state];
       var lang = fieldLanguage(row.title, '', row.language || '');
@@ -5996,10 +6124,23 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     }
     catalogInstall(row, button);
   }
+  // 0.9.3 (MC-59, the operator's go, DESIGN-0.9.3 §I): a catalog deck with a choice to make opens
+  // that choice at once, rather than landing on Decks with a toast the learner has to notice — the
+  // standing lesson default (nothing in the daily set until chosen) is unchanged, only where the learner
+  // lands. A single-lesson or lessonless deck has no choice, so it keeps the ordinary landing.
+  function openInstalledPicker(id) {
+    renderDeck(id);
+    show('s-deck');
+    openLessonSheet(null, id);
+  }
   function catalogInstall(row, button) {
     var restore = button ? busy(button, 'Getting the deck…') : function () {};
     var done = function (res) {
-      if (res.ok) { finishAddInstall(res); return; }
+      if (res.ok) {
+        if (res.status === 'installed' && res.lessonCount >= 2) { openInstalledPicker(res.id); return; }
+        finishAddInstall(res);
+        return;
+      }
       restore();
       setMsg('ct-status', res.msg, true);
     };
@@ -6084,7 +6225,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<p>Kurikaeshi shows you a few cards a day and brings back the ones you miss.</p><div class="answers">' +
       (signedIn
         ? '<button class="answer-row" id="fo-catalog" type="button"><span class="t">Choose a course deck</span><br><span class="s">The decks for your course, sent to your account.</span></button>'
-        : '<button class="answer-row" id="fo-signin" type="button"><span class="t">Sign in</span><br><span class="s">Course decks are sent to a free account. It takes about a minute.</span></button>') +
+        // 0.9.3 G2: what the tap costs, said before the tap (MC-59) — free, about a minute, and
+        // where it opens on a Home Screen copy, which cannot sign in itself.
+        : '<button class="answer-row" id="fo-signin" type="button"><span class="t">Sign in</span><br><span class="s">Your course’s decks. Free, about a minute.' + (isStandalone() ? ' Opens in your browser.' : '') + '</span></button>') +
       '<button class="answer-row" id="fo-own" type="button"><span class="t">Write my own cards</span><br><span class="s">Write a front and back in any language.</span></button>' +
       '</div><div class="msg" id="fo-progress" hidden></div></div>';
     var back = $('fo-back'); if (back) back.addEventListener('click', function () { goTab(from); });
@@ -8414,6 +8557,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       var finishSignIn = function () {
         accountSaid = null;   // signing in answers whatever the last account left on this screen
         saveAccount({ signedIn: true, expired: false, sub: u.sub || '', lastSub: '', name: u.name || u.nickname || '', email: u.email || '', lastError: null, goneNotice: null });
+        // 0.9.3 G1 (state-driven, every sign-in, no id): the only line that says the sign-in worked.
+        toast('Signed in. Your answers now save to your account.');
         if (appState && appState.join) pendingJoin = appState.join;
         if (appState && appState.deck) pendingDeck = appState.deck;
         if (appState && appState.catalog) pendingCatalog = appState.catalog;
@@ -8471,6 +8616,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     } else {
       var pend = sync ? sync.pending().length : null, r = account.lastResult;
       h = '<p>Signed in' + (account.email ? ' as <b>' + esc(account.email) + '</b>' : '') + '.</p>' +
+        // 0.9.3 G6: signed in, there is no Home Screen advice to give (a copy there cannot sign
+        // in) — only where that would otherwise be the next thing tried, on an iPhone or iPad.
+        (/iPhone|iPad|iPod/.test(navigator.userAgent || '') ? '<p class="note" id="ac-iphone">On iPhone, study in Safari, where you signed in. A Home Screen copy cannot sign in.</p>' : '') +
         '<div class="rows">' + row('Last sync', account.lastSync ? relTime(account.lastSync) : 'not yet') +
         row('Waiting to upload', pend == null ? '…' : String(pend)) +
         (r ? row('Last sync brought', plural(r.pulled || 0, 'review') + (r.packs === 'pulled' ? ', your cards' : '') + (r.skipped ? '; ' + plural(r.skipped, 'row') + ' could not be read' : '')) : '') + '</div>' +
@@ -9154,7 +9302,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.9.2";
+  var APP_V = "0.9.3";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
