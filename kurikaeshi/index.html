@@ -120,11 +120,12 @@ b,strong{font-weight:600}
 #app{position:relative;height:100vh;height:100dvh;max-width:30rem;margin:0 auto;overflow:hidden}
 .screen{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;overflow:hidden;background:var(--ground)}
 .screen.arriving{z-index:var(--z-screen);animation:screen-in var(--d-quick) var(--ease-enter) both}
-.screen.leaving{z-index:0;animation:screen-out var(--d-quick) var(--ease-exit) both;pointer-events:none}
+.screen.leaving{z-index:0;pointer-events:none}   /* 0.10.1 (gap 4, DESIGN-0.7 §F row 926): the outgoing holds still beneath the incoming until the timer hides it; only the incoming fades */
 .screen.arriving>.top,.screen.leaving>.top{opacity:1}
 @keyframes screen-in{from{opacity:0}to{opacity:1}}
-@keyframes screen-out{from{opacity:1}to{opacity:0}}
+/* 0.10.1: @keyframes screen-out went with the outgoing's animation */
 #app.tabbed .screen.tabbed{bottom:calc(var(--tab-h) + env(safe-area-inset-bottom,0px))}
+#app .screen.tabbed.leaving{bottom:calc(var(--tab-h) + env(safe-area-inset-bottom,0px))}   /* 0.10.1 (§(d) 1): a tabbed screen on its way out keeps its bottom edge when the incoming has no tabs */
 .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:0 0 var(--s-6)}
 #s-first .scroll,#s-paste .scroll{padding-bottom:calc(var(--s-6) + env(safe-area-inset-bottom,0px))}
 .pad{padding-left:var(--s-4);padding-right:var(--s-4)}
@@ -393,11 +394,11 @@ ruby[data-reading="hidden"] rt{visibility:hidden}
 @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .bandwrap{flex:none;background:var(--surface);border-top:var(--line) solid var(--rule);padding-bottom:env(safe-area-inset-bottom,0px)}
 .band{min-height:var(--band-h);padding:var(--s-3) var(--s-4) var(--s-2);display:flex;align-items:stretch}
-.reveal{display:flex;align-items:center;justify-content:center;flex:1;min-height:var(--row);padding:0 var(--s-4);border-radius:var(--r-control);background:var(--accent-fill);color:var(--accent-ink);font-weight:600;font-size:var(--t-label);transition:transform var(--d-press) var(--ease-standard),background-color var(--d-press) var(--ease-standard)}
-.reveal:active{background:var(--accent-fill-press);transform:scale(.98)}
+.reveal{display:flex;align-items:center;justify-content:center;flex:1;min-height:var(--row);padding:0 var(--s-4);border-radius:var(--r-control);background:var(--accent-fill);color:var(--accent-ink);font-weight:600;font-size:var(--t-label);transition:background-color var(--d-press) var(--ease-standard)}
+.reveal:active{background:var(--accent-fill-press)}   /* 0.10.1 (gap 3): the most frequent tap presses by fill alone, no scale */
 .grades{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s-2)}
-.grade{min-height:var(--row);border-radius:var(--r-control);border:var(--line) solid var(--rule);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s-1);transition:transform var(--d-press) var(--ease-standard),background-color var(--d-press) var(--ease-standard)}
-.grade:active{transform:scale(.98)}
+.grade{min-height:var(--row);border-radius:var(--r-control);border:var(--line) solid var(--rule);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s-1);transition:background-color var(--d-press) var(--ease-standard)}
+/* 0.10.1 (gap 3): .grade:active declared only scale(.98) and is gone; each grade's own :active rule below is its press, a fill */
 .grade .g{font-weight:600;font-size:var(--t-label);line-height:1.2}
 .grade .i{font-family:var(--f-mono);font-size:var(--t-micro);letter-spacing:.06em;color:var(--ink-soft);font-variant-numeric:tabular-nums}
 .grade[data-g="1"]{background:var(--again-lo);border-color:var(--again);border-left-width:var(--mark)} .grade[data-g="1"] .g{color:var(--again)}
@@ -420,6 +421,10 @@ ruby[data-reading="hidden"] rt{visibility:hidden}
 .centre .offers,.centre .stack{width:100%;max-width:22rem;padding:0}
 .centre p{color:var(--ink-soft);max-width:34ch;margin:0}
 .centre .row .k{text-align:left}
+/* 0.10.1, the Done moment: one summary fades in over --d-settle; the controls, offers, Undo and offer card sit outside it, at rest from the first frame. Its column rules are .centre's own (the gap, the margin reset, no shrink), so the layout is .centre's. The fill is `backwards`, not `both`: a finished fade leaves nothing in effect, so the text is not kept on a layer of its own and paints exactly as before (the visual rig read 1003 px on the done frame with `both`). */
+.dn-summary{display:flex;flex-direction:column;gap:var(--s-5);animation:fadein var(--d-settle) var(--ease-enter) backwards}
+.dn-summary>*{margin-top:0;margin-bottom:0;flex-shrink:0}
+.dn-summary.at-rest{animation:none!important}   /* set when Done is left, and toggled to replay the fade on every entry (show()) */
 .offercard{width:100%;max-width:22rem;border:var(--line) solid var(--hairline);border-radius:var(--r-control);background:var(--surface);padding:var(--s-4);margin:0;text-align:left;transition:opacity var(--d-settle) var(--ease-exit)}
 .offercard.dismissing{opacity:0;pointer-events:none}
 .offercard .title{margin-bottom:var(--s-2)}
@@ -515,10 +520,11 @@ ruby[data-reading="hidden"] rt{visibility:hidden}
 @media (prefers-reduced-motion: reduce){
   /* DESIGN-0.6 §F, line by line: rises, scales and cross-fades drop; opacity keeps its own durations */
   .reveal-in,.grades-in,.card-in{animation:fadein var(--d-press) var(--ease-linear) both!important;transform:none!important}   /* answer reveal: opacity only, 100ms */
-  #sheet{opacity:0;transition:opacity var(--d-press) var(--ease-linear)!important;transform:none!important} /* sheet opens and closes: 100ms opacity in place — the base has no opacity to move, so it is given one here */
+  #sheet{opacity:0;transition:opacity var(--d-press) var(--ease-linear)!important} #sheet:not(.dragging){transform:none!important} /* 0.10.1 (gap 2, Option A, DESIGN-0.7 §F row 932): a drag still follows the finger and the release snaps. The sheet opens and closes: 100ms opacity in place — the base has no opacity to move, so it is given one here */
   #sheet.open{opacity:1} #sheet.closing{opacity:0;transition:opacity var(--d-press) var(--ease-linear)!important}
+  #sheet.closing-from-drag{transform:translateY(var(--drag-y))!important}   /* 0.10.1 follow-up (the operator, 2026-09-27): let go past the close point, the sheet fades out where the finger left it, no snap back to rest */
   #scrim{transition:opacity var(--d-press) var(--ease-linear)!important}                                    /* the scrim still fades */
-  .screen.leaving,.screen.arriving{animation:none!important;opacity:1!important}
+  .screen.arriving{animation:none!important;opacity:1!important}
   .sprog i,.bar i{transition:none!important} /* progress updates in place without animated travel */
   #toast{transition:opacity var(--d-settle) var(--ease-linear)!important;transform:none!important}           /* toast in 200ms, opacity only */
   #toast.out{transition:opacity var(--d-quick) var(--ease-linear)!important}                                /* toast out 150ms */
@@ -526,7 +532,9 @@ ruby[data-reading="hidden"] rt{visibility:hidden}
   .tile,.primary,.ghost,.danger,.textbtn,.back,.you,.drow,.crow .txt,.crow .more,.answer-row,
   .grade,.reveal,.undo,.hintbtn,.say,.more,#tabbar button::before,#sheet button.act,
   #toast button,.group-row,.filter,button.row,.exportbox .dl,label.chk,.retired-list summary,a[href]{transition:background-color var(--d-press) var(--ease-standard)!important}
-  .tile:active,.grade:active,.reveal:active,.primary:active{transform:none!important;filter:none!important}
+  .tile:active,.primary:active{transform:none!important;filter:none!important}
+  .theme-switch::after{transition:background-color var(--d-quick) var(--ease-standard)!important}   /* 0.10.1 (gap 1): the knob jumps; its colour still changes */
+  .dn-summary{animation:fadein var(--d-press) var(--ease-linear) backwards!important}   /* 0.10.1, the Done moment: a 100ms opacity, no travel */
   .busy::after{animation-play-state:paused!important;transform:translateX(0)!important}
   html{scroll-behavior:auto!important}
 }
@@ -3210,7 +3218,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 <script>
 (function () {
   'use strict';
-  var APP_VERSION = '0.10.0';
+  var APP_VERSION = '0.10.1';
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -3700,6 +3708,18 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (extra) Object.keys(extra).forEach(function (k) { st[k] = extra[k]; });
     return st;
   }
+  // 0.10.1, the Done moment (DESIGN-0.10.1-MOTION §4, §(d) 2). `play`: every genuine entry to Done replays
+  // the summary's one fade, a return before Done was hidden included — the class is set, the style read,
+  // the class taken off, so the animation starts again whether or not the screen was ever display:none.
+  // Not `play`: Done is being left, and the fade stops at rest rather than run on under the next screen.
+  function doneSummary(host, play) {
+    var summary = host && host.querySelector('.dn-summary');
+    if (!summary) return;
+    summary.classList.add('at-rest');
+    if (!play) return;
+    void summary.offsetWidth;
+    summary.classList.remove('at-rest');
+  }
   function lessonLabel(packId, lesson) { return lesson || (packId === OWN_PACK_ID ? 'Ungrouped' : 'No lesson'); }
   function show(id, options) {
     options = options || {};
@@ -3714,15 +3734,25 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     renderGeneration++;
     if (screenTimer) { clearTimeout(screenTimer); screenTimer = null; }
     SCREENS.forEach(function (s) { var node = $(s); if (node !== outgoing && node !== incoming) { node.hidden = true; node.classList.remove('arriving', 'leaving'); } });
+    // 0.10.1 follow-up: a screen still painted beneath the arrival it was just leaving (a Back inside the
+    // 150 ms) is already on screen at opacity 1 — it is taken back as it is, never faded in again from 0.
+    var stillPainted = incoming !== outgoing && incoming.classList.contains('leaving') && !incoming.hidden;
     incoming.hidden = false;
     incoming.classList.remove('leaving', 'arriving');
-    if (options.instant) {
+    // 0.10.1: the Done screen is never faded in as a screen: its one summary is the moment (doneSummary).
+    // Inside show(), so Back into Done takes the same door as the end of a sitting.
+    var instant = !!options.instant || id === 's-done' || stillPainted;
+    if (outgoing && outgoing !== incoming && outgoing.id === 's-done') doneSummary(outgoing, false);   // leaving Done mid-fade: the summary stops where it rests
+    if (instant) {
       if (outgoing && outgoing !== incoming) { outgoing.classList.remove('arriving', 'leaving'); outgoing.hidden = true; }
     } else {
-      if (outgoing && outgoing !== incoming && !outgoing.hidden) outgoing.classList.add('leaving');
+      // 0.10.1: an arrival this door interrupts rests at opacity 1 before it becomes the still outgoing;
+      // left with .arriving, its fade kept running under the next screen's (DESIGN-0.10.1 §(d)).
+      if (outgoing && outgoing !== incoming && !outgoing.hidden) { outgoing.classList.remove('arriving'); outgoing.classList.add('leaving'); }
       void incoming.offsetWidth;
       incoming.classList.add('arriving');
     }
+    if (id === 's-done') doneSummary(incoming, true);
     var tabs = !NO_TABS[id];
     $('app').className = tabs ? 'tabbed' : (id === 's-review' ? 'review' : '');
     $('tabbar').hidden = !tabs;
@@ -3743,7 +3773,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     }
     showStorageProblem();
     requestAnimationFrame(function () { focusScreen(id, before); });
-    if (!options.instant) {
+    if (!instant) {
       screenTimer = setTimeout(function () {
         incoming.classList.remove('arriving');
         if (outgoing && outgoing !== incoming) { outgoing.classList.remove('leaving'); outgoing.hidden = true; }
@@ -3764,6 +3794,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   function goYou() { if (TAB_OF[screen]) youFrom = TAB_OF[screen]; renderYou(); show('s-you'); }
 
   /* ── the in-place action sheet ─────────────────────────────────── */
+  // 0.10.1 (gap 5): no longer called. The four openers now run keepSheetBelowAnchorNow in their own open
+  // frame, before .open is added, so the list lands in place as the sheet starts to rise and nothing scrolls
+  // after it; the comment below records why this ran a frame late, and the phone pass measures that risk.
   function keepSheetBelowAnchor(anchor) {
     // One frame later than the open class: in the frame it lands, the sheet's first control has just
     // taken focus and the row's box is not yet where it will rest (it read 175px high, once).
@@ -3785,9 +3818,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var visibleBottomInContent = sheetTop - scrollBox.top;   // the lip, in content coordinates at scrollTop 0
     var wanted = rowTopInContent + rowBox.height + 8 - visibleBottomInContent;
     if (wanted <= scroll.scrollTop) return;
-    var reduced = false;
-    try { reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) {}
-    try { scroll.scrollTo({ top: wanted, behavior: reduced ? 'auto' : 'smooth' }); }
+    // 0.10.1 (gap 5): an instant jump in both motion preferences. The sheet's rise is the one movement; a
+    // smooth scroll starting two frames into it was a second one (DESIGN-0.10.1 §2, MC-3 §4).
+    try { scroll.scrollTo({ top: wanted, behavior: 'auto' }); }
     catch (e) { scroll.scrollTop = wanted; }
   }
 
@@ -3858,11 +3891,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         if (screen === beforeScreen && history.state && history.state.fromSheet) history.back();
       });
     });
-    sc.hidden = false; sh.hidden = false; sh.classList.remove('closing', 'dragging', 'returning'); sh.style.transform = '';
+    sc.hidden = false; sh.hidden = false; sh.classList.remove('closing', 'dragging', 'returning', 'closing-from-drag'); sh.style.transform = '';
     // A tapped row near the bottom would sit under the sheet: bring it just above the lip after the sheet has a measurable height.
     if (anchor && anchor.scrollIntoView) { try { anchor.scrollIntoView({ block: 'nearest' }); } catch (e) { /* older engines */ } }
     history.pushState(screenState(screen, { sheet: true }), '', location.href);
-    requestAnimationFrame(function () { sc.classList.add('open'); sh.classList.add('open'); keepSheetBelowAnchor(anchor); });
+    requestAnimationFrame(function () { keepSheetBelowAnchorNow(anchor); sc.classList.add('open'); sh.classList.add('open'); });   // 0.10.1: the list lands before the sheet starts to rise
     var first = sheetFocusables()[0];
     // Focus without scrolling: the sheet is still translated below the app in this frame, and a
     // scrolling focus drags the app's overflow-hidden box up by the sheet's height for a frame.
@@ -3880,7 +3913,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var generation = sheetGeneration;
     var finishClose = function () {
       if (generation !== sheetGeneration) return;
-      sh.hidden = true; sc.hidden = true; sh.classList.remove('open', 'closing'); sc.classList.remove('open'); sh.innerHTML = ''; sheetTimer = null;
+      sh.hidden = true; sc.hidden = true; sh.classList.remove('open', 'closing', 'closing-from-drag'); sh.style.removeProperty('--drag-y'); sc.classList.remove('open'); sh.innerHTML = ''; sheetTimer = null;
       focusAfterSheet(anchor, rowKey, editKey);
     };
     if (immediate) { finishClose(); return; }
@@ -4045,9 +4078,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       });
     });
     if (!redraw) {
-      sc.hidden = false; sh.hidden = false; sh.classList.remove('closing', 'dragging', 'returning'); sh.style.transform = '';
+      sc.hidden = false; sh.hidden = false; sh.classList.remove('closing', 'dragging', 'returning', 'closing-from-drag'); sh.style.transform = '';
       history.pushState({ screen: screen, id: openDeck, sheet: true }, '', location.href);
-      requestAnimationFrame(function () { sc.classList.add('open'); sh.classList.add('open'); keepSheetBelowAnchor(anchor); });
+      requestAnimationFrame(function () { keepSheetBelowAnchorNow(anchor); sc.classList.add('open'); sh.classList.add('open'); });   // 0.10.1: the list lands before the sheet starts to rise
     }
     var target = focusType == null ? sh.querySelector('button.direction-row:not([disabled])') : Array.prototype.filter.call(sh.querySelectorAll('button.direction-row'), function (row) { return row.getAttribute('data-type') === focusType && row.getAttribute('data-ord') === focusOrd; })[0] || null;   // no CSS.escape: not every engine has it, and the ids are the pack's own
     if (target) { try { target.focus({ preventScroll: true }); } catch (e) { target.focus(); } }
@@ -4118,9 +4151,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       if (screen === beforeScreen && history.state && history.state.fromSheet) history.back();
     });
     if (!redraw) {
-      sc.hidden = false; sh.hidden = false; sh.classList.remove('closing', 'dragging', 'returning'); sh.style.transform = '';
+      sc.hidden = false; sh.hidden = false; sh.classList.remove('closing', 'dragging', 'returning', 'closing-from-drag'); sh.style.transform = '';
       history.pushState({ screen: screen, id: openDeck, sheet: true }, '', location.href);
-      requestAnimationFrame(function () { sc.classList.add('open'); sh.classList.add('open'); keepSheetBelowAnchor(anchor); });
+      requestAnimationFrame(function () { keepSheetBelowAnchorNow(anchor); sc.classList.add('open'); sh.classList.add('open'); });   // 0.10.1: the list lands before the sheet starts to rise
     }
     var target = focusLesson == null ? sh.querySelector('button.lesson-row') : Array.prototype.filter.call(sh.querySelectorAll('button.lesson-row'), function (row) { return row.getAttribute('data-lesson') === focusLesson; })[0] || null;
     if (target) { try { target.focus({ preventScroll: true }); } catch (e) { target.focus(); } }
@@ -4140,10 +4173,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<p class="note">Review limit: ' + esc(store.prefs.maxReviewsPerDay) + ' cards a day.</p>' +
       '<div id="dopt-msg" class="msg bad" hidden></div><button class="primary" id="dopt-save" type="button">Save deck options</button></div>';
     sh.setAttribute('aria-label', 'Deck options');
-    sc.hidden = false; sh.hidden = false; sh.classList.remove('closing');
+    sc.hidden = false; sh.hidden = false; sh.classList.remove('closing', 'closing-from-drag');
     if (anchor && anchor.scrollIntoView) { try { anchor.scrollIntoView({ block: 'nearest' }); } catch (e) { /* older engines */ } }
     history.pushState({ screen: screen, id: openDeck, sheet: true }, '', location.href);
-    requestAnimationFrame(function () { sc.classList.add('open'); sh.classList.add('open'); keepSheetBelowAnchor(anchor); });
+    requestAnimationFrame(function () { keepSheetBelowAnchorNow(anchor); sc.classList.add('open'); sh.classList.add('open'); });   // 0.10.1: the list lands before the sheet starts to rise
     $('dopt-save').addEventListener('click', function () {
       var raw = ($('dopt-new').value || '').trim();
       var value = raw ? parseInt(raw, 10) : null;
@@ -4154,7 +4187,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       renderDeck(id);
       toast(result.msg);
     });
-    $('dopt-new').focus();
+    // 0.10.1 (gap 5): without preventScroll this focus scrolled the app's overflow-hidden frame up by the
+    // sheet's height while the sheet was still below it, and the frame slid back as the sheet rose — the
+    // list moving under an opening sheet, which the phone pass's check 4 reads. The other three openers already focus this way.
+    try { $('dopt-new').focus({ preventScroll: true }); } catch (e) { $('dopt-new').focus(); }
   }
 
 
@@ -4179,7 +4215,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var dy = sheetDragActive && sheetDragY != null ? ev.clientY - sheetDragY : 0;
     sh.classList.remove('dragging');
     sheetDragX = null; sheetDragY = null; sheetDragActive = false;
-    if (dy >= 96) { sh.style.transform = ''; closeSheet(false); return; }
+    // 0.10.1 follow-up (the operator, 2026-09-27): under reduced motion a sheet let go past the close point fades
+    // out from where the finger left it. The offset rides in --drag-y, read only by the reduced-motion block's
+    // .closing-from-drag rule; with motion the inline transform clears as before and the close slides from there.
+    if (dy >= 96) { sh.style.setProperty('--drag-y', dy + 'px'); sh.classList.add('closing-from-drag'); sh.style.transform = ''; closeSheet(false); return; }
     sh.classList.add('returning');
     sh.style.transform = '';
     setTimeout(function () { if (sh.isConnected) sh.classList.remove('returning'); }, 200);
@@ -5285,7 +5324,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     // the sentence shows (seenOnce writes first, so a refused write shows nothing, W8).
     var wantsSaved = reason === 'finished' && s.mode !== 'practice' && s.answered > 0 && SYNC_READY && account.signedIn && !seenHas('saved');
     var savedNote = wantsSaved ? '<p class="note" id="dn-saved" role="status" hidden></p>' : '';
-    var h = '<h2 class="display">' + head + '</h2><p>' + line + '</p>' + savedNote +
+    // 0.10.1: the summary is one block, the Done moment's one moving thing; everything tappable stays outside it.
+    var h = '<div class="dn-summary"><h2 class="display">' + head + '</h2><p>' + line + '</p>' + savedNote +
       // Every figure sits under a visible scope word. The rows are this sitting and nothing else; the
       // day is the Today line beneath them. One unlabelled block used to mix the day's answers with the
       // sitting's Again rate and time, and the three figures read as three that disagreed.
@@ -5298,7 +5338,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<p class="micro">Today · ' + plural(t.cards, 'card') + ' · ' + plural(t.answers, 'answer') + '</p>' +
       // The day count is all-time and says so on a line of its own; it used to ride the Today line,
       // one scope under another's label (2026-09-20).
-      '<p class="micro">Studied ' + plural(daysStudied(), 'day') + ' in all</p>';
+      '<p class="micro">Studied ' + plural(daysStudied(), 'day') + ' in all</p></div>';
     h += '<div class="stack">' + (reason === 'stopped'
       ? '<button class="primary" id="dn-continue" type="button">Continue this session (' + left + ')</button><button class="ghost" id="dn-home" type="button">Back to today</button>'
       : '<button class="primary" id="dn-home" type="button">Back to today</button>') + '</div>';
@@ -9312,7 +9352,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.10.0";
+  var APP_V = "0.10.1";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
