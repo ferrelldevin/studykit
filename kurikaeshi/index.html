@@ -578,6 +578,11 @@ button.row:active{background:var(--paper-press)}
 #r-card .q-prompt.one-line > *{white-space:nowrap}
 #r-card .q-prompt.latin > *{font-family:var(--f-display);font-weight:600;letter-spacing:0;overflow-wrap:normal;word-break:normal;hyphens:none}
 #r-card .q-kanji .q-prompt > *{font-size:var(--t-kanji);line-height:1}
+/* the kanji question: the kanji centred on its face and the caption under it, the two held as one group in the middle
+   of the face (the prompt's margin-top:auto above, the caption's margin-bottom:auto below) */
+#r-card .q-kanji .q-prompt{align-items:center}
+#r-card .q-kanji .q-prompt > *{text-align:center}
+#r-card .q-cap{margin:0 0 auto;text-align:center;font-family:var(--f-body);font-size:var(--t-cue);line-height:1.4;color:var(--face-kanji-ink-soft)}
 #r-card .face.front rt{color:inherit}
 #r-card .face.front .tag,#r-card .face.front .r-hint,#r-card .face.front .cue{color:var(--face-vocab-ink-soft)}
 #r-card .face.front.q-kanji .tag,#r-card .face.front.q-kanji .r-hint,#r-card .face.front.q-kanji .cue{color:var(--face-kanji-ink-soft)}
@@ -616,11 +621,19 @@ button.row:active{background:var(--paper-press)}
 #r-card .kgrid::after{content:"";position:absolute;left:0;right:0;top:33.333%;height:33.333%;border-top:var(--line) solid var(--accent-lo);border-bottom:var(--line) solid var(--accent-lo)}
 #r-card .kchar{position:relative;font-family:var(--f-ja-glyph);font-size:var(--t-kchar);line-height:1;font-weight:500;color:var(--ink)}
 #r-card .kread{display:flex;flex-direction:column;gap:var(--s-3);min-width:0;flex:1}
-#r-card .kread .chips{align-items:stretch;gap:var(--s-3)}
-#r-card .kread .chip{flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:0;max-width:none;font-family:var(--f-ja);font-size:var(--t-kread);font-weight:600;line-height:1.3}
-#r-card .kread .chip b,#r-card .kstrokes b{font-family:var(--f-body);font-size:var(--t-micro);letter-spacing:.16em;text-transform:uppercase;font-weight:600;color:var(--ink-mute)}
-#r-card .kread .chip b[lang^="ja"]{font-family:var(--f-ja);font-size:var(--t-label);letter-spacing:0;text-transform:none}
+#r-card .kread .chips,#r-card .kbelow .chips{align-items:stretch;gap:var(--s-3)}
+#r-card .kread .chip,#r-card .kbelow .chip{flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:0;max-width:none;font-family:var(--f-ja);font-size:var(--t-kread);font-weight:600;line-height:1.3}
+#r-card .kread .chip b,#r-card .kbelow .chip b,#r-card .kstrokes b{font-family:var(--f-body);font-size:var(--t-micro);letter-spacing:.16em;text-transform:uppercase;font-weight:600;color:var(--ink-mute)}
+#r-card .kread .chip b[lang^="ja"],#r-card .kbelow .chip b[lang^="ja"]{font-family:var(--f-ja);font-size:var(--t-label);letter-spacing:0;text-transform:none}
 #r-card .kstrokes{display:flex;flex-direction:column;font-size:var(--t-reading);line-height:1.3}
+/* a reading list too long for the column beside the box runs full width under it, On still before Kun; a fine rule
+   parts On from Kun wherever they sit */
+#r-card .kbelow{margin-top:var(--s-3);padding-top:var(--s-3);border-top:var(--line) solid var(--row-rule)}
+#r-card .kread .chips > .chip + .chip,#r-card .kbelow .chips > .chip + .chip{border-top:var(--line) solid var(--row-rule);padding-top:var(--s-3)}
+/* an answer longer than its region fades at its lower edge, the sign that more is below, and a small down triangle sits in
+   the face's margin under the region, so the sign shows even when the cut lands on empty space; both go at the end */
+#r-card .face.rear[data-more]::after{content:"";position:absolute;left:0;right:0;bottom:var(--s-2);width:0;height:0;margin:0 auto;border-left:var(--s-1) solid transparent;border-right:var(--s-1) solid transparent;border-top:var(--s-1) solid var(--ink-mute);pointer-events:none}
+#r-card .ans[data-more]{-webkit-mask-image:linear-gradient(to bottom,black calc(100% - var(--s-6)),transparent);mask-image:linear-gradient(to bottom,black calc(100% - var(--s-6)),transparent)}
 /* the seal: an outlined hanko, the grade over its interval, stamped where it covers no control */
 #r-card .seal{position:absolute;right:var(--seal-inset);top:var(--seal-top);width:var(--seal);height:var(--seal);border:var(--seal-ring) solid var(--again);border-radius:var(--r-pill);background:var(--seal-fill);color:var(--again);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;transform:rotate(-8deg);pointer-events:none}
 #r-card .seal b{font-family:var(--f-display);font-size:var(--t-seal);font-weight:700;line-height:1.1}
@@ -664,6 +677,17 @@ button.row:active{background:var(--paper-press)}
 .chip[lang^="ja"]{font-size:var(--t-ja-sentence)}
 .chip b{margin:0;font-family:var(--f-mono);font-size:var(--t-micro);letter-spacing:.06em;font-weight:500;color:var(--ink-mute)}
 .chip b[lang^="ja"]{font-family:var(--f-ja);font-size:var(--t-label);letter-spacing:0}
+/* a label in two parts, the term over its gloss ("On 音" over "Chinese-derived reading"); each reading in a kana list is
+   one piece that moves to the next line whole, so a list wraps only between readings; a reading wider than everything
+   it sits in, alone, is the one that may wrap inside itself (an inline block capped at its container's width), so
+   nothing is clipped or runs out sideways */
+.chip .rlab{display:flex;flex-direction:column;gap:0;margin-bottom:var(--s-1);font-family:var(--f-body);color:var(--ink-mute)}
+.chip .rl-t{font-size:var(--t-micro);letter-spacing:.16em;text-transform:uppercase;font-weight:600}
+.chip .rl-t [lang]{font-family:var(--f-ja);font-size:var(--t-label);letter-spacing:0}
+.chip .rl-g{font-size:var(--t-micro);letter-spacing:0;text-transform:none;font-weight:400}
+#r-card .a-low .chip.readings{max-width:100%}
+.rds{max-width:100%;min-width:0}
+.rd{display:inline-block;max-width:100%}
 .leech{font-family:var(--f-mono);font-size:var(--t-micro);letter-spacing:.06em;color:var(--again);border:var(--line) solid var(--again);padding:var(--s-1) var(--s-2);border-radius:var(--r-control)}
 .r-hint{font-size:var(--t-body);color:var(--ink-mute);font-style:italic;max-width:30ch}
 .hintbtn{min-height:var(--tap);padding:0 var(--s-4);border:var(--line) solid var(--control-edge);border-radius:var(--r-control);font-size:var(--t-label);font-weight:500;color:var(--ink-soft);background:var(--control-face);box-shadow:var(--e1);transition:transform var(--d-press) var(--ease-standard),box-shadow var(--d-press) var(--ease-standard),background-color var(--d-press) var(--ease-standard)}
@@ -3678,7 +3702,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 <script>
 (function () {
   'use strict';
-  var APP_VERSION = '0.11.0';
+  var APP_VERSION = '0.11.1';
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -3686,7 +3710,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // (a square bracket anywhere) mean accounts are off: the page then never touches the network
   // except to install a deck on the learner's tap. Nothing here is a secret by design.
   var CONFIG = {"auth0":{"domain":"dev-rxe3mje4y1suwccw.us.auth0.com","clientId":"EpM3qKZqHIjpumcmmsuXUUaxSHibqXi3","audience":"https://kurikaeshi/api"},"dataApi":"https://ep-shiny-union-ay3o428i.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1","contact":"ferrelldevin01+kurikaeshi@gmail.com"};
-  var CATALOG = [{"id":"irodori-a2-1-vocab","access":"account","title":"Irodori 1 Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. Source named here and, once added, under About Kurikaeshi.","cards":2382,"lessons":18,"version":"1.0.1"},{"id":"japn301-vocab","access":"account","title":"JAPN 301 · Irodori 2 Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. Source named here and, once added, under About Kurikaeshi.","cards":3540,"lessons":18,"version":"1.0.2"},{"id":"japn111f-vocab","access":"account","title":"JAPN 111F · Vocabulary · Lists 1–16","language":"ja","source":"The JAPN 111F instructor, Old Dominion University","terms":"Free. Shared with the permission of the JAPN 111F instructor.","cards":992,"lessons":16,"version":"1.0.3"},{"id":"japn212-vocab","access":"account","title":"JAPN 212 · Vocabulary · 13 lessons","language":"ja","source":"The JAPN 212 instructor, Old Dominion University","terms":"Free. Shared with the permission of the JAPN 212 instructor.","cards":960,"lessons":13,"version":"1.1.3"},{"id":"japn212-kanji","access":"account","title":"JAPN 212 · Kanji · 13 lessons","language":"ja","source":"The JAPN 212 instructor's list, transcribed by hand, not yet checked against her list; KANJIDIC2, EDRDG","terms":"Free. Shared with the permission of the JAPN 212 instructor.","cards":218,"lessons":13,"version":"1.0.3"},{"id":"japn309-class","access":"account","title":"JAPN 309 · Kanji · L.1–L.9 and radicals","language":"ja","source":"The JAPN 309 instructor's drill sheets and slides; KANJIDIC2 and JMdict, EDRDG","terms":"Free. Shared with the permission of the JAPN 309 instructor.","cards":510,"lessons":10,"version":"1.1.2"}];
+  var CATALOG = [{"id":"irodori-a2-1-vocab","access":"account","title":"Irodori 1 Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. Source named here and, once added, under About Kurikaeshi.","cards":2382,"lessons":18,"version":"1.0.1"},{"id":"japn301-vocab","access":"account","title":"JAPN 301 · Irodori 2 Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. Source named here and, once added, under About Kurikaeshi.","cards":3540,"lessons":18,"version":"1.0.2"},{"id":"japn111f-vocab","access":"account","title":"JAPN 111F · Vocabulary · Lists 1–16","language":"ja","source":"The JAPN 111F instructor, Old Dominion University","terms":"Free. Shared with the permission of the JAPN 111F instructor.","cards":992,"lessons":16,"version":"1.0.3"},{"id":"japn212-vocab","access":"account","title":"JAPN 212 · Vocabulary · 13 lessons","language":"ja","source":"The JAPN 212 instructor, Old Dominion University","terms":"Free. Shared with the permission of the JAPN 212 instructor.","cards":960,"lessons":13,"version":"1.1.3"},{"id":"japn212-kanji","access":"account","title":"JAPN 212 · Kanji · 13 lessons","language":"ja","source":"The JAPN 212 instructor's list, transcribed by hand, not yet checked against her list; KANJIDIC2, EDRDG","terms":"Free. Shared with the permission of the JAPN 212 instructor.","cards":218,"lessons":13,"version":"1.0.3"},{"id":"japn309-class","access":"account","title":"JAPN 309 · Kanji · L.1–L.9 and radicals","language":"ja","source":"The JAPN 309 instructor's drill sheets and slides; KANJIDIC2 and JMdict, EDRDG","terms":"Free. Shared with the permission of the JAPN 309 instructor.","cards":510,"lessons":10,"version":"1.1.3"}];
   // The two typefaces' licences (SIL OFL 1.1), injected at build from fonts/OFL-*.txt: the faces ship on this page,
   // so their licence ships with them, readable under About (0.11, decision 0010 §6).
   var FONT_LICENCES = [{"family":"Shippori Mincho","text":"Copyright 2021 The Shippori Mincho Project Authors (https://github.com/fontdasu/ShipporiMincho)\n\nThis Font Software is licensed under the SIL Open Font License, Version 1.1.\nThis license is copied below, and is also available with a FAQ at:\nhttp://scripts.sil.org/OFL\n\n\n-----------------------------------------------------------\nSIL OPEN FONT LICENSE Version 1.1 - 26 February 2007\n-----------------------------------------------------------\n\nPREAMBLE\nThe goals of the Open Font License (OFL) are to stimulate worldwide\ndevelopment of collaborative font projects, to support the font creation\nefforts of academic and linguistic communities, and to provide a free and\nopen framework in which fonts may be shared and improved in partnership\nwith others.\n\nThe OFL allows the licensed fonts to be used, studied, modified and\nredistributed freely as long as they are not sold by themselves. The\nfonts, including any derivative works, can be bundled, embedded, \nredistributed and/or sold with any software provided that any reserved\nnames are not used by derivative works. The fonts and derivatives,\nhowever, cannot be released under any other type of license. The\nrequirement for fonts to remain under this license does not apply\nto any document created using the fonts or their derivatives.\n\nDEFINITIONS\n\"Font Software\" refers to the set of files released by the Copyright\nHolder(s) under this license and clearly marked as such. This may\ninclude source files, build scripts and documentation.\n\n\"Reserved Font Name\" refers to any names specified as such after the\ncopyright statement(s).\n\n\"Original Version\" refers to the collection of Font Software components as\ndistributed by the Copyright Holder(s).\n\n\"Modified Version\" refers to any derivative made by adding to, deleting,\nor substituting -- in part or in whole -- any of the components of the\nOriginal Version, by changing formats or by porting the Font Software to a\nnew environment.\n\n\"Author\" refers to any designer, engineer, programmer, technical\nwriter or other person who contributed to the Font Software.\n\nPERMISSION & CONDITIONS\nPermission is hereby granted, free of charge, to any person obtaining\na copy of the Font Software, to use, study, copy, merge, embed, modify,\nredistribute, and sell modified and unmodified copies of the Font\nSoftware, subject to the following conditions:\n\n1) Neither the Font Software nor any of its individual components,\nin Original or Modified Versions, may be sold by itself.\n\n2) Original or Modified Versions of the Font Software may be bundled,\nredistributed and/or sold with any software, provided that each copy\ncontains the above copyright notice and this license. These can be\nincluded either as stand-alone text files, human-readable headers or\nin the appropriate machine-readable metadata fields within text or\nbinary files as long as those fields can be easily viewed by the user.\n\n3) No Modified Version of the Font Software may use the Reserved Font\nName(s) unless explicit written permission is granted by the corresponding\nCopyright Holder. This restriction only applies to the primary font name as\npresented to the users.\n\n4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font\nSoftware shall not be used to promote, endorse or advertise any\nModified Version, except to acknowledge the contribution(s) of the\nCopyright Holder(s) and the Author(s) or with their explicit written\npermission.\n\n5) The Font Software, modified or unmodified, in part or in whole,\nmust be distributed entirely under this license, and must not be\ndistributed under any other license. The requirement for fonts to\nremain under this license does not apply to any document created\nusing the Font Software.\n\nTERMINATION\nThis license becomes null and void if any of the above conditions are\nnot met.\n\nDISCLAIMER\nTHE FONT SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT\nOF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE\nCOPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,\nINCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL\nDAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING\nFROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM\nOTHER DEALINGS IN THE FONT SOFTWARE.\n"},{"family":"Newsreader","text":"Copyright 2020 The Newsreader Project Authors (http://github.com/productiontype/Newsreader)\n\nThis Font Software is licensed under the SIL Open Font License, Version 1.1.\nThis license is copied below, and is also available with a FAQ at:\nhttp://scripts.sil.org/OFL\n\n\n-----------------------------------------------------------\nSIL OPEN FONT LICENSE Version 1.1 - 26 February 2007\n-----------------------------------------------------------\n\nPREAMBLE\nThe goals of the Open Font License (OFL) are to stimulate worldwide\ndevelopment of collaborative font projects, to support the font creation\nefforts of academic and linguistic communities, and to provide a free and\nopen framework in which fonts may be shared and improved in partnership\nwith others.\n\nThe OFL allows the licensed fonts to be used, studied, modified and\nredistributed freely as long as they are not sold by themselves. The\nfonts, including any derivative works, can be bundled, embedded, \nredistributed and/or sold with any software provided that any reserved\nnames are not used by derivative works. The fonts and derivatives,\nhowever, cannot be released under any other type of license. The\nrequirement for fonts to remain under this license does not apply\nto any document created using the fonts or their derivatives.\n\nDEFINITIONS\n\"Font Software\" refers to the set of files released by the Copyright\nHolder(s) under this license and clearly marked as such. This may\ninclude source files, build scripts and documentation.\n\n\"Reserved Font Name\" refers to any names specified as such after the\ncopyright statement(s).\n\n\"Original Version\" refers to the collection of Font Software components as\ndistributed by the Copyright Holder(s).\n\n\"Modified Version\" refers to any derivative made by adding to, deleting,\nor substituting -- in part or in whole -- any of the components of the\nOriginal Version, by changing formats or by porting the Font Software to a\nnew environment.\n\n\"Author\" refers to any designer, engineer, programmer, technical\nwriter or other person who contributed to the Font Software.\n\nPERMISSION & CONDITIONS\nPermission is hereby granted, free of charge, to any person obtaining\na copy of the Font Software, to use, study, copy, merge, embed, modify,\nredistribute, and sell modified and unmodified copies of the Font\nSoftware, subject to the following conditions:\n\n1) Neither the Font Software nor any of its individual components,\nin Original or Modified Versions, may be sold by itself.\n\n2) Original or Modified Versions of the Font Software may be bundled,\nredistributed and/or sold with any software, provided that each copy\ncontains the above copyright notice and this license. These can be\nincluded either as stand-alone text files, human-readable headers or\nin the appropriate machine-readable metadata fields within text or\nbinary files as long as those fields can be easily viewed by the user.\n\n3) No Modified Version of the Font Software may use the Reserved Font\nName(s) unless explicit written permission is granted by the corresponding\nCopyright Holder. This restriction only applies to the primary font name as\npresented to the users.\n\n4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font\nSoftware shall not be used to promote, endorse or advertise any\nModified Version, except to acknowledge the contribution(s) of the\nCopyright Holder(s) and the Author(s) or with their explicit written\npermission.\n\n5) The Font Software, modified or unmodified, in part or in whole,\nmust be distributed entirely under this license, and must not be\ndistributed under any other license. The requirement for fonts to\nremain under this license does not apply to any document created\nusing the Font Software.\n\nTERMINATION\nThis license becomes null and void if any of the above conditions are\nnot met.\n\nDISCLAIMER\nTHE FONT SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT\nOF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE\nCOPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,\nINCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL\nDAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING\nFROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM\nOTHER DEALINGS IN THE FONT SOFTWARE."}];
@@ -5579,7 +5603,19 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         piece = '<div class="r-meta"' + L + '>' + v + (lab ? ' ' + esc(lab) : '') + '</div>';
         break;
       }
-      case 'chip': piece = '<span class="chip"' + L + '>' + (label ? '<b' + (fieldLanguage(label, '', '') ? ' lang="ja"' : '') + '>' + esc(label) + '</b>' : '') + v + '</span>'; break;
+      case 'chip': {
+        // A label written 'term · gloss' (a deck's 'On 音 · Chinese-derived reading') is set in two parts, every run of
+        // Japanese in either part (kana, kanji, the iteration marks, a kanji outside the basic block) marked Japanese;
+        // any other label as it always was. A value that is a list of readings (kana, split at 、) is set one piece per
+        // reading, the 、 kept with the reading before it, so a list wraps only between readings (see .rd).
+        var lp = label ? String(label).split(' · ') : [];
+        var ja = function (s) { return esc(s).replace(/((?:[々-〇぀-ヿ㐀-鿿豈-﫿ｦ-ﾟ]|[\ud840-\ud87f][\udc00-\udfff])+)/g, '<span lang="ja">$1</span>'); };
+        var lb = !label ? '' : lp.length === 2 ? '<b class="rlab"><span class="rl-t">' + ja(lp[0]) + '</span> <span class="rl-g">' + ja(lp[1]) + '</span></b>'
+          : '<b' + (fieldLanguage(label, '', '') ? ' lang="ja"' : '') + '>' + esc(label) + '</b>';
+        var rds = spokenForm(value) ? v.split('、') : null;
+        piece = '<span class="chip' + (rds ? ' readings' : '') + '"' + L + '>' + lb + (rds ? '<span class="rds">' + rds.map(function (x, i) { return '<span class="rd">' + x + (i < rds.length - 1 ? '、' : '') + '</span>'; }).join('') + '</span>' : v) + '</span>';
+        break;
+      }
       default: piece = '<div class="r-text"' + L + '>' + v + '</div>';
     }
     var english = store.prefs.english || 'both';
@@ -5687,11 +5723,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       var kanji = !!at.word && HAN_ONE.test(sayText(wordValue).trim());
       // the payoff is 44px; a meaning longer than a phrase steps down to the example's 28px, never below (DESIGN-0.11 TYPE)
       pen += wrap('a-mean', at.mean, meanHtml, at.mean && baseChars(f[at.mean]).length > 24 ? ' long' : '');
-      var countMeta = '', kreadChips = '';
+      var countMeta = '', kreadChips = '', chipList = [];
       at.rest.forEach(function (name) {
         var r = role(name), html = piece(name);
         if (!html) return;
-        if (r === 'chip') { chips += html; return; }
+        if (r === 'chip') { chips += html; chipList.push({ name: name, html: html }); return; }
         if (r === 'meta') {
           var label = (nt.labels && nt.labels[name]) || '';
           if (kanji && label.indexOf('|') >= 0 && !countMeta) {
@@ -5704,10 +5740,18 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       });
       if (kanji) {
         var readHtml = at.read ? wrap('a-read', at.read, piece(at.read)) : '';
-        kreadChips = chips ? '<div class="chips">' + chips + '</div>' : '';
+        // A reading list sits in the column beside the box when it is short: at most 12 characters, no reading in it over
+        // 5 (the column holds about five at the reading size on a 390px phone). From the first list that is not, it and
+        // every list after it run full width under the box, so On stays before Kun. placeReadings() then holds the same
+        // rule against the column's real width.
+        var fitsBeside = function (c) { var s = String(f[c.name]); return s.length <= 12 && s.split('、').every(function (x) { return x.length <= 5; }); };
+        var cut = 0; while (cut < chipList.length && fitsBeside(chipList[cut])) cut++;
+        var joinChips = function (list) { return list.map(function (c) { return c.html; }).join(''); };
+        kreadChips = cut ? '<div class="chips">' + joinChips(chipList.slice(0, cut)) + '</div>' : '';
+        var belowHtml = cut < chipList.length ? '<div class="kbelow"><div class="chips">' + joinChips(chipList.slice(cut)) + '</div></div>' : '';
         chips = '';
-        pen += '<div class="krow"><div class="kgrid"' + (at.word === P ? ' aria-hidden="true"' : '') + '><span class="kchar" lang="' + esc(fieldLanguage(wordValue, (nt.languages && nt.languages[at.word]) || '', lang) || 'ja') + '">' + ruby(esc(wordValue), true) + '</span></div>' +
-          '<div class="kread">' + readHtml + kreadChips + countMeta + '</div></div>';
+        pen += '<div class="krow" data-beside="' + cut + '"><div class="kgrid"' + (at.word === P ? ' aria-hidden="true"' : '') + '><span class="kchar" lang="' + esc(fieldLanguage(wordValue, (nt.languages && nt.languages[at.word]) || '', lang) || 'ja') + '">' + ruby(esc(wordValue), true) + '</span></div>' +
+          '<div class="kread">' + readHtml + kreadChips + countMeta + '</div></div>' + belowHtml;
       } else {
         var n1 = baseChars(wordValue).length;
         pen += wrap('a-word', at.word, at.word ? piece(at.word) : '', ' one-line" data-n="' + n1);
@@ -5740,8 +5784,15 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (piece && W > 0) {
       var n = Number(prompt.getAttribute('data-n')) || 1;
       if (prompt.classList.contains('kanji')) {
-        var tag = qst.querySelector('.tag'), H = qst.clientHeight - (tag ? tag.offsetHeight : 0) - 16;
-        piece.style.fontSize = Math.max(20, Math.min(236, Math.floor(W), Math.floor(H > 0 ? H : 236))) + 'px';
+        // the caption under the kanji takes its own line and the gap above it out of the kanji's height
+        var tag = qst.querySelector('.tag'), cap = qst.querySelector('.q-cap'), H = qst.clientHeight - (tag ? tag.offsetHeight : 0) - (cap ? cap.offsetHeight + 24 : 0) - 16;
+        var kSize = Math.max(20, Math.min(236, Math.floor(W), Math.floor(H > 0 ? H : 236)));
+        piece.style.fontSize = kSize + 'px';
+        // the glyph's own line runs past its em box; whatever still spills off the face comes off the size (a few steps,
+        // since the line shrinks by less than the size does)
+        for (var step = 0, spill; step < 4 && kSize > 20 && (spill = qst.scrollHeight - qst.clientHeight) > 0; step++) {
+          kSize = Math.max(20, kSize - Math.max(2, spill)); piece.style.fontSize = kSize + 'px';
+        }
       } else if (prompt.classList.contains('latin')) {
         piece.style.fontSize = Math.max(28, Math.min(92, Math.floor(W / Math.max(1, n * 0.55)))) + 'px';
       } else {
@@ -5756,6 +5807,46 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       word.classList.toggle('one-line', ws >= 20);
       word.style.fontSize = Math.max(20, ws) + 'px';
     }
+    placeReadings(ans);
+  }
+  // The kanji answer's reading lists against the column's real size: a list the drawing put beside the box (the first
+  // data-beside of them) stays there only while every reading in it fits the column's width on one line, and while
+  // the lists beside end within the box, two reading lines of grace; from the first list that does not, it and every
+  // list after it go under the box, On still before Kun. Re-run when the column's width changes, from the drawn order,
+  // so a wider screen takes a list back; nothing is moved when nothing changes (the answer is a live region).
+  function placeReadings(ans) {
+    var krow = ans && ans.querySelector('.krow'), kread = krow && krow.querySelector('.kread'), grid = krow && krow.querySelector('.kgrid');
+    if (!kread || !kread.clientWidth || !grid) return;
+    var col = kread.clientWidth;
+    if (krow.getAttribute('data-placed') === String(col)) return;
+    var chips = Array.prototype.slice.call(ans.querySelectorAll('.krow .kread .chips > .chip, .kbelow .chips > .chip'));
+    if (!chips.length) return;
+    // a reading's width on one line, read with its wrap lifted for the measure (a style change only, no node moved)
+    var oneLine = function (rd) { rd.style.whiteSpace = 'nowrap'; rd.style.maxWidth = 'none'; var w = rd.getBoundingClientRect().width; rd.style.whiteSpace = ''; rd.style.maxWidth = ''; return w; };
+    var allowed = Math.min(chips.length, Number(krow.getAttribute('data-beside')) || 0), cut = 0;
+    while (cut < allowed && Array.prototype.every.call(chips[cut].querySelectorAll('.rd'), function (rd) { return oneLine(rd) <= col + 0.5; })) cut++;
+    var put = function (n) {
+      var beside = kread.querySelector('.chips'), belowBox = krow.nextElementSibling && krow.nextElementSibling.classList.contains('kbelow') ? krow.nextElementSibling : null;
+      var below = belowBox && belowBox.querySelector('.chips');
+      if ((beside ? beside.children.length : 0) === n) return;
+      if (n && !beside) { beside = document.createElement('div'); beside.className = 'chips'; kread.insertBefore(beside, kread.querySelector('.kstrokes')); }
+      if (n < chips.length && !below) {
+        belowBox = document.createElement('div'); belowBox.className = 'kbelow';
+        below = document.createElement('div'); below.className = 'chips';
+        belowBox.appendChild(below); krow.parentNode.insertBefore(belowBox, krow.nextSibling);
+      }
+      chips.forEach(function (chip, i) { (i < n ? beside : below).appendChild(chip); });
+      if (beside && !beside.children.length) beside.parentNode.removeChild(beside);
+      if (belowBox && !below.children.length) belowBox.parentNode.removeChild(belowBox);
+    };
+    put(cut);
+    var boxBottom = grid.getBoundingClientRect().bottom;
+    while (cut > 0) {
+      var last = chips[cut - 1], line = parseFloat(getComputedStyle(last).lineHeight) || 0;
+      if (last.getBoundingClientRect().bottom <= boxBottom + 2 * line + 0.5) break;
+      put(--cut);
+    }
+    krow.setAttribute('data-placed', String(col));
   }
   // The rail: one segment per showing of this sitting (answers given + showings still owed, the header's figures),
   // done solid, the current outlined, the rest to come. Position only (decision 0003): no score, no streak.
@@ -5806,18 +5897,27 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     ghost.appendChild(seal);
     var controls = Array.prototype.map.call(ghost.querySelectorAll('button, a[href], [role=button], input, select, textarea, summary'), function (el) { return el.getBoundingClientRect(); })
       .filter(function (r) { return r.width > 0 && r.height > 0; });
+    // a kanji answer's readings and stroke count are avoided too where the seal finds room, and only covered when it does not
+    var readings = Array.prototype.map.call(ghost.querySelectorAll('.kread .chip, .kbelow .chip, .kstrokes'), function (el) { return el.getBoundingClientRect(); })
+      .filter(function (r) { return r.width > 0 && r.height > 0; });
     var gb = ghost.getBoundingClientRect();
-    var clear = function () {
+    var clear = function (avoid) {
       seal.style.animation = 'none';
       var sb = seal.getBoundingClientRect();
       seal.style.animation = '';
       if (sb.left < gb.left || sb.right > gb.right || sb.top < gb.top || sb.bottom > gb.bottom) return false;
-      for (var i = 0; i < controls.length; i++) { var c = controls[i]; if (c.left < sb.right && c.right > sb.left && c.top < sb.bottom && c.bottom > sb.top) return false; }
+      for (var i = 0; i < avoid.length; i++) { var c = avoid[i]; if (c.left < sb.right && c.right > sb.left && c.top < sb.bottom && c.bottom > sb.top) return false; }
       return true;
     };
-    var top = seal.offsetTop, placed = clear();
+    var top = seal.offsetTop;
     // lower, a step at a time, down to the rule line and past it, never onto a button
-    for (var y = top + 4; !placed && y + seal.offsetHeight <= ghost.clientHeight; y += 4) { seal.style.top = y + 'px'; placed = clear(); }
+    var land = function (avoid) {
+      seal.style.top = '';
+      if (clear(avoid)) return true;
+      for (var y = top + 4; y + seal.offsetHeight <= ghost.clientHeight; y += 4) { seal.style.top = y + 'px'; if (clear(avoid)) return true; }
+      return false;
+    };
+    var placed = (readings.length && land(controls.concat(readings))) || land(controls);
     if (!placed) { ghost.removeChild(seal); }
     sealGhost = ghost;
     sealTimer = setTimeout(function () {
@@ -5856,6 +5956,13 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var effective = latin ? chars.length : chars.reduce(function (sum, ch) { return sum + (/[　-鿿＀-￯]/.test(ch) ? 1 : 0.55); }, 0);
     var q = tagHtml + '<div class="q-prompt' + (kanjiFace ? ' kanji one-line' : (latin ? ' latin' : (cloze || chars.length > 12 ? '' : ' one-line'))) + '" data-n="' + Math.max(1, Math.ceil(effective)) + '">' +
       (cloze ? clozeHtml(promptValue, card.ord, false, lang) : renderField(nt, tmpl.prompt, promptValue, lang, false, tmpl.prompt)) + '</div>';
+    // Under a kanji whose answer side holds its readings (a kanji's Recognition card: the kanji is the answer's word, no
+    // reading is the answer itself, and at least one reading list in kana waits there), a caption says what to recall.
+    // A one-kanji word asked for its reading carries none.
+    if (kanjiFace) {
+      var asked = answerPlaces(nt, f, tmpl);
+      if (asked.word === tmpl.prompt && !asked.read && asked.rest.some(function (name) { return asked.role(name) === 'chip' && spokenForm(f[name]); })) q += '<p class="q-cap">Readings and meaning?</p>';
+    }
     // A cue the learner wrote for the question sits behind one button that says what it gives.
     var hints = nt.fields.filter(function (name) { return name !== tmpl.prompt && name !== tmpl.answer && ((nt.display && nt.display[name]) || 'text') === 'hint' && f[name]; });
     if (hints.length) {
@@ -5909,6 +6016,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var halves = $('r-card').querySelectorAll('.turn .qst, .turn .ans');   // the seal's copy of a face is not a region
     Array.prototype.forEach.call(halves, function (half) {
       var overflow = half.scrollHeight > half.clientHeight;
+      if (half.classList.contains('ans')) markMore(half);
       if (overflow) {
         half.setAttribute('tabindex', '0');
         half.setAttribute('role', 'region');
@@ -5921,6 +6029,14 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     });
   }
   window.__kurikaeshiUpdateScrollableHalves = updateScrollableHalves;
+  // The answer's lower edge fades while more of it is below (a phone hides its scrollbar until a scroll starts, and a cut
+  // that lands between two lines looks like the end); the fade goes once the end is in view.
+  function markMore(ans) {
+    var more = ans.scrollHeight - ans.clientHeight - ans.scrollTop > 1;
+    // the face carries it too: the mark under the region is the face's, so it shows whatever the cut lands on
+    [ans, ans.parentElement].forEach(function (el) { if (el && more !== el.hasAttribute('data-more')) { if (more) el.setAttribute('data-more', ''); else el.removeAttribute('data-more'); } });
+  }
+  $('r-card').addEventListener('scroll', function (e) { var t = e.target; if (t && t.classList && t.classList.contains('ans') && t.closest('.turn')) markMore(t); }, true);
   var halfChanges = new MutationObserver(function () { requestAnimationFrame(updateScrollableHalves); });
   halfChanges.observe($('r-card'), { childList: true, subtree: true, characterData: true });
   if (typeof ResizeObserver === 'function') {
@@ -7262,7 +7378,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     '<p class="wl-line">A few cards a day. The ones you miss come back sooner.</p>' +
     '<p class="wl-cue">This is a card. Tap it.</p>' +
     '<button class="wl-card" id="fo-sample" type="button">' +
-    '<span class="wl-front"><span class="micro wl-tag">Sample · Kanji</span><span class="wl-glyph" lang="ja">水</span><span class="s wl-ask">Reading and meaning?</span></span>' +
+    '<span class="wl-front"><span class="micro wl-tag">Sample · Kanji</span><span class="wl-glyph" lang="ja">水</span><span class="s wl-ask">Readings and meaning?</span></span>' +
     '<span class="wl-back" hidden><span class="wl-glyph sm" lang="ja">水</span><span class="wl-pen"><span class="wl-kana" lang="ja">みず</span><span class="wl-gloss">water</span></span>' +
     '<span class="s wl-why">Miss it, and it comes back sooner. That is the whole app.</span></span></button>';
   function renderFirst(from) {
@@ -10475,7 +10591,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.11.0";
+  var APP_V = "0.11.1";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
