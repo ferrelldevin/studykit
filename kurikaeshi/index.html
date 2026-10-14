@@ -4086,7 +4086,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 (function () {
   'use strict';
   // was: the version line named 0.11.5
-  var APP_VERSION = '0.11.7';
+  var APP_VERSION = '0.11.8';
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -5931,12 +5931,28 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // turns over on a tap and moves on with Next or a swipe, with no grade asked; Back steps to the one before. With Loop
   // on (the default) the round starts again when it ends, reshuffled when shuffled, until the learner stops. It writes
   // nothing at all: no log row, no practice row, no card state, no preference. The spaced schedule never sees it.
+  // 0.11.8 (the operator, 2026-10-14: "we should only be doing the recognition rather than recall ... we shouldn't see both
+  // the recognition and recall as we flip through"): a round shows each note Japanese side up. A card is flipped when its
+  // question is the Japanese (a kanji's Recognition, a word's Recognition or Reading, a fill-in-the-blank); a card that
+  // asks the Japanese from the English (Recall, Production) is left out. A note with no Japanese question at all (an
+  // own card written in English both sides) keeps its first direction, so it is still in the stack once.
+  function flipAsksJapanese(c) {
+    var n = noteOf(c), nt = n && typeOf(n);
+    if (!nt || !n.fields) return false;
+    if (nt.kind === 'cloze') return true;
+    var japanesePrompt = function (t) { return !!t && isJapanese(checkPlain(sayText(n.fields[t.prompt]))); };
+    var t = (nt.templates || []).filter(function (x) { return x.ord === c.ord; })[0];
+    if (japanesePrompt(t)) return true;
+    if ((nt.templates || []).some(japanesePrompt)) return false;
+    return !!t && t === nt.templates[0];
+  }
   function flipCards(scope, onlyOn) {
     var favs = scope.favorites ? store.favorites() : null;
     return DECK.cards.filter(function (c) {
       if (favs) { if (!favs.has(c.id)) return false; }
       else if (c.pack !== scope.pack || (scope.lesson != null && c.lesson !== String(scope.lesson))) return false;
       if (store.isSuspended(c.id) || store.isRetired(c.id)) return false;
+      if (!flipAsksJapanese(c)) return false;
       return !(onlyOn && c.pack !== OWN_PACK_ID && lessonOut(c.pack, c.lesson));
     });
   }
@@ -5949,7 +5965,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (!all) return [];
     var on = scope.lesson == null && !scope.favorites ? flipCards(scope, true).length : all;
     var items = [{ label: on < all ? 'Flip through all' : 'Flip through', count: plural(all, 'card'), sub: MODE_WHY.flip, on: function (b) { flipSheet(scope, false, b); } }];
-    if (on && on < all) items.push({ label: 'Flip through lessons on', count: plural(on, 'card'), sub: 'Only the lessons switched on, new cards too. The schedule does not change.', on: function (b) { flipSheet(scope, true, b); } });
+    if (on && on < all) items.push({ label: 'Flip through lessons on', count: plural(on, 'card'), sub: 'Only the lessons switched on, Japanese side up. The schedule does not change.', on: function (b) { flipSheet(scope, true, b); } });
     return items;
   }
   function flipSheet(scope, onlyOn, anchor) {
@@ -7942,7 +7958,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     ahead: 'Cards due in the next ' + SOON_DAYS + ' days, not in today’s set. Answering early moves their next date.',
     practise: 'Cards you have started, for practice. The schedule does not change.',
     check: 'Choose each card’s meaning from four. The schedule does not change.',
-    flip: 'Every card here, new ones too, like a stack of flashcards. Shuffle or keep the order. The schedule does not change.'   // 0.11.7
+    // 0.11.8: was 'Every card here, new ones too, like a stack of flashcards. ...' — a round now holds the Japanese-side-up cards only
+    flip: 'Each card Japanese side up, new ones too, like a stack of flashcards. Shuffle or keep the order. The schedule does not change.'   // 0.11.7
   };
   // A Decks row's two inputs, and a lesson row's: the one place each is computed, for a render and for a redraw.
   function deckRowParts(r, ctx, dayAll) {
@@ -12007,7 +12024,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.11.7";
+  var APP_V = "0.11.8";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
