@@ -946,6 +946,10 @@ ruby[data-reading="hidden"] rt{visibility:hidden}
 .grade[data-g="4"] .g{font-weight:600}
 .grade[data-g="1"]:active,.grade[data-g="2"]:active,.grade[data-g="1"].pressed,.grade[data-g="2"].pressed{background:var(--again-fill);border-color:var(--again-fill);color:var(--again-ink)}
 .grade[data-g="3"]:active,.grade[data-g="4"]:active,.grade[data-g="3"].pressed,.grade[data-g="4"].pressed{background:var(--accent-fill);border-color:var(--accent-fill);color:var(--accent-ink)}
+/* 0.11.7, flip through: Back sits beside the one big button, as tall as it, wide enough for its word */
+/* the card takes a sideways swipe itself while flipping, so the browser does not read it as Back (an Android swipe did) */
+#s-review.flipping .cardwrap,#s-review.flipping .cardwrap *{touch-action:pan-y;overscroll-behavior-x:contain}
+.band .fl-back{flex:none;width:auto;min-height:var(--tap-lg);margin-right:var(--s-2);justify-content:center}
 .undo{display:flex;justify-content:center;width:100%;min-height:var(--tap);align-items:center;font-size:var(--t-label);font-weight:500;color:var(--accent);transition:background-color var(--d-press) var(--ease-standard)}
 .undo:active{background:var(--surface-2);border-radius:var(--r-control)}
 .undo:disabled{color:var(--ink-off);opacity:1}
@@ -1216,10 +1220,38 @@ ruby[data-reading="hidden"] rt{visibility:hidden}
 .legend{font-family:var(--f-mono);font-size:var(--t-micro);color:var(--ink-mute);margin:var(--s-1) 0 var(--s-3)}
 .legend i{display:inline-block;width:.7rem;height:.7rem;vertical-align:-1px;margin:0 var(--s-1) 0 var(--s-3);border:var(--line) solid var(--hairline)}
 
+/* 0.11.5, Check yourself: a lesson's multiple-choice check. Round 3's plain card (the question face's surface, edge and
+   lift), the prompt at the answer's own sizes (a kanji at the hero's, a word at the word's), and four choices built like the
+   grade band's buttons: a 1.5px line on the surface, the accent for the right one, the grey of Again for a wrong one, each
+   marked by the band's shape (〇, ✕) with its word, never by colour alone. Nothing red, nothing that moves but a fill. */
+.ck-body{flex:1;display:flex;flex-direction:column;gap:var(--s-3);min-height:0;overflow-y:auto;padding:0 var(--s-4) calc(var(--s-4) + env(safe-area-inset-bottom,0px))}
+.ck-card{flex:1 0 auto;display:flex;flex-direction:column;align-items:center;gap:var(--s-2);padding:var(--s-4);border:var(--line) solid var(--card-edge);border-radius:var(--r-card);background:var(--surface);color:var(--ink);box-shadow:var(--e3)}
+.ck-tag{align-self:flex-start;flex:none;max-width:100%;padding:var(--s-1) var(--s-3);border-radius:var(--r-pill);background:var(--surface-2);color:var(--ink-mute);font-family:var(--f-body);font-size:var(--t-micro);font-weight:600;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ck-prompt{margin:auto 0 0;max-width:100%;font-family:var(--f-ja-glyph);font-size:var(--t-vword);font-weight:500;line-height:1.15;text-align:center;overflow-wrap:anywhere}
+.ck-kanji .ck-prompt{font-size:var(--t-hk);line-height:1}
+.ck-ask{margin:0 0 auto;font-family:var(--f-body);font-size:var(--t-cue);line-height:1.4;color:var(--ink-mute);text-align:center}
+.ck-choices{flex:none;display:flex;flex-direction:column;gap:var(--s-2)}
+.ck-choice{display:flex;align-items:center;gap:var(--s-3);width:100%;min-height:var(--tap);padding:var(--s-2) var(--s-4);border:var(--g-edge) solid var(--g-line);border-radius:var(--r-block);background:var(--surface);color:var(--ink);font-family:var(--f-body);font-size:var(--t-body);line-height:1.3;text-align:left;transition:background-color var(--d-press) var(--ease-standard)}
+.ck-choice:active{background:var(--surface-2)}
+.ck-choice:disabled{opacity:1;color:var(--ink-mute)}
+.ck-key{flex:none;min-width:1ch;font-size:var(--t-micro);font-weight:600;color:var(--ink-mute);font-variant-numeric:tabular-nums}
+.ck-mean{flex:1;min-width:0;overflow-wrap:anywhere}
+.ck-said{flex:none;display:inline-flex;align-items:center;gap:var(--s-1);font-size:var(--t-label);font-weight:600}
+.ck-said .gm{width:var(--g-mark);height:var(--g-mark);flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ck-choice.right{border:var(--g-edge-good) solid var(--accent);background:var(--accent-lo);color:var(--accent)}
+.ck-choice.right .ck-key{color:var(--accent)}
+.ck-choice.wrong{border-color:var(--again);color:var(--again)}
+.ck-choice.wrong .ck-key{color:var(--again)}
+.ck-next{flex:none;min-height:var(--tap)}
+.ck-body.ck-end{padding-top:var(--s-6)}
+.ck-miss .k{font-family:var(--f-ja);font-size:var(--t-ja-sentence);font-weight:500}
+.ck-miss .v{text-align:right;min-width:0;overflow-wrap:anywhere}
+
 /* Reduced motion is a replacement, not a removal (F): travel goes, a 100ms fade stays. */
 @media (prefers-reduced-motion: reduce){
   /* DESIGN-0.6 §F, line by line: rises, scales and cross-fades drop; opacity keeps its own durations */
   .grades-in,.card-in{animation:fadein var(--d-press) var(--ease-linear) both!important;transform:none!important}   /* the band and a new card: opacity only, 100ms */
+  .ck-card.card-in{animation:fadein var(--d-press) var(--ease-linear) both!important;transform:none!important}   /* 0.11.5: a check's next card, opacity only */
   /* 0.11 step 2A (DESIGN-0.11 MOTION): the card does not turn — its two faces cross-fade over 150ms; the answer is not
      written in but fades 120ms; the seal fades 120ms and does not scale */
   #r-card .turn,#r-card .turn.turned{transform:none!important;transition:none!important}
@@ -1240,7 +1272,7 @@ ruby[data-reading="hidden"] rt{visibility:hidden}
   #toast.out{transition:opacity var(--d-quick) var(--ease-linear)!important}                                /* toast out 150ms */
   /* the fill step stays — every control on J.4 §5's list, not a subset */
   .tile,.primary,.ghost,.danger,.textbtn,.back,.you,.drow,.crow .txt,.crow .more,.answer-row,
-  .grade,.reveal,.undo,.hintbtn,.say,.more,#tabbar button::before,#sheet button.act,
+  .grade,.reveal,.undo,.hintbtn,.say,.more,#tabbar button::before,#sheet button.act,.ck-choice,
   #toast button,.group-row,.filter,button.row,.exportbox .dl,label.chk,.retired-list summary,a[href]{transition:background-color var(--d-press) var(--ease-standard)!important}
   .tile:active,.primary:active{transform:none!important;filter:none!important}
   /* 0.11 step 3 (the design's DEPTH, PRESS): no control moves or changes its shadow on press; its fill changes, nothing else */
@@ -1350,6 +1382,18 @@ ruby[data-reading="hidden"] rt{visibility:hidden}
       <div class="band" id="r-band"></div>
       <button class="undo" id="r-undo" type="button" disabled>Undo last answer</button>
     </div>
+  </section>
+
+  <!-- ── CHECK YOURSELF: a lesson's multiple-choice check, writing nothing (0.11.5) ── -->
+  <section class="screen" id="s-check" aria-labelledby="ck-title" hidden>
+    <h1 class="sr-only" id="ck-title" tabindex="-1">Check yourself</h1>
+    <div class="rbar">
+      <button class="textbtn" id="ck-stop" type="button">Stop</button>
+      <span class="sp"></span>
+      <span class="micro" id="ck-left"></span>
+    </div>
+    <p class="sr-only" id="ck-said" role="status"></p>
+    <div class="ck-body" id="ck-body"></div>
   </section>
 
   <!-- ── END OF SESSION ───────────────────────────────────────────────────── -->
@@ -1550,6 +1594,7 @@ const SUSPENDED_KEY = 'bw08.suspended.v1';
 const RETIRED_KEY = 'bw08.retired.v1';
 const SKIPPED_KEY = 'bw08.skipped.v1';   
 const PREVIEW_KEY = 'bw08.preview.v1';
+const FAVORITES_KEY = 'bw08.favorites.v1';   
 const IMPORT_RECORDS = Object.freeze(['reviews', 'held-out cards', 'retired cards', 'settings']);
 
 function readPreview(adapter) {
@@ -1609,6 +1654,8 @@ function makeStore(adapter) {
   let suspended = new Set();
   let retired = new Set();
   let skipped = {};
+
+  let favorites = new Set();
   const byCard = new Map();
   let statesCache = null;   
   let lastRaw = null;       
@@ -1639,6 +1686,8 @@ function makeStore(adapter) {
     catch { retired = new Set(); }
     try { const raw = adapter.get(SKIPPED_KEY); const obj = raw ? JSON.parse(raw) : {}; skipped = obj && typeof obj === 'object' ? obj : {}; }
     catch { skipped = {}; }
+    try { const raw = adapter.get(FAVORITES_KEY); const list = raw ? JSON.parse(raw) : []; favorites = new Set(Array.isArray(list) ? list.filter((id) => typeof id === 'string') : []); }
+    catch { favorites = new Set(); }
     if (opts.legacyPackId) {
       let migrated = 0;
       const next = log.map((e) => {
@@ -1678,6 +1727,7 @@ function makeStore(adapter) {
   const persistSuspended = (next = suspended) => adapter.set(SUSPENDED_KEY, JSON.stringify([...next]));
   const persistRetired = (next = retired) => adapter.set(RETIRED_KEY, JSON.stringify([...next]));
   const persistSkipped = (next = skipped) => adapter.set(SKIPPED_KEY, JSON.stringify(next));
+  const persistFavorites = (next = favorites) => adapter.set(FAVORITES_KEY, JSON.stringify([...next]));
 
   const dayKey = (ms, cutoffHour = 4) => {
 
@@ -1908,7 +1958,7 @@ function makeStore(adapter) {
 
     exportAll(extra = {}) {
 
-      return JSON.stringify({ format: 'bw08-review-log', version: 1, exported: new Date().toISOString(), ...extra, prefs, suspended: [...suspended], retired: [...retired], log });
+      return JSON.stringify({ format: 'bw08-review-log', version: 1, exported: new Date().toISOString(), ...extra, prefs, suspended: [...suspended], retired: [...retired], favorites: [...favorites], log });
     },
 
     importAll(text, options = {}) {
@@ -1988,6 +2038,9 @@ function makeStore(adapter) {
       suspended = nextSuspended;
       if (options.prefs !== false) prefs = nextPrefs;
       index();
+
+      const importedFavorites = Array.isArray(parsed.favorites) ? parsed.favorites.filter((id) => typeof id === 'string') : [];
+      if (importedFavorites.length) { const nextFavorites = new Set([...favorites, ...importedFavorites]); if (persistFavorites(nextFavorites)) favorites = nextFavorites; }
       return { added, total: log.length, rejected, logCount: parsed.log.length, suspended: importedSuspended.length, retired: importedRetired.length, prefs: filePrefs ? cleanPrefs : null, prefsDropped, prefsClamped };
     },
 
@@ -2006,6 +2059,22 @@ function makeStore(adapter) {
       return true;
     },
     isSuspended(id) { return suspended.has(id); },
+    favorite(ids) {
+      const next = new Set(favorites);
+      for (const id of [].concat(ids)) if (typeof id === 'string') next.add(id);
+      if (!persistFavorites(next)) return false;
+      favorites = next;
+      return true;
+    },
+    unfavorite(ids) {
+      const next = new Set(favorites);
+      for (const id of [].concat(ids)) next.delete(id);
+      if (!persistFavorites(next)) return false;
+      favorites = next;
+      return true;
+    },
+    isFavorite(id) { return favorites.has(id); },
+    favorites() { return new Set(favorites); },
     retire(ids) {
       const nextRetired = new Set(retired);
       const nextSuspended = new Set(suspended);
@@ -2582,8 +2651,10 @@ function buildQueue(deck, store, opts = {}) {
 
   const isSkipped = typeof store.isSkippedToday === 'function' ? (id) => store.isSkippedToday(id, now) : () => false;
 
+  const ids = opts.ids && typeof opts.ids.has === 'function' ? opts.ids : null;
+
   const pool = deck.cards.filter((c) =>
-    (!pack || c.pack === pack) && (lesson == null || c.lesson === lesson) && !isSuspended(c.id) && !isSkipped(c.id) && !isPaused(c.pack));
+    (!pack || c.pack === pack) && (lesson == null || c.lesson === lesson) && (!ids || ids.has(c.id)) && !isSuspended(c.id) && !isSkipped(c.id) && !isPaused(c.pack));
 
   const used = ctx.reviewsUsed != null ? ctx.reviewsUsed
     : (typeof store.reviewLimitUsed === 'function' ? store.reviewLimitUsed(store.dayKey(now)) : today.reviews);
@@ -2759,6 +2830,11 @@ function retiredNoteOrds(type, note) {
   return [...ords].sort((a, b) => a - b);
 }
 
+const FIRST_WEEK_DAYS = 7;
+function pastFirstWeek(state) {
+  return !!state && state.state === 'review' && Number(state.ivl) >= FIRST_WEEK_DAYS;
+}
+
 function lessonProgress(deck, store, opts = {}) {
   const states = (opts.ctx && opts.ctx.states) || store.allStates();
   const isSuspended = typeof store.isSuspended === 'function' ? (id) => store.isSuspended(id) : () => false;
@@ -2777,7 +2853,7 @@ function lessonProgress(deck, store, opts = {}) {
   const rowFor = (pack, lesson) => {
     const key = `${pack}|${lesson}`;
     let r = rows.get(key);
-    if (!r) { r = { pack, lesson, total: 0, fresh: 0, learning: 0, review: 0, suspended: 0, retired: 0, directionOff: 0, heldOut: 0 }; rows.set(key, r); }
+    if (!r) { r = { pack, lesson, total: 0, fresh: 0, learning: 0, review: 0, pastWeek: 0, suspended: 0, retired: 0, directionOff: 0, heldOut: 0 }; rows.set(key, r); }
     return r;
   };
   for (const c of deck.cards) {
@@ -2794,6 +2870,7 @@ function lessonProgress(deck, store, opts = {}) {
     if (!s || s.state === 'new') r.fresh++;
     else if (s.state === 'review') r.review++;
     else r.learning++;
+    if (pastFirstWeek(s)) r.pastWeek++;
   }
   for (const [id, pack] of Object.entries(deck.packs || {})) {
     const types = new Map((pack.noteTypes || []).map((item) => [item.id, item]));
@@ -3674,6 +3751,8 @@ function upsertNote(pack0, { guid, type, lesson, fields, tags }) {
   const prior = guid ? pack.notes.find((n) => n.guid === guid) : null;
   const now = Date.now();
   const note = { guid: guid || (back && back.guid) || newGuid(), type, lesson: String(lesson || '').trim(), tags: Array.from(new Set(['mine', ...((tags != null ? tags : prior && prior.tags) || [])])), fields: clean, updated: now };
+  
+  if (prior && prior.from) note.from = prior.from;
   const notes = pack.notes.filter((n) => n.guid !== note.guid);
   const idx = pack.notes.findIndex((n) => n.guid === note.guid);
   if (idx >= 0) notes.splice(idx, 0, note); else notes.push(note);
@@ -3688,7 +3767,10 @@ function retireNote(pack0, guid) {
   const note = pack.notes.find((n) => n.guid === guid);
   const key = String((note.fields || {})[firstField(pack, note.type)] || '').trim();
   const now = Date.now();
-  const retired = [...(pack.retired || []).filter((r) => r.guid !== guid), { guid, type: note.type, key, lesson: note.lesson || '', tags: [...(note.tags || [])], fields: { ...(note.fields || {}) }, at: now }];
+  
+  const row = { guid, type: note.type, key, lesson: note.lesson || '', tags: [...(note.tags || [])], fields: { ...(note.fields || {}) }, at: now };
+  if (note.from) row.from = note.from;   
+  const retired = [...(pack.retired || []).filter((r) => r.guid !== guid), row];
   return { ...pack, version: bumpVersion(pack.version), updated: new Date(now).toISOString(), notes: pack.notes.filter((n) => n.guid !== guid), retired };
 }
 
@@ -3700,9 +3782,33 @@ function restoreNote(pack0, guid) {
   if (problem) { const error = new Error(problem.code); error.field = problem.field; throw error; }
   const now = Date.now();
   const note = { guid: item.guid, type: item.type, lesson: String(item.lesson || '').trim(), tags: [...(item.tags || ['mine'])], fields: { ...item.fields }, updated: now };
+  if (item.from) note.from = item.from;   
   const next = { ...pack, version: bumpVersion(pack.version), updated: new Date(now).toISOString(), notes: [...pack.notes.filter((n) => n.guid !== guid), note], retired: dropRetired(pack, new Set([guid])) };
   validatePack(next);
   return next;
+}
+
+function findCopy(pack, from) {
+  if (!pack || !from) return null;
+  return (pack.notes || []).find((n) => n.from === from) || null;
+}
+function copyNote(pack0, { type, lesson, fields, from }) {
+  if (!from) throw new Error('from_required');
+  if (findCopy(pack0, from)) throw new Error('already_copied');
+  const before = new Set((pack0.notes || []).map((n) => n.guid));
+  const next = upsertNote(pack0, { guid: null, type, lesson, fields });
+  return { ...next, notes: next.notes.map((n) => (before.has(n.guid) ? n : { ...n, from })) };
+}
+
+function withoutCopies(pack) {
+  if (!pack) return pack;
+  const retired = (pack.retired || []).filter((r) => !r.from);
+  return { ...pack, notes: (pack.notes || []).filter((n) => !n.from), retired: retired.length ? retired : undefined };
+}
+function renamePack(pack, title) {
+  const name = String(title || '').trim().slice(0, 60) || 'My cards';
+  if (name === pack.title) return pack;
+  return { ...pack, title: name, version: bumpVersion(pack.version), updated: new Date().toISOString() };
 }
 
 function describeChange(current, next) {
@@ -3815,7 +3921,9 @@ function cardsAddedByMerge(local, merged) {
 
 function samePackContent(a, b) {
   if (!a || !b) return !a && !b;
+
   const key = (p) => JSON.stringify({
+    title: p.title || '',
     notes: (p.notes || []).map((n) => [n.guid, n.type, n.lesson || '', (n.tags || []).slice().sort(), n.fields || {}, stampValue(n.updated)]).sort((x, y) => (x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : 0)),
     retired: (p.retired || []).map((r) => [r.guid, r.type, r.key, r.lesson || '', (r.tags || []).slice().sort(), r.fields || {}, stampValue(r.at)]).sort((x, y) => (x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : 0)),
   });
@@ -3977,7 +4085,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 <script>
 (function () {
   'use strict';
-  var APP_VERSION = '0.11.3';
+  // was: the version line named 0.11.5
+  var APP_VERSION = '0.11.7';
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -3985,7 +4094,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // (a square bracket anywhere) mean accounts are off: the page then never touches the network
   // except to install a deck on the learner's tap. Nothing here is a secret by design.
   var CONFIG = {"auth0":{"domain":"dev-rxe3mje4y1suwccw.us.auth0.com","clientId":"EpM3qKZqHIjpumcmmsuXUUaxSHibqXi3","audience":"https://kurikaeshi/api"},"dataApi":"https://ep-shiny-union-ay3o428i.apirest.c-5.us-east-2.aws.neon.tech/neondb/rest/v1","contact":"ferrelldevin01+kurikaeshi@gmail.com"};
-  var CATALOG = [{"id":"irodori-a2-1-vocab","access":"account","title":"Irodori 1 Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. Source named here and, once added, under About Kurikaeshi.","cards":2376,"lessons":18,"version":"1.0.2"},{"id":"japn301-vocab","access":"account","title":"JAPN 301 · Irodori 2 Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. Source named here and, once added, under About Kurikaeshi.","cards":3534,"lessons":18,"version":"1.0.3"},{"id":"japn111f-vocab","access":"account","title":"JAPN 111F · Vocabulary · Lists 1–16","language":"ja","source":"The JAPN 111F instructor, Old Dominion University","terms":"Free. Shared with the permission of the JAPN 111F instructor.","cards":992,"lessons":16,"version":"1.0.3"},{"id":"japn212-vocab","access":"account","title":"JAPN 212 · Vocabulary · 13 lessons","language":"ja","source":"The JAPN 212 instructor, Old Dominion University","terms":"Free. Shared with the permission of the JAPN 212 instructor.","cards":958,"lessons":13,"version":"1.1.4"},{"id":"japn212-kanji","access":"account","title":"JAPN 212 · Kanji · 13 lessons","language":"ja","source":"The JAPN 212 instructor's list, transcribed by hand, not yet checked against her list; KANJIDIC2, EDRDG","terms":"Free. Shared with the permission of the JAPN 212 instructor.","cards":218,"lessons":13,"version":"1.0.3"},{"id":"japn309-class","access":"account","title":"JAPN 309 · Kanji · L.1–L.20 and radicals","language":"ja","source":"The JAPN 309 instructor's drill sheets and slides; KANJIDIC2 and JMdict, EDRDG","terms":"Free. Shared with the permission of the JAPN 309 instructor.","cards":968,"lessons":21,"version":"1.5.0"}];
+  var CATALOG = [{"id":"irodori-a2-1-vocab","access":"account","title":"Irodori 1 Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. Source named here and, once added, under About Kurikaeshi.","cards":2376,"lessons":18,"version":"1.0.3"},{"id":"japn301-vocab","access":"account","title":"JAPN 301 · Irodori 2 Vocabulary","language":"ja","source":"The Japan Foundation","terms":"Free. Source named here and, once added, under About Kurikaeshi.","cards":3534,"lessons":18,"version":"1.0.4"},{"id":"japn111f-vocab","access":"account","title":"JAPN 111F · Vocabulary · Lists 1–16","language":"ja","source":"The JAPN 111F instructor, Old Dominion University","terms":"Free. Shared with the permission of the JAPN 111F instructor.","cards":992,"lessons":16,"version":"1.0.3"},{"id":"japn212-vocab","access":"account","title":"JAPN 212 · Vocabulary · 13 lessons","language":"ja","source":"The JAPN 212 instructor, Old Dominion University","terms":"Free. Shared with the permission of the JAPN 212 instructor.","cards":958,"lessons":13,"version":"1.1.4"},{"id":"japn212-kanji","access":"account","title":"JAPN 212 · Kanji · 13 lessons","language":"ja","source":"The JAPN 212 instructor's list, transcribed by hand, not yet checked against her list; KANJIDIC2, EDRDG","terms":"Free. Shared with the permission of the JAPN 212 instructor.","cards":218,"lessons":13,"version":"1.0.3"},{"id":"japn309-class","access":"account","title":"JAPN 309 · Kanji · L.1–L.20 and radicals","language":"ja","source":"The JAPN 309 instructor's drill sheets and slides; KANJIDIC2 and JMdict, EDRDG","terms":"Free. Shared with the permission of the JAPN 309 instructor.","cards":968,"lessons":21,"version":"1.5.1"}];
   // The two typefaces' licences (SIL OFL 1.1), injected at build from fonts/OFL-*.txt: the faces ship on this page,
   // so their licence ships with them, readable under About (0.11, decision 0010 §6).
   var FONT_LICENCES = [{"family":"Shippori Mincho","text":"Copyright 2021 The Shippori Mincho Project Authors (https://github.com/fontdasu/ShipporiMincho)\n\nThis Font Software is licensed under the SIL Open Font License, Version 1.1.\nThis license is copied below, and is also available with a FAQ at:\nhttp://scripts.sil.org/OFL\n\n\n-----------------------------------------------------------\nSIL OPEN FONT LICENSE Version 1.1 - 26 February 2007\n-----------------------------------------------------------\n\nPREAMBLE\nThe goals of the Open Font License (OFL) are to stimulate worldwide\ndevelopment of collaborative font projects, to support the font creation\nefforts of academic and linguistic communities, and to provide a free and\nopen framework in which fonts may be shared and improved in partnership\nwith others.\n\nThe OFL allows the licensed fonts to be used, studied, modified and\nredistributed freely as long as they are not sold by themselves. The\nfonts, including any derivative works, can be bundled, embedded, \nredistributed and/or sold with any software provided that any reserved\nnames are not used by derivative works. The fonts and derivatives,\nhowever, cannot be released under any other type of license. The\nrequirement for fonts to remain under this license does not apply\nto any document created using the fonts or their derivatives.\n\nDEFINITIONS\n\"Font Software\" refers to the set of files released by the Copyright\nHolder(s) under this license and clearly marked as such. This may\ninclude source files, build scripts and documentation.\n\n\"Reserved Font Name\" refers to any names specified as such after the\ncopyright statement(s).\n\n\"Original Version\" refers to the collection of Font Software components as\ndistributed by the Copyright Holder(s).\n\n\"Modified Version\" refers to any derivative made by adding to, deleting,\nor substituting -- in part or in whole -- any of the components of the\nOriginal Version, by changing formats or by porting the Font Software to a\nnew environment.\n\n\"Author\" refers to any designer, engineer, programmer, technical\nwriter or other person who contributed to the Font Software.\n\nPERMISSION & CONDITIONS\nPermission is hereby granted, free of charge, to any person obtaining\na copy of the Font Software, to use, study, copy, merge, embed, modify,\nredistribute, and sell modified and unmodified copies of the Font\nSoftware, subject to the following conditions:\n\n1) Neither the Font Software nor any of its individual components,\nin Original or Modified Versions, may be sold by itself.\n\n2) Original or Modified Versions of the Font Software may be bundled,\nredistributed and/or sold with any software, provided that each copy\ncontains the above copyright notice and this license. These can be\nincluded either as stand-alone text files, human-readable headers or\nin the appropriate machine-readable metadata fields within text or\nbinary files as long as those fields can be easily viewed by the user.\n\n3) No Modified Version of the Font Software may use the Reserved Font\nName(s) unless explicit written permission is granted by the corresponding\nCopyright Holder. This restriction only applies to the primary font name as\npresented to the users.\n\n4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font\nSoftware shall not be used to promote, endorse or advertise any\nModified Version, except to acknowledge the contribution(s) of the\nCopyright Holder(s) and the Author(s) or with their explicit written\npermission.\n\n5) The Font Software, modified or unmodified, in part or in whole,\nmust be distributed entirely under this license, and must not be\ndistributed under any other license. The requirement for fonts to\nremain under this license does not apply to any document created\nusing the Font Software.\n\nTERMINATION\nThis license becomes null and void if any of the above conditions are\nnot met.\n\nDISCLAIMER\nTHE FONT SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT\nOF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE\nCOPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,\nINCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL\nDAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING\nFROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM\nOTHER DEALINGS IN THE FONT SOFTWARE.\n"},{"family":"Newsreader","text":"Copyright 2020 The Newsreader Project Authors (http://github.com/productiontype/Newsreader)\n\nThis Font Software is licensed under the SIL Open Font License, Version 1.1.\nThis license is copied below, and is also available with a FAQ at:\nhttp://scripts.sil.org/OFL\n\n\n-----------------------------------------------------------\nSIL OPEN FONT LICENSE Version 1.1 - 26 February 2007\n-----------------------------------------------------------\n\nPREAMBLE\nThe goals of the Open Font License (OFL) are to stimulate worldwide\ndevelopment of collaborative font projects, to support the font creation\nefforts of academic and linguistic communities, and to provide a free and\nopen framework in which fonts may be shared and improved in partnership\nwith others.\n\nThe OFL allows the licensed fonts to be used, studied, modified and\nredistributed freely as long as they are not sold by themselves. The\nfonts, including any derivative works, can be bundled, embedded, \nredistributed and/or sold with any software provided that any reserved\nnames are not used by derivative works. The fonts and derivatives,\nhowever, cannot be released under any other type of license. The\nrequirement for fonts to remain under this license does not apply\nto any document created using the fonts or their derivatives.\n\nDEFINITIONS\n\"Font Software\" refers to the set of files released by the Copyright\nHolder(s) under this license and clearly marked as such. This may\ninclude source files, build scripts and documentation.\n\n\"Reserved Font Name\" refers to any names specified as such after the\ncopyright statement(s).\n\n\"Original Version\" refers to the collection of Font Software components as\ndistributed by the Copyright Holder(s).\n\n\"Modified Version\" refers to any derivative made by adding to, deleting,\nor substituting -- in part or in whole -- any of the components of the\nOriginal Version, by changing formats or by porting the Font Software to a\nnew environment.\n\n\"Author\" refers to any designer, engineer, programmer, technical\nwriter or other person who contributed to the Font Software.\n\nPERMISSION & CONDITIONS\nPermission is hereby granted, free of charge, to any person obtaining\na copy of the Font Software, to use, study, copy, merge, embed, modify,\nredistribute, and sell modified and unmodified copies of the Font\nSoftware, subject to the following conditions:\n\n1) Neither the Font Software nor any of its individual components,\nin Original or Modified Versions, may be sold by itself.\n\n2) Original or Modified Versions of the Font Software may be bundled,\nredistributed and/or sold with any software, provided that each copy\ncontains the above copyright notice and this license. These can be\nincluded either as stand-alone text files, human-readable headers or\nin the appropriate machine-readable metadata fields within text or\nbinary files as long as those fields can be easily viewed by the user.\n\n3) No Modified Version of the Font Software may use the Reserved Font\nName(s) unless explicit written permission is granted by the corresponding\nCopyright Holder. This restriction only applies to the primary font name as\npresented to the users.\n\n4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font\nSoftware shall not be used to promote, endorse or advertise any\nModified Version, except to acknowledge the contribution(s) of the\nCopyright Holder(s) and the Author(s) or with their explicit written\npermission.\n\n5) The Font Software, modified or unmodified, in part or in whole,\nmust be distributed entirely under this license, and must not be\ndistributed under any other license. The requirement for fonts to\nremain under this license does not apply to any document created\nusing the Font Software.\n\nTERMINATION\nThis license becomes null and void if any of the above conditions are\nnot met.\n\nDISCLAIMER\nTHE FONT SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT\nOF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE\nCOPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,\nINCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL\nDAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING\nFROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM\nOTHER DEALINGS IN THE FONT SOFTWARE."},{"family":"DM Sans","text":"Copyright 2014 The DM Sans Project Authors (https://github.com/googlefonts/dm-fonts)\n\nThis Font Software is licensed under the SIL Open Font License, Version 1.1.\nThis license is copied below, and is also available with a FAQ at:\nhttps://scripts.sil.org/OFL\n\n\n-----------------------------------------------------------\nSIL OPEN FONT LICENSE Version 1.1 - 26 February 2007\n-----------------------------------------------------------\n\nPREAMBLE\nThe goals of the Open Font License (OFL) are to stimulate worldwide\ndevelopment of collaborative font projects, to support the font creation\nefforts of academic and linguistic communities, and to provide a free and\nopen framework in which fonts may be shared and improved in partnership\nwith others.\n\nThe OFL allows the licensed fonts to be used, studied, modified and\nredistributed freely as long as they are not sold by themselves. The\nfonts, including any derivative works, can be bundled, embedded, \nredistributed and/or sold with any software provided that any reserved\nnames are not used by derivative works. The fonts and derivatives,\nhowever, cannot be released under any other type of license. The\nrequirement for fonts to remain under this license does not apply\nto any document created using the fonts or their derivatives.\n\nDEFINITIONS\n\"Font Software\" refers to the set of files released by the Copyright\nHolder(s) under this license and clearly marked as such. This may\ninclude source files, build scripts and documentation.\n\n\"Reserved Font Name\" refers to any names specified as such after the\ncopyright statement(s).\n\n\"Original Version\" refers to the collection of Font Software components as\ndistributed by the Copyright Holder(s).\n\n\"Modified Version\" refers to any derivative made by adding to, deleting,\nor substituting -- in part or in whole -- any of the components of the\nOriginal Version, by changing formats or by porting the Font Software to a\nnew environment.\n\n\"Author\" refers to any designer, engineer, programmer, technical\nwriter or other person who contributed to the Font Software.\n\nPERMISSION & CONDITIONS\nPermission is hereby granted, free of charge, to any person obtaining\na copy of the Font Software, to use, study, copy, merge, embed, modify,\nredistribute, and sell modified and unmodified copies of the Font\nSoftware, subject to the following conditions:\n\n1) Neither the Font Software nor any of its individual components,\nin Original or Modified Versions, may be sold by itself.\n\n2) Original or Modified Versions of the Font Software may be bundled,\nredistributed and/or sold with any software, provided that each copy\ncontains the above copyright notice and this license. These can be\nincluded either as stand-alone text files, human-readable headers or\nin the appropriate machine-readable metadata fields within text or\nbinary files as long as those fields can be easily viewed by the user.\n\n3) No Modified Version of the Font Software may use the Reserved Font\nName(s) unless explicit written permission is granted by the corresponding\nCopyright Holder. This restriction only applies to the primary font name as\npresented to the users.\n\n4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font\nSoftware shall not be used to promote, endorse or advertise any\nModified Version, except to acknowledge the contribution(s) of the\nCopyright Holder(s) and the Author(s) or with their explicit written\npermission.\n\n5) The Font Software, modified or unmodified, in part or in whole,\nmust be distributed entirely under this license, and must not be\ndistributed under any other license. The requirement for fonts to\nremain under this license does not apply to any document created\nusing the Font Software.\n\nTERMINATION\nThis license becomes null and void if any of the above conditions are\nnot met.\n\nDISCLAIMER\nTHE FONT SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT\nOF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE\nCOPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,\nINCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL\nDAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING\nFROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM\nOTHER DEALINGS IN THE FONT SOFTWARE.\n"},{"family":"Noto Sans JP","text":"Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'\n\nThis Font Software is licensed under the SIL Open Font License, Version 1.1.\nThis license is copied below, and is also available with a FAQ at:\nhttps://scripts.sil.org/OFL\n\n\n-----------------------------------------------------------\nSIL OPEN FONT LICENSE Version 1.1 - 26 February 2007\n-----------------------------------------------------------\n\nPREAMBLE\nThe goals of the Open Font License (OFL) are to stimulate worldwide\ndevelopment of collaborative font projects, to support the font creation\nefforts of academic and linguistic communities, and to provide a free and\nopen framework in which fonts may be shared and improved in partnership\nwith others.\n\nThe OFL allows the licensed fonts to be used, studied, modified and\nredistributed freely as long as they are not sold by themselves. The\nfonts, including any derivative works, can be bundled, embedded, \nredistributed and/or sold with any software provided that any reserved\nnames are not used by derivative works. The fonts and derivatives,\nhowever, cannot be released under any other type of license. The\nrequirement for fonts to remain under this license does not apply\nto any document created using the fonts or their derivatives.\n\nDEFINITIONS\n\"Font Software\" refers to the set of files released by the Copyright\nHolder(s) under this license and clearly marked as such. This may\ninclude source files, build scripts and documentation.\n\n\"Reserved Font Name\" refers to any names specified as such after the\ncopyright statement(s).\n\n\"Original Version\" refers to the collection of Font Software components as\ndistributed by the Copyright Holder(s).\n\n\"Modified Version\" refers to any derivative made by adding to, deleting,\nor substituting -- in part or in whole -- any of the components of the\nOriginal Version, by changing formats or by porting the Font Software to a\nnew environment.\n\n\"Author\" refers to any designer, engineer, programmer, technical\nwriter or other person who contributed to the Font Software.\n\nPERMISSION & CONDITIONS\nPermission is hereby granted, free of charge, to any person obtaining\na copy of the Font Software, to use, study, copy, merge, embed, modify,\nredistribute, and sell modified and unmodified copies of the Font\nSoftware, subject to the following conditions:\n\n1) Neither the Font Software nor any of its individual components,\nin Original or Modified Versions, may be sold by itself.\n\n2) Original or Modified Versions of the Font Software may be bundled,\nredistributed and/or sold with any software, provided that each copy\ncontains the above copyright notice and this license. These can be\nincluded either as stand-alone text files, human-readable headers or\nin the appropriate machine-readable metadata fields within text or\nbinary files as long as those fields can be easily viewed by the user.\n\n3) No Modified Version of the Font Software may use the Reserved Font\nName(s) unless explicit written permission is granted by the corresponding\nCopyright Holder. This restriction only applies to the primary font name as\npresented to the users.\n\n4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font\nSoftware shall not be used to promote, endorse or advertise any\nModified Version, except to acknowledge the contribution(s) of the\nCopyright Holder(s) and the Author(s) or with their explicit written\npermission.\n\n5) The Font Software, modified or unmodified, in part or in whole,\nmust be distributed entirely under this license, and must not be\ndistributed under any other license. The requirement for fonts to\nremain under this license does not apply to any document created\nusing the Font Software.\n\nTERMINATION\nThis license becomes null and void if any of the above conditions are\nnot met.\n\nDISCLAIMER\nTHE FONT SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT\nOF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE\nCOPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,\nINCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL\nDAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING\nFROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM\nOTHER DEALINGS IN THE FONT SOFTWARE.\n"}];
@@ -4486,10 +4595,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
   /* ── navigation: four destinations in the dock, everything else one level below (0.11 F1: You joined the three) ── */
   var SCREENS = ['s-first', 's-landing', 's-paste', 's-today', 's-decks', 's-deck', 's-browse', 's-add', 's-catalog', 's-cards', 's-review', 's-done',
-    's-you', 's-account', 's-delete', 's-classes', 's-class', 's-settings', 's-stats', 's-slipping', 's-about'];
+    's-you', 's-account', 's-delete', 's-classes', 's-class', 's-settings', 's-stats', 's-slipping', 's-about', 's-check'];
   var TAB_OF = { 's-today': 'today', 's-decks': 'decks', 's-deck': 'decks', 's-browse': 'decks', 's-add': 'decks', 's-catalog': 'decks', 's-cards': 'cards', 's-you': 'you' };
-  var NO_TABS = { 's-first': 1, 's-landing': 1, 's-paste': 1, 's-review': 1, 's-done': 1 };
-  var SCREEN_TITLES = { 's-first': 'Welcome', 's-landing': 'Shared deck', 's-paste': 'Paste a link, code or deck', 's-today': 'Today', 's-decks': 'Decks', 's-deck': 'Deck', 's-browse': 'Browse cards', 's-add': 'Add a deck', 's-catalog': 'Decks you can add', 's-cards': 'My cards', 's-review': 'Review', 's-done': 'Session complete', 's-you': 'You', 's-account': 'Account', 's-delete': 'Delete account', 's-classes': 'Classes', 's-class': 'Class view', 's-settings': 'Settings', 's-stats': 'Progress', 's-slipping': 'Cards that keep slipping', 's-about': 'About Kurikaeshi' };
+  var NO_TABS = { 's-first': 1, 's-landing': 1, 's-paste': 1, 's-review': 1, 's-done': 1, 's-check': 1 };
+  var SCREEN_TITLES = { 's-first': 'Welcome', 's-landing': 'Shared deck', 's-paste': 'Paste a link, code or deck', 's-today': 'Today', 's-decks': 'Decks', 's-deck': 'Deck', 's-browse': 'Browse cards', 's-add': 'Add a deck', 's-catalog': 'Decks you can add', 's-cards': 'My cards', 's-review': 'Review', 's-done': 'Session complete', 's-you': 'You', 's-account': 'Account', 's-delete': 'Delete account', 's-classes': 'Classes', 's-class': 'Class view', 's-settings': 'Settings', 's-stats': 'Progress', 's-slipping': 'Cards that keep slipping', 's-about': 'About Kurikaeshi', 's-check': 'Check yourself' };
   // youFrom: the destination a screen outside TAB_OF belongs to (Settings under You, Progress under Today). youBack: where
   // You's Back returns, the destination You was opened from (0.11 F1: You is a destination of its own now).
   var screen = 's-today', youFrom = 'today', youBack = 'today', pasteFrom = 'first', renderGeneration = 0, screenTimer = null, poppingReview = false;
@@ -5069,8 +5178,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       var on = !lessonOut(id, key);
       var label = key || 'No lesson';
       var countLine = plural(row.total, 'card') + ' · ' + (row.learning + row.review) + ' started' + (on ? '' : ' · Turn on: ' + row.fresh + ' new');
-      h += '<button class="act direction-row lesson-row" type="button" role="switch" aria-label="' + esc(label + ' · ' + countLine) + '" aria-checked="' + (on ? 'true' : 'false') + '" data-lesson="' + esc(key) + '">' +
-        '<span class="direction-copy"><span class="direction-name">' + esc(label) + '</span><span class="direction-count">' + esc(countLine) + '</span></span>' +
+      // 0.11.4: a started lesson's readiness figure, on a line of its own under the counts, so the count line never wraps
+      var ready = readyFigure(row);
+      h += '<button class="act direction-row lesson-row" type="button" role="switch" aria-label="' + esc(label + ' · ' + countLine + (ready ? ' · ' + ready : '')) + '" aria-checked="' + (on ? 'true' : 'false') + '" data-lesson="' + esc(key) + '">' +
+        '<span class="direction-copy"><span class="direction-name">' + esc(label) + '</span><span class="direction-count">' + esc(countLine) + '</span>' + (ready ? '<span class="direction-count lesson-ready">' + esc(ready) + '</span>' : '') + '</span>' +
         '<span class="theme-switch" aria-hidden="true"></span></button>';
     });
     // 0.9.3 G3: a sticky Study now at the sheet's foot once a switch has opened today's queue, so a
@@ -5190,7 +5301,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (sheetTimer) { clearTimeout(sheetTimer); sheetTimer = null; }
     sheetGeneration++;
     sheetAnchor = anchor || null;
+    // 0.11.6: the learner's own deck can be renamed here.
+    var ownDoc = id === OWN_PACK_ID ? packStore.get(id) : null;
     sh.innerHTML = '<div class="sh-title">Deck options</div><div class="prose" style="padding-top:8px">' +
+      (ownDoc ? '<div class="fgroup"><label class="field"><span class="lbl">Deck name</span><input class="textin" id="dopt-title" type="text" maxlength="60" autocomplete="off" value="' + esc(ownDoc.title || 'My cards') + '" aria-describedby="h-dopt-title"></label><span class="hint" id="h-dopt-title">Leave blank to use My cards.</span></div>' : '') +
       '<div class="fgroup"><label class="field"><span class="lbl">New cards a day</span><input class="textin" id="dopt-new" type="number" min="1" max="999" inputmode="numeric" value="' + esc(options.newPerDay == null ? '' : options.newPerDay) + '" placeholder="Use the minutes setting" aria-describedby="h-dopt-new"></label><span class="hint" id="h-dopt-new">Leave blank to use your daily minutes.</span></div>' +
       '<label class="chk"><input id="dopt-pause" type="checkbox"' + (options.paused ? ' checked' : '') + '><span>Pause this deck</span></label>' +
       '<p class="note">Review limit: ' + esc(store.prefs.maxReviewsPerDay) + ' cards a day.</p>' +
@@ -5206,6 +5320,12 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       if (raw && (!Number.isFinite(value) || value < 1 || value > 999)) { setMsg('dopt-msg', 'New cards a day must be from 1 to 999. Change the number and try again.', true); return; }
       var result = packStore.setOptions(id, { newPerDay: value, paused: $('dopt-pause').checked });
       if (!result.ok) { storageBroken = true; setMsg('dopt-msg', result.msg, true); return; }
+      var titleField = $('dopt-title');
+      if (titleField && ownDoc) {
+        var before = packStore.get(id) || ownDoc;
+        var renamed = renamePack(before, titleField.value);
+        if (renamed !== before && !saveOwn(renamed)) return;
+      }
       closeSheet(false);
       renderDeck(id);
       toast(result.msg);
@@ -5416,7 +5536,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   }
   function queueFor(scope, opts) {
     opts = opts || {};
-    return buildQueue(DECK, store, { pack: scope.pack, lesson: scope.lesson, ahead: opts.ahead || 0, aheadDays: opts.aheadDays || 0, deckOptions: opts.deckOptions || deckOptionsFor(), ctx: opts.ctx });
+    // was: return buildQueue(DECK, store, { pack: scope.pack, lesson: scope.lesson, ahead: opts.ahead || 0, aheadDays: opts.aheadDays || 0, deckOptions: opts.deckOptions || deckOptionsFor(), ctx: opts.ctx });
+    // 0.11.6: the Favorites scope is every deck, narrowed to the cards the learner marked; the schedule is the usual one.
+    return buildQueue(DECK, store, { pack: scope.pack, lesson: scope.lesson, ids: scope.favorites ? store.favorites() : null, ahead: opts.ahead || 0, aheadDays: opts.aheadDays || 0, deckOptions: opts.deckOptions || deckOptionsFor(), ctx: opts.ctx });
   }
   /* ── lessons in your daily set: which lessons supply new cards ─────── */
   // options.lessonsOut on the install record, on this device only. No key reads as every lesson in.
@@ -5462,7 +5584,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (lastOn < 0) return null;
     for (var j = lastOn + 1; j < lessons.length; j++) {
       if (lessonOut(id, lessons[j].lesson) && lessons[j].fresh > 0) {
-        return { id: id, key: String(lessons[j].lesson == null ? '' : lessons[j].lesson), done: String(lessons[lastOn].lesson == null ? '' : lessons[lastOn].lesson), fresh: lessons[j].fresh, several: lessons.slice(0, lastOn + 1).filter(function (r) { return !lessonOut(id, r.lesson); }).length > 1 };
+        return { id: id, key: String(lessons[j].lesson == null ? '' : lessons[j].lesson), done: String(lessons[lastOn].lesson == null ? '' : lessons[lastOn].lesson), fresh: lessons[j].fresh, doneRow: lessons[lastOn], several: lessons.slice(0, lastOn + 1).filter(function (r) { return !lessonOut(id, r.lesson); }).length > 1 };
       }
     }
     return null;
@@ -5478,6 +5600,21 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var title = named ? (packStore.list().filter(function (r) { return r.id === nx.id; })[0] || {}).title : '';
     return (title ? title + ': ' : '') + (nx.several ? 'The lessons you have on have no new cards left.' : (nx.done || 'No lesson') + ' has no new cards left.') +
       ' Next is ' + (nx.key || 'No lesson') + ': ' + plural(nx.fresh, 'new card') + '.';
+  }
+  // 0.11.4, the lesson readiness line: how many of a started lesson's cards are past their first week, counted by
+  // pastFirstWeek in queue.js, the one definition (7 days, unbacked, my judgment). It informs the next-lesson choice
+  // and never makes it: nothing here switches a lesson on. A lesson with nothing started says nothing, not 0 of its cards.
+  function readyFigure(row) {
+    return row && row.total > 0 && (row.learning + row.review) > 0 ? row.pastWeek + ' of ' + row.total + ' past their first week' : '';
+  }
+  // Beside the next-lesson notice, for the last lesson that is on: the one the learner would be moving on from.
+  function readyLine(nx) {
+    var figure = readyFigure(nx && nx.doneRow);
+    return figure ? (nx.done || 'No lesson') + ': ' + figure : '';
+  }
+  function readyHtml(nx, id) {
+    var line = readyLine(nx);
+    return line ? '<p class="micro" id="' + id + '">' + esc(line) + '</p>' : '';
   }
   // Take a lesson out or put it back: one write to the install record, then the rows redraw. Nothing
   // is suspended and no history moves; a card already started keeps reviewing whatever its lesson's state.
@@ -5543,7 +5680,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     opts = opts || {};
     var all = opts.all || queueFor(ALL, opts);
     if (isAll(scope)) return all;
-    var part = all.queue.filter(function (c) { return c.pack === scope.pack && (scope.lesson == null || c.lesson === scope.lesson); });
+    // was: var part = all.queue.filter(function (c) { return c.pack === scope.pack && (scope.lesson == null || c.lesson === scope.lesson); });
+    var favs = scope.favorites ? store.favorites() : null;
+    var part = all.queue.filter(function (c) { return favs ? favs.has(c.id) : c.pack === scope.pack && (scope.lesson == null || c.lesson === scope.lesson); });
     var states = opts.ctx && opts.ctx.states;
     var out = {};
     Object.keys(all).forEach(function (k) { out[k] = all[k]; });
@@ -5657,6 +5796,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     };
   }
   function scopeTitle(scope) {
+    if (scope.favorites) return 'Favorites';   // 0.11.6
     if (scope.lesson) return scope.lesson;
     if (scope.pack) return (DECK.packs[scope.pack] || {}).title || scope.pack;
     return '';
@@ -5668,7 +5808,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     return [
       o.learn ? { label: 'Learn new' + where, count: plural(o.learn, 'card'), on: function () { startLearn(scope); } } : null,
       o.soon ? { label: 'Review ahead: next ' + SOON_DAYS + ' days' + where, count: plural(o.soon, 'card'), on: function () { startAhead(scope); } } : null,
-      o.practise ? { label: (scope.pack ? 'Practice all' : 'Practice a deck') + where, count: scope.pack ? plural(o.practise, 'card') : null, on: function () { if (scope.pack) startPractise(scope); else practiseSheet(null); } } : null
+      // was: o.practise ? { label: (scope.pack ? 'Practice all' : 'Practice a deck') + where, count: scope.pack ? plural(o.practise, 'card') : null, on: function () { if (scope.pack) startPractise(scope); else practiseSheet(null); } } : null
+      o.practise ? { label: (scope.pack || scope.favorites ? 'Practice all' : 'Practice a deck') + where, count: scope.pack || scope.favorites ? plural(o.practise, 'card') : null, on: function () { if (scope.pack || scope.favorites) startPractise(scope); else practiseSheet(null); } } : null
     ];
   }
   function practiseSheet(anchor) {
@@ -5743,6 +5884,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   }
   function startSession(queue, scope, mode) {
     if (!queue.length) { toast('Nothing to study right now.'); return; }
+    $('s-review').classList.remove('flipping');   // 0.11.7: a sitting on the schedule is never a flip-through's
     // A deck's Study now (mode 'today') replaces a stopped sitting; Learn new, Review ahead and
     // Practise leave it where it is — Today still offers Continue — but once another activity
     // has answered, Undo in the resumed sitting reaches only its own answers again (§B). The
@@ -5767,7 +5909,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (s.day !== store.dayKey(Date.now())) { toToday(); return; }
     var left = reconcileSitting(s);
     if (!left) { toToday(); return; }
-    session = s; railDone = -1; clearSeal(); show('s-review'); nextCard();
+    session = s; railDone = -1; clearSeal(); $('s-review').classList.remove('flipping'); show('s-review'); nextCard();
   }
   window.__kurikaeshiStoppedSitting = function () {   // the walk reads the parked sitting's three lists by card id (run 18)
     var s = stoppedToday(), ids = function (a) { return a.map(function (c) { return c.id; }); };
@@ -5779,6 +5921,342 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   function startLearn(scope) { startSession(learnQueue(scope), scope, 'learn'); }
   function startAhead(scope) { startSession(aheadQueue(scope), scope, 'ahead'); }
   function startPractise(scope) { startSession(practiseQueue(scope), scope, 'practice'); }
+
+  /* ── Flip through: the deck as a stack of classroom flashcards (0.11.7) ─────── */
+  // The operator, 2026-10-13: "an option to just study a deck, shuffle, use a constant rotation, cycle them, randomize
+  // ... kind of like an in-classroom setting", for a test or one section, beside the schedule and never in its place.
+  // Anki's Custom Study ("Preview new cards" / "Review ahead" with rescheduling off) and Quizlet's Flashcards mode with
+  // its Shuffle and loop are the models. A round is every card the scope holds, new ones too (suspended, held out,
+  // direction-off and retired cards stay out, as they do everywhere), shuffled or in the deck's own order. Each card
+  // turns over on a tap and moves on with Next or a swipe, with no grade asked; Back steps to the one before. With Loop
+  // on (the default) the round starts again when it ends, reshuffled when shuffled, until the learner stops. It writes
+  // nothing at all: no log row, no practice row, no card state, no preference. The spaced schedule never sees it.
+  function flipCards(scope, onlyOn) {
+    var favs = scope.favorites ? store.favorites() : null;
+    return DECK.cards.filter(function (c) {
+      if (favs) { if (!favs.has(c.id)) return false; }
+      else if (c.pack !== scope.pack || (scope.lesson != null && c.lesson !== String(scope.lesson))) return false;
+      if (store.isSuspended(c.id) || store.isRetired(c.id)) return false;
+      return !(onlyOn && c.pack !== OWN_PACK_ID && lessonOut(c.pack, c.lesson));
+    });
+  }
+  // A deck whose lessons are all on, or a lesson, or Favorites: one row. A deck with lessons switched off: two, so the
+  // section a test covers is one tap.
+  // A paused deck offers none, as it offers no other study (its sheet keeps what it already keeps).
+  function flipItems(scope) {
+    if (!scope.favorites && (deckOptionsFor()[scope.pack] || {}).paused) return [];
+    var all = flipCards(scope, false).length;
+    if (!all) return [];
+    var on = scope.lesson == null && !scope.favorites ? flipCards(scope, true).length : all;
+    var items = [{ label: on < all ? 'Flip through all' : 'Flip through', count: plural(all, 'card'), sub: MODE_WHY.flip, on: function (b) { flipSheet(scope, false, b); } }];
+    if (on && on < all) items.push({ label: 'Flip through lessons on', count: plural(on, 'card'), sub: 'Only the lessons switched on, new cards too. The schedule does not change.', on: function (b) { flipSheet(scope, true, b); } });
+    return items;
+  }
+  function flipSheet(scope, onlyOn, anchor) {
+    var n = flipCards(scope, onlyOn).length;
+    var go = function (order, loop) { return function () { startFlip(scope, { onlyOn: onlyOn, order: order, loop: loop }); }; };
+    openSheet(anchor, 'Flip through · ' + scopeTitle(scope), [
+      { label: 'Shuffled', count: 'loop', sub: 'A new order each time round, until you stop.', on: go('shuffle', true) },
+      { label: 'In order', count: 'loop', sub: 'The deck’s own order, round and round, until you stop.', on: go('order', true) },
+      { label: 'Shuffled, once through', count: plural(n, 'card'), sub: 'Each card once, then a count of what you saw.', on: go('shuffle', false) },
+      { label: 'In order, once through', count: plural(n, 'card'), sub: 'Each card once, in the deck’s order.', on: go('order', false) }
+    ], '<p>Tap a card to turn it over. Next or a swipe moves on. No grades, and the schedule does not change.</p>', 'sh-lead');
+  }
+  function flipDeal(f) { return f.order === 'shuffle' ? shuffled(f.cards) : f.cards.slice(); }
+  function startFlip(scope, opts) {
+    var cards = flipCards(scope, !!opts.onlyOn);
+    if (!cards.length) { toast('No cards to flip through here.'); return; }
+    justStopped = null; doneUndo = null;
+    var f = { cards: cards, order: opts.order === 'order' ? 'order' : 'shuffle', loop: opts.loop !== false, onlyOn: !!opts.onlyOn, round: 1, at: 0, seen: {}, turned: 0, back: [] };
+    session = { queue: flipDeal(f), learning: [], repeat: [], done: 0, answered: 0, again: 0, elapsed: 0, cards: {}, entries: [], total: cards.length, scope: scope, mode: 'flip', day: store.dayKey(Date.now()), undoBlocked: false, flip: f };
+    railDone = -1; card = null;
+    clearSeal();
+    $('s-review').classList.add('flipping');
+    show('s-review');
+    flipNext();
+  }
+  window.__kurikaeshiFlip = function () { var f = session && session.flip; return f ? { order: f.order, loop: f.loop, round: f.round, at: f.at, total: f.cards.length, card: card ? card.id : null, revealed: revealed, seen: Object.keys(f.seen).length } : null; };   // the walk reads the round
+  // The next card of the round; at the end of one, a loop deals the next round (a shuffle never opens a round on the card
+  // that closed the last one, so a card is never shown twice running), and once through ends on the count.
+  function flipNext() {
+    var f = session.flip;
+    if (card) { f.back.push(card); if (f.back.length > 200) f.back.shift(); }
+    if (!session.queue.length) {
+      if (!f.loop) { card = null; return flipEnd('finished'); }
+      var deal = flipDeal(f);
+      if (deal.length > 1 && card && deal[0].id === card.id) deal.push(deal.shift());
+      session.queue = deal; f.round++; f.at = 0;
+    }
+    flipShow(session.queue.shift());
+  }
+  function flipPrev() {
+    var f = session.flip;
+    if (!f.back.length) return;
+    if (card) { session.queue.unshift(card); f.at = Math.max(0, f.at - 2); }
+    flipShow(f.back.pop());
+  }
+  function flipShow(c) {
+    var f = session.flip;
+    cancelSay();
+    card = c; f.at++; f.seen[c.id] = 1;
+    revealed = false; hintShown = false; meaningShown = false; previews = null;
+    shownAt = Date.now();
+    $('r-left').innerHTML = '<span>' + f.at + ' of ' + f.cards.length + '</span>' + (f.loop ? ' <span>· round ' + f.round + '</span>' : '');
+    drawRail(f.cards.length, f.at - 1);
+    $('r-undo').hidden = true;
+    cardArriving = true;
+    drawCard();
+  }
+  function flipTurn() {
+    if (!card) return;
+    if (revealed) { revealed = false; drawCard(); return; }
+    session.flip.turned++;
+    reveal();
+  }
+  // The band: Back, then the one big button, which turns the card over and then moves on. Speed is the point, so a tap
+  // here is never refused as too soon; nothing it does is written anywhere.
+  function drawFlipBand() {
+    var band = $('r-band'), f = session.flip, undo = $('r-undo');
+    bandDrawnAt = Date.now();
+    undo.hidden = true; undo.disabled = true;
+    band.innerHTML = '<button class="ghost fl-back" id="fl-back" type="button"' + (f.back.length ? '' : ' disabled') + '>Back</button>' +
+      (revealed ? '<button class="reveal" id="fl-next" type="button">Next</button>' : '<button class="reveal" id="reveal" type="button">Show answer</button>');
+    $('fl-back').addEventListener('click', flipPrev);
+    var main = revealed ? $('fl-next') : $('reveal');
+    main.addEventListener('click', function () { if (revealed) flipNext(); else flipTurn(); });
+    try { main.focus({ preventScroll: true }); } catch (e) { main.focus(); }
+  }
+  function openFlipMore(anchor) {
+    var f = session.flip, current = card;
+    openSheet(anchor, 'More', [
+      { label: f.order === 'shuffle' ? 'Put the rest in order' : 'Shuffle the rest', on: function () {
+        f.order = f.order === 'shuffle' ? 'order' : 'shuffle';
+        if (f.order === 'shuffle') session.queue = shuffled(session.queue);
+        else { var left = {}; session.queue.forEach(function (c) { left[c.id] = 1; }); session.queue = f.cards.filter(function (c) { return left[c.id]; }); }
+        toast(f.order === 'shuffle' ? 'Shuffled.' : 'In the deck’s order.');
+      } },
+      { label: f.loop ? 'Stop after this round' : 'Keep going round', sub: f.loop ? 'Loop is on.' : 'Loop is off.', on: function () {
+        f.loop = !f.loop;
+        $('r-left').innerHTML = '<span>' + f.at + ' of ' + f.cards.length + '</span>' + (f.loop ? ' <span>· round ' + f.round + '</span>' : '');
+        toast(f.loop ? 'Round and round until you stop.' : 'This round is the last.');
+      } },
+      current ? { label: 'Card details', on: function (button) { openCardDetails(button, current, revealed); } } : null
+    ].concat(current ? keepItems(current) : []));
+  }
+  // Stopping or finishing says what the round covered and that the schedule did not move, and offers it again.
+  function flipEnd(reason) {
+    var s = session, f = s.flip, scope = s.scope;
+    var seen = Object.keys(f.seen).length;
+    var head = reason === 'finished' ? 'Flipped through' : seen ? 'Stopped flipping' : 'Nothing flipped yet';
+    var line = seen ? plural(seen, 'card') + ' of ' + f.cards.length + ' seen' + (f.round > 1 ? ', ' + plural(f.round, 'round') : '') + '. Your schedule did not change.' : 'Your schedule did not change.';
+    $('dn-body').innerHTML = '<div class="dn-summary"><h2 class="display">' + esc(head) + '</h2><p>' + esc(line) + '</p></div>' +
+      '<div class="stack"><button class="primary" id="fl-again" type="button">Flip through again</button>' +
+      '<button class="ghost" id="fl-leave" type="button">' + (scope.favorites ? 'Back to Today' : 'Back to the deck') + '</button></div>';
+    var again = { onlyOn: f.onlyOn, order: f.order, loop: f.loop };
+    $('fl-again').addEventListener('click', function () { startFlip(scope, again); });
+    $('fl-leave').addEventListener('click', function () {
+      if (!scope.favorites && packStore.has(scope.pack)) { renderDeck(scope.pack); show('s-deck'); } else goTab('today');
+    });
+    justStopped = null; doneUndo = null;
+    card = null; session = null;
+    $('s-review').classList.remove('flipping');
+    $('s-done').classList.remove('h6');
+    $('dn-title').textContent = head;
+    SCREEN_TITLES['s-done'] = head;
+    show('s-done');
+  }
+  // A swipe across the card moves on (left) or back (right), the way a stack of cards is thumbed through.
+  (function () {
+    var x0 = null, y0 = 0;
+    $('r-card').addEventListener('touchstart', function (ev) {
+      if (!session || session.mode !== 'flip' || ev.touches.length !== 1) { x0 = null; return; }
+      x0 = ev.touches[0].clientX; y0 = ev.touches[0].clientY;
+    }, { passive: true });
+    // a sideways move is the card's own: held from the browser, whose edge swipe would otherwise go Back out of the round
+    $('r-card').addEventListener('touchmove', function (ev) {
+      if (x0 == null || !session || session.mode !== 'flip' || ev.touches.length !== 1) return;
+      var dx = ev.touches[0].clientX - x0, dy = ev.touches[0].clientY - y0;
+      if (Math.abs(dx) > Math.abs(dy) && ev.cancelable) ev.preventDefault();
+    }, { passive: false });
+    $('r-card').addEventListener('touchend', function (ev) {
+      if (x0 == null || !session || session.mode !== 'flip') return;
+      var t = ev.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+      x0 = null;
+      if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      if (dx < 0) flipNext(); else flipPrev();
+    }, { passive: true });
+  })();
+
+  /* ── Check yourself: a lesson's multiple-choice check (0.11.5) ─────────── */
+  // The overnight report of 2026-10-11 (sections 4 and 5, rank 6): a tester asked how to tell what a lesson left behind.
+  // WaniKani's Extra Study and Kanji Study's four-choice quizzes are the models. A round asks up to ten of a lesson's
+  // cards in a random order, each by its kanji or word, with four meanings: its own and three other cards' meanings
+  // from the same lesson, from the rest of the deck only when the lesson has too few different ones. A card here is one
+  // per note (a kanji's two directions ask one question). The round reads the deck and writes nothing at all: no log
+  // row, no practice row, no card state, no preference (the walk compares every stored byte before and after). A choice
+  // is marked by the grade band's own shapes with a word beside them, never by colour alone; the end states the count
+  // and names what was missed, with the app's own Practice for those cards.
+  var CHECK_N = 10, CHECK_CHOICES = 4;
+  var checkRound = null;
+  function checkPlain(value) { return String(value == null ? '' : value).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(); }
+  function shuffled(list) {
+    var a = list.slice();
+    for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; }
+    return a;
+  }
+  // One note's question: the first of its directions whose places hold a Japanese word and a meaning in another script.
+  function checkItemOf(n) {
+    var nt = typeOf(n), f = n.fields;
+    if (!nt || nt.kind === 'cloze' || !Array.isArray(nt.templates) || !Array.isArray(nt.fields) || !f) return null;
+    for (var i = 0; i < nt.templates.length; i++) {
+      var places = answerPlaces(nt, f, nt.templates[i]);
+      var word = places.word ? checkPlain(sayText(f[places.word])) : '', mean = places.mean ? checkPlain(f[places.mean]) : '';
+      if (word && mean && isJapanese(word) && !isJapanese(mean)) {
+        return { word: word, mean: mean, same: mean.toLowerCase(), field: places.word, lang: (DECK.packs[n.pack] || {}).language || 'ja',
+          kanji: Array.from(word).length === 1 && HAN_ONE.test(word), cards: [] };
+      }
+    }
+    return null;
+  }
+  // A lesson's questions (lesson null: the whole deck's), one per note in the deck's order, each with its cards; the card
+  // a missed question practises is the one asking from the same word, else the note's first. Two notes written the same
+  // (the kanji 七 and the word 七) are one question, asked once: the first one's meaning is the answer, and the other's
+  // meaning is never offered beside it as a wrong one.
+  function checkItems(packId, lesson) {
+    var byNote = {}, byWord = {}, out = [];
+    (lesson == null ? DECK.cards.filter(function (c) { return c.pack === packId; }) : lessonCards(packId, lesson)).forEach(function (c) {
+      var key = c.pack + '/' + c.guid;
+      if (!Object.prototype.hasOwnProperty.call(byNote, key)) {
+        var n = noteOf(c);
+        var it = n ? checkItemOf(n) : null;
+        if (it && Object.prototype.hasOwnProperty.call(byWord, it.word)) { byWord[it.word].also[it.same] = 1; it = byWord[it.word]; }
+        else if (it) { it.also = {}; it.also[it.same] = 1; byWord[it.word] = it; out.push(it); }
+        byNote[key] = it;
+      }
+      if (byNote[key]) byNote[key].cards.push(c);
+    });
+    out.forEach(function (it) {
+      var asks = it.cards.filter(function (c) { var n = noteOf(c), nt = n && typeOf(n), t = nt && nt.templates[c.ord]; return t && t.prompt === it.field && checkPlain(sayText(n.fields[t.prompt])) === it.word; });
+      it.card = asks[0] || it.cards[0];
+    });
+    return out;
+  }
+  // How many cards a lesson's check asks, or 0 when it is not offered: fewer than four cards, or a deck without four
+  // different meanings to choose from.
+  function checkOffer(scope) {
+    var items = checkItems(scope.pack, scope.lesson);
+    if (items.length < CHECK_CHOICES) return 0;
+    var means = {};
+    checkItems(scope.pack, null).forEach(function (it) { means[it.same] = 1; });
+    return Object.keys(means).length >= CHECK_CHOICES ? Math.min(CHECK_N, items.length) : 0;
+  }
+  function startCheck(scope) {
+    var items = checkItems(scope.pack, scope.lesson), deck = checkItems(scope.pack, null);
+    var qs = shuffled(items).slice(0, CHECK_N).map(function (it) {
+      var taken = Object.assign({}, it.also), picks = [];
+      var draw = function (pool) {
+        shuffled(pool).forEach(function (o) { if (picks.length < CHECK_CHOICES - 1 && !taken[o.same]) { taken[o.same] = 1; picks.push(o.mean); } });
+      };
+      draw(items);
+      if (picks.length < CHECK_CHOICES - 1) draw(deck);
+      return { item: it, choices: shuffled([it.mean].concat(picks)), chosen: -1 };
+    });
+    if (!qs.length) { toast('Nothing to check here yet.'); return; }
+    checkRound = { scope: scope, qs: qs, at: 0 };
+    $('ck-said').textContent = '';
+    drawCheck();
+    show('s-check');
+  }
+  window.__kurikaeshiCheck = function () { return checkRound ? { at: checkRound.at, total: checkRound.qs.length, asked: checkRound.qs.map(function (q) { return q.item.card.id; }) } : null; };   // the walk reads the round
+  function checkMark(kind) {
+    return '<span class="ck-said"><svg class="gm" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + GRADE_MARKS[kind === 'right' ? 3 : 1] + '</svg>' + (kind === 'right' ? 'Right' : 'Wrong') + '</span>';
+  }
+  function drawCheck() {
+    var r = checkRound, host = $('ck-body');
+    if (!r) return;
+    if (r.at >= r.qs.length) { drawCheckEnd(); return; }
+    var q = r.qs[r.at], it = q.item, answered = q.chosen >= 0, right = q.choices.indexOf(it.mean);
+    host.className = 'ck-body';
+    $('ck-stop').hidden = false;
+    $('ck-left').textContent = (r.at + 1) + ' of ' + r.qs.length;
+    var h = '<div class="ck-card' + (it.kanji ? ' ck-kanji' : '') + (answered ? '' : ' card-in') + '"><span class="ck-tag">' + esc(lessonLabel(r.scope.pack, r.scope.lesson)) + '</span>' +
+      '<p class="ck-prompt" lang="' + esc(it.lang) + '">' + esc(it.word) + '</p><p class="ck-ask" id="ck-ask">Which meaning?</p></div>' +
+      '<div class="ck-choices" role="group" aria-labelledby="ck-ask">';
+    q.choices.forEach(function (m, i) {
+      var mark = !answered ? '' : i === right ? 'right' : i === q.chosen ? 'wrong' : '';
+      h += '<button class="ck-choice' + (mark ? ' ' + mark : '') + '" type="button" data-i="' + i + '"' + (answered ? ' disabled' : '') + '>' +
+        '<span class="ck-key" aria-hidden="true">' + (i + 1) + '</span><span class="ck-mean">' + esc(m) + '</span>' + (mark ? checkMark(mark) : '') + '</button>';
+    });
+    h += '</div><div class="ck-next">' + (answered ? '<button class="primary" id="ck-next" type="button">' + (r.at + 1 < r.qs.length ? 'Next' : 'Finish') + '</button>' : '') + '</div>';
+    host.innerHTML = h;
+    Array.prototype.forEach.call(host.querySelectorAll('.ck-choice'), function (b) {
+      b.addEventListener('click', function () { chooseCheck(parseInt(b.getAttribute('data-i'), 10)); });
+    });
+    var nx = $('ck-next');
+    if (nx) nx.addEventListener('click', nextCheck);
+  }
+  function chooseCheck(i) {
+    var r = checkRound, q = r && r.at < r.qs.length ? r.qs[r.at] : null;
+    if (!q || q.chosen >= 0 || i < 0 || i >= q.choices.length) return;
+    q.chosen = i;
+    $('ck-said').textContent = (q.choices[i] === q.item.mean ? 'Right. ' : 'Wrong. ') + q.item.word + ' means ' + q.item.mean + '.';
+    drawCheck();
+    var nx = $('ck-next');
+    if (nx) { try { nx.focus({ preventScroll: true }); } catch (e) { nx.focus(); } }
+  }
+  function nextCheck() {
+    var r = checkRound;
+    if (!r || r.at >= r.qs.length || r.qs[r.at].chosen < 0) return;
+    r.at++;
+    $('ck-said').textContent = '';
+    drawCheck();
+    var first = $('ck-body').querySelector('.ck-choice, button');
+    if (first) { try { first.focus({ preventScroll: true }); } catch (e) { first.focus(); } }
+  }
+  function drawCheckEnd() {
+    var r = checkRound, host = $('ck-body');
+    var missed = r.qs.filter(function (q) { return q.choices[q.chosen] !== q.item.mean; });
+    var right = r.qs.length - missed.length;
+    $('ck-left').textContent = '';
+    $('ck-stop').hidden = true;   // the end has its own two ways on, and Stop would be a third
+    host.className = 'ck-body centre ck-end';
+    var h = '<div class="dn-summary"><h2 class="display" id="ck-score">' + right + ' of ' + r.qs.length + ' right</h2><p>Your schedule did not change.</p>';
+    if (missed.length) {
+      h += '<div class="micro sit">Missed</div><div class="rows ck-miss">' + missed.map(function (q) {
+        return '<div class="row"><span class="k" lang="' + esc(q.item.lang) + '">' + esc(q.item.word) + '</span><span class="v">' + esc(q.item.mean) + '</span></div>';
+      }).join('') + '</div>';
+    }
+    // was: the button below carried the id in the British spelling, which the page's literal scan bans, ids included.
+    h += '</div><div class="stack">' + (missed.length ? '<button class="primary" id="ck-practice" type="button">Practice the ' + missed.length + ' missed</button>' : '') +
+      '<button class="' + (missed.length ? 'ghost' : 'primary') + '" id="ck-back" type="button">Back to the deck</button></div>';
+    host.innerHTML = h;
+    // was: the same lookup by the British spelling of the id.
+    var pr = $('ck-practice');
+    if (pr) pr.addEventListener('click', function () { startSession(missed.map(function (q) { return q.item.card; }), r.scope, 'practice'); });
+    $('ck-back').addEventListener('click', leaveCheck);
+    var sc = $('ck-score');
+    $('ck-said').textContent = sc.textContent + '.';
+  }
+  // Leaving a round, finished or not, returns to its deck; nothing was written, so nothing is kept or undone.
+  function leaveCheck() {
+    var r = checkRound;
+    if (r && r.scope && packStore.has(r.scope.pack)) { renderDeck(r.scope.pack); show('s-deck'); }
+    else goTab('decks');
+  }
+  $('ck-stop').addEventListener('click', leaveCheck);
+  // The study screen's keys, on this screen: 1 to 4 choose (the shortcut switch governs them, as it does the grades),
+  // Enter moves on, Escape leaves. A key on a focused button is that button's own.
+  function checkKey(ev) {
+    var tag = (ev.target && ev.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (ev.key === 'Escape') { ev.preventDefault(); leaveCheck(); return; }
+    var r = checkRound, q = r && r.at < r.qs.length ? r.qs[r.at] : null;
+    if (!q) return;
+    if ((ev.key === ' ' || ev.key === 'Enter') && ev.target && ev.target.nodeType === 1 && ev.target.closest('button,a')) return;
+    if (ev.key === 'Enter' && q.chosen >= 0) { ev.preventDefault(); nextCheck(); return; }
+    if (store.prefs.keyboardShortcuts === false) return;
+    if (q.chosen < 0 && ev.key >= '1' && ev.key <= String(q.choices.length)) { ev.preventDefault(); chooseCheck(parseInt(ev.key, 10) - 1); }
+  }
 
   // A learning card comes back on its step, not at the end of the queue: the session keeps its
   // own learning cards in due order, apart from ordinary work, and takes one when its time has
@@ -5880,6 +6358,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     historyRows.forEach(function (entry) {
       items.push({ label: fmtCardDate(store.dayKey(entry.t)) + ' · ' + labels[entry.g], count: fmtIvl(entry.i), static: true });
     });
+    // 0.11.6: a card can be marked a favorite, and a course card can be copied into the learner's own deck.
+    keepItems(current).forEach(function (it) { items.push(it); });
     // Close stays at the sheet's foot however long the history above it (item 73, 2026-09-20): a reader
     // of assistive technology, or a thumb, meets it as the sheet opens, not after a scroll.
     items.push({ label: 'Close', on: function () {}, stick: true });
@@ -5910,14 +6390,106 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         } });
       } },
       { label: 'Card details', on: function (button) { openCardDetails(button, current, revealed); } },
-      { label: 'What the grades mean', on: function (button) { openGradeMeanings(button); } },
+      { label: 'What the grades mean', on: function (button) { openGradeMeanings(button); } }
+    // was: the list closed here with the Edit card item and ]); the favorite and the copy items now sit before Edit card
+    ].concat(keepItems(current), [
       own ? { id: 'r-edit', label: 'Edit card', on: function () {
         cardsView.editing = { guid: current.guid, back: 'review' }; renderCards(); show('s-cards');
         $('tabbar').hidden = true;
         $('app').className = '';
       } } : null
-    ]);
+    ]));
   }
+
+  /* ── favorites and copies into the learner's own deck (0.11.6) ─────── */
+  // The operator, 2026-10-13: a learner pulls the cards they want from a course deck into their own deck, and marks
+  // favorites. The course decks stay as they are. A copy is a new card of the learner's own: it starts new there, and the
+  // course card keeps its own schedule. A favorite is a mark on a card, kept on the device beside the suspensions; the
+  // Favorites list studies those cards on their usual schedule. Copies stay out of anything the learner shares.
+  var FAV = { pack: null, lesson: null, favorites: true };
+  function ownTitle() { var p = ownPack(); return (p && p.title) || 'My cards'; }
+  function copyKey(c) { return c.pack + '/' + c.guid; }
+  // What a course card becomes in the learner's deck. A word with a meaning is a Vocabulary card; a fill-in-the-blank
+  // stays one; anything else is a Basic card (both ways when the course card has two directions) whose front and back are
+  // its first direction, and whose note carries the rest of the card (readings, stroke count), each with its label.
+  function copyOfCard(c) {
+    var n = noteOf(c), nt = n ? typeOf(n) : null;
+    if (!n || !nt || !n.fields || !Array.isArray(nt.fields) || !Array.isArray(nt.templates) || !nt.templates.length) return null;
+    var f = n.fields, d = nt.display || {};
+    var s = function (v) { return v == null ? '' : String(v).trim(); };
+    var pk = DECK.packs[n.pack] || {};
+    var lesson = [s(pk.title), s(n.lesson)].filter(Boolean).join(' · ');
+    var shown = function (name) { var role = d[name]; return role !== 'hidden' && role !== 'image' && role !== 'hint' && !!s(f[name]); };
+    var hint = ''; nt.fields.forEach(function (name) { if (!hint && d[name] === 'hint') hint = s(f[name]); });
+    var labelled = function (name) {
+      var lab = nt.labels && nt.labels[name] ? String(nt.labels[name]) : '';
+      if (lab.indexOf('|') >= 0) { var two = lab.split('|'); return s(f[name]) + ' ' + (s(f[name]) === '1' ? two[0] : two[1]); }
+      var word = lab ? lab.split(' · ')[0] : name.charAt(0).toUpperCase() + name.slice(1);
+      return word + ': ' + s(f[name]);
+    };
+    if (nt.kind === 'cloze') {
+      var tf = nt.templates[0].prompt;
+      return { type: 'cloze', lesson: lesson, fields: { text: s(f[tf]), extra: nt.fields.filter(function (name) { return name !== tf && shown(name); }).map(labelled).join(' · ') } };
+    }
+    var meaning = s(f.meaning) || s(f.english);
+    if (s(f.word) && meaning) {
+      var mField = s(f.meaning) ? 'meaning' : 'english';
+      var others = nt.fields.filter(function (name) { return name !== 'word' && name !== 'reading' && name !== mField && name !== 'note' && shown(name); }).map(labelled);
+      return { type: 'vocab', lesson: lesson, fields: { word: s(f.word), reading: s(f.reading), meaning: meaning, note: [s(f.note)].concat(others).filter(Boolean).join(' · '), hint: hint } };
+    }
+    var t0 = nt.templates[0];
+    var rest = nt.fields.filter(function (name) { return name !== t0.prompt && name !== t0.answer && shown(name); }).map(labelled).join(' · ');
+    return { type: nt.templates.length > 1 ? 'both' : 'basic', lesson: lesson, fields: { front: s(f[t0.prompt]), back: s(f[t0.answer]), note: rest, hint: hint } };
+  }
+  function copyToOwn(c) {
+    var current = ownPack();
+    if (findCopy(current, copyKey(c))) { toast('Already in ' + ownTitle()); return false; }
+    var copy = copyOfCard(c);
+    if (!copy || noteProblem(copy.type, copy.fields)) { toast('This card could not be added to ' + ownTitle() + '.'); return false; }
+    var next;
+    try { next = copyNote(current || ownPackBase((DECK.packs[c.pack] || {}).language || ''), { type: copy.type, lesson: copy.lesson, fields: copy.fields, from: copyKey(c) }); }
+    catch (e) { toast('This card could not be added to ' + ownTitle() + '.'); return false; }
+    if (!saveOwn(next)) return false;
+    toast('Added to ' + ownTitle() + ' as a new card');
+    return true;
+  }
+  function toggleFavorite(c) {
+    var on = store.isFavorite(c.id);
+    if (!(on ? store.unfavorite([c.id]) : store.favorite([c.id]))) { storageBroken = true; showStorageProblem(); return; }
+    toast(on ? 'Removed from favorites' : 'Added to favorites');
+    if (screen === 's-cards' && !cardsView.editing && !cardsView.importing) renderCards();
+    else if (screen === 's-deck' && openDeck === OWN_PACK_ID) renderDeck(OWN_PACK_ID);
+  }
+  // The two items the card sheets carry. A card of the learner's own is already theirs, so it offers only the favorite.
+  function keepItems(c) {
+    if (!c) return [];
+    var out = [{ id: 'kp-fav', label: store.isFavorite(c.id) ? 'Remove from favorites' : 'Add to favorites', on: function () { toggleFavorite(c); } }];
+    if (c.pack !== OWN_PACK_ID) {
+      out.push(findCopy(ownPack(), copyKey(c))
+        ? { id: 'kp-copy', label: 'Already in ' + ownTitle(), static: true }
+        : { id: 'kp-copy', label: 'Add to ' + (ownTitle().split(/\s+/).length <= 2 ? ownTitle() : 'my own deck'), on: function () { copyToOwn(c); } });
+    }
+    return out;
+  }
+  // The favorites that are still cards in an installed deck.
+  function favoriteCards() {
+    var favs = store.favorites();
+    return favs.size ? DECK.cards.filter(function (c) { return favs.has(c.id); }) : [];
+  }
+  function favoritesSheet(anchor) {
+    var n = favoriteCards().length;
+    var o = offersFor(FAV), today = o.today.queue.length;
+    var items = [today ? { label: 'Study now', count: plural(today, 'card'), sub: 'Your favorites in today’s set, on the usual schedule.', on: function () { startNow(FAV); } } : null];
+    if (o.learn) items.push({ label: 'Learn new', count: plural(o.learn, 'card'), sub: MODE_WHY.learn, on: function () { startLearn(FAV); } });
+    if (o.soon) items.push({ label: 'Review ahead: next ' + SOON_DAYS + ' days', count: plural(o.soon, 'card'), sub: MODE_WHY.ahead, on: function () { startAhead(FAV); } });
+    if (o.practise) items.push({ label: 'Practice all', count: plural(o.practise, 'card'), sub: MODE_WHY.practise, on: function () { startPractise(FAV); } });
+    items = items.concat(flipItems(FAV));   // 0.11.7
+    if (!items.filter(Boolean).length) { items.push({ label: 'Nothing to study here yet', static: true }); items.push({ label: 'Close', on: function () {} }); }
+    openSheet(anchor, 'Favorites', items, '<p id="fav-lead">' + esc(plural(n, 'favorite card')) + '. Add or remove one from its Card details.</p>', 'sh-lead');
+  }
+  window.__kurikaeshiFavorites = function () { return Array.from(store.favorites()); };
+  // The walk calls this on a card already copied, to prove the refusal is the function's own and not only the sheet's.
+  window.__kurikaeshiCopyToOwn = function (id) { var c = DECK.cards.filter(function (x) { return x.id === id; })[0]; return c ? copyToOwn(c) : null; };
 
   function openGradeMeanings(anchor) {
     if (!card) return;
@@ -5941,6 +6513,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
   function nextCard() {
     if (!session) return;
+    if (session.mode === 'flip') { flipNext(); return; }   // 0.11.7: a flip-through round deals its own cards
     cancelSay();
     var now = Date.now();
     var next = takeLearning(now, 0) || session.queue.shift() || session.repeat.shift() || takeLearning(now, LEARN_AHEAD_MS);
@@ -6414,7 +6987,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     frontSaysAnswer = !cloze && spokenForm(f[tmpl.answer]);
     var pk = DECK.packs[n.pack] || {}, lang = pk.language || '';
     // 0.11.2 (round 3's tag): a card seen before says Review, so the pill always opens with what this showing is
-    var tagHtml = '<div class="tag">' + (st.state === 'new' ? 'New · ' : session.mode === 'practice' ? '' : 'Review · ') + (session.mode === 'practice' ? 'Practice · ' : '') + esc(n.lesson || pk.title) + (typeof tmpl.name === 'string' && tmpl.name ? ' · ' + esc(tmpl.name) : '') + (cloze ? ' ' + card.ord : '') +
+    // 0.11.7: a flip-through card says so first, and not New or Review: nothing it does reaches the schedule
+    var tagHtml = '<div class="tag">' + (session.mode === 'flip' ? 'Flip through · ' : (st.state === 'new' ? 'New · ' : session.mode === 'practice' ? '' : 'Review · ') + (session.mode === 'practice' ? 'Practice · ' : '')) + esc(n.lesson || pk.title) + (typeof tmpl.name === 'string' && tmpl.name ? ' · ' + esc(tmpl.name) : '') + (cloze ? ' ' + card.ord : '') +
       (st.leech ? ' <span class="leech">keeps slipping</span>' : '') + '</div>';
     // The prompt is the template's prompt field and nothing else: a reading shown beside a
     // word is the answer (one unknown per card, readings hidden on the ask). No Listen on the question (DESIGN-0.11 H2).
@@ -6541,6 +7115,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   var GRADE_MARKS = { 1: '<path d="M6 6l12 12M18 6 6 18"/>', 2: '<path d="M12 4.5 20.5 19h-17z"/>', 3: '<circle cx="12" cy="12" r="8"/>',
     4: '<circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="3.9"/>' };
   function drawBand() {
+    if (session && session.mode === 'flip') { drawFlipBand(); return; }   // 0.11.7: Back and Show answer / Next, no grades
     var band = $('r-band');
     var undo = $('r-undo');
     bandDrawnAt = Date.now();
@@ -6614,6 +7189,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
   function answer(grade) {
     if (!card || !previews) return;   // a grade tap between cards, or before a reveal, does nothing
+    if (session.mode === 'flip') return;   // 0.11.7: flipping through grades nothing and writes nothing
     var st = store.state(card.id);
     var beforeLapses = st.lapses;
     var next = previews[grade];
@@ -6745,7 +7321,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     }
     return 'Nothing is due in the next week.';
   }
-  function isAll(scope) { return !scope || (!scope.pack && !scope.lesson); }
+  // was: function isAll(scope) { return !scope || (!scope.pack && !scope.lesson); }
+  function isAll(scope) { return !scope || (!scope.pack && !scope.lesson && !scope.favorites); }
   // 0.11 (the design's H6): Done for today leads with the next due day and its count, the same forecast nextCardsLine reads.
   function nextDueDay() {
     var f = comingDays();
@@ -6799,6 +7376,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // else finished. Completion is judged against the session's OWN scope and mode (§G.4); work
   // outside it is offered, never used to contradict the learner.
   function finish(reason) {
+    if (session && session.mode === 'flip') { flipEnd(reason === 'stopped' ? 'stopped' : 'finished'); return; }   // 0.11.7
     if (reason !== 'stopped' && reason !== 'pending') reason = 'finished';
     // The card on screen was shifted off the queue when it was shown; a stop keeps it, in front.
     if (reason === 'stopped' && session && card) session.queue.unshift(card);
@@ -7053,7 +7631,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       if (ownTile) h += '<p class="micro" id="t-own">' + ownTile + '</p>';
       if (b.counts.learningLater) h += '<p class="micro" id="t-later">' + plural(b.counts.learningLater, 'card comes', 'cards come') + ' back later today.</p>';
       var nextStart = nextLessonAny(ctx);
-      if (nextStart) h += '<p class="micro" id="t-next">' + esc(nextLessonSentence(nextStart, courseDeckCount() > 1)) + '</p><button class="textbtn" id="t-next-on" type="button">Switch on ' + esc(nextStart.key || 'No lesson') + '</button>';
+      if (nextStart) h += '<p class="micro" id="t-next">' + esc(nextLessonSentence(nextStart, courseDeckCount() > 1)) + '</p>' + readyHtml(nextStart, 't-ready') + '<button class="textbtn" id="t-next-on" type="button">Switch on ' + esc(nextStart.key || 'No lesson') + '</button>';
     } else {
       // Four reasons a card is not in today's set, each with its own sentence, and "later today"
       // only for a step genuinely due before the study day ends. The rest wait, and nothing says until
@@ -7084,7 +7662,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       h += freshDeck
         ? '<div class="tile done" id="t-done"><h2 class="display">Choose lessons for new cards</h2><p>' + esc(freshDeck.title) + ' has no lesson switched on yet.</p><button class="ghost" id="t-lessons" type="button"><span>New cards by lesson</span></button></div>'
         : '<div class="tile done" id="t-done"><h2 class="display">Done for today</h2><p>' + lines.join(' ') + '</p>' +
-          (nextUp ? '<p id="t-next">' + esc(nextLessonSentence(nextUp, courseDeckCount() > 1)) + '</p><button class="ghost" id="t-next-on" type="button"><span>Switch on ' + esc(nextUp.key || 'No lesson') + '</span></button>' : '') + '</div>';
+          (nextUp ? '<p id="t-next">' + esc(nextLessonSentence(nextUp, courseDeckCount() > 1)) + '</p>' + readyHtml(nextUp, 't-ready') + '<button class="ghost" id="t-next-on" type="button"><span>Switch on ' + esc(nextUp.key || 'No lesson') + '</span></button>' : '') + '</div>';
     }
     h += '</div></div>';
     if (target) {
@@ -7362,7 +7940,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   var MODE_WHY = {
     learn: 'New cards to start now. Once answered, they join your reviews.',
     ahead: 'Cards due in the next ' + SOON_DAYS + ' days, not in today’s set. Answering early moves their next date.',
-    practise: 'Cards you have started, for practice. The schedule does not change.'
+    practise: 'Cards you have started, for practice. The schedule does not change.',
+    check: 'Choose each card’s meaning from four. The schedule does not change.',
+    flip: 'Every card here, new ones too, like a stack of flashcards. Shuffle or keep the order. The schedule does not change.'   // 0.11.7
   };
   // A Decks row's two inputs, and a lesson row's: the one place each is computed, for a render and for a redraw.
   function deckRowParts(r, ctx, dayAll) {
@@ -7445,6 +8025,15 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     else if (o.learnWaiting) items.push({ label: 'Learn new', count: 'waiting', sub: plural(o.learnWaiting, 'new card waits', 'new cards wait') + ': another card of the same note was answered today.', static: true });
     if (o.soon) items.push({ label: 'Review ahead: next ' + SOON_DAYS + ' days', count: plural(o.soon, 'card'), sub: MODE_WHY.ahead, on: function () { startAhead(scope); } });
     if (o.practise) items.push({ label: 'Practice all', count: plural(o.practise, 'card'), sub: MODE_WHY.practise, on: function () { startPractise(scope); } });
+    // 0.11.5: a lesson of at least four cards offers its multiple-choice check. Like Browse cards it is not studying, so
+    // it does not stand in for something to study. A paused deck offers none: its lesson sheet says there is nothing to
+    // study and keeps Browse cards and Close alone.
+    var checkN = scope.lesson != null && !(deckOptionsFor()[scope.pack] || {}).paused ? checkOffer(scope) : 0;
+    var checkItem = checkN ? { label: 'Check yourself', count: plural(checkN, 'card'), sub: MODE_WHY.check, on: function () { startCheck(scope); } } : null;
+    if (checkItem) items.push(checkItem);
+    // 0.11.7: flip through the deck, its lessons that are on, or this lesson (none on a paused deck: flipItems).
+    var flipRows = flipItems(scope);
+    items = items.concat(flipRows);
     // 0.9.1 (the operator, 2026-09-24): a lesson's sheet says what the lesson holds and opens its cards.
     var lessonCardCount = scope.lesson != null ? lessonCards(scope.pack, scope.lesson).length : 0;
     var browseItem = lessonCardCount ? { label: 'Browse cards', count: plural(lessonCardCount, 'card'), nav: true, on: function () { openBrowse(scope.pack, scope.lesson); } } : null;
@@ -7458,7 +8047,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (withOpen) items.push({ label: 'Open deck', count: null, nav: true, on: function () { renderDeck(scope.pack); show('s-deck'); } });
     // Nothing to study (a paused deck's lesson, say): the sheet says so and keeps Close. Browse cards is not
     // studying, so it neither counts as something to study nor goes away (0.9.1).
-    if (!items.filter(function (it) { return it && it !== browseItem; }).length) { items.unshift({ label: 'Nothing to study here yet', static: true }); items.push({ label: 'Close', on: function () {} }); }
+    if (!items.filter(function (it) { return it && it !== browseItem && it !== checkItem; }).length) { items.unshift({ label: 'Nothing to study here yet', static: true }); items.push({ label: 'Close', on: function () {} }); }
     openSheet(anchor, scopeTitle(scope), items, scope.lesson != null ? lessonSummaryHtml(scope.pack, scope.lesson) : '', 'sh-lead');
   }
   // 0.9.1: what a lesson holds. packs.js's lessonSummary gives the author's description or a
@@ -7530,7 +8119,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     // Run 17 (2026-09-22): the chooser was found last, in the action stack below the lesson list, so the
     // tester met a lesson row's sheet first. It leads the list now, first control under the deck's header line.
     var nextHere = own ? null : nextLessonFor(id, ctx);
-    if (nextHere) h += '<div class="prose" id="d-next"><p>' + esc(nextLessonSentence(nextHere)) + '</p><button class="primary" id="d-next-on" type="button">Switch on ' + esc(nextHere.key || 'No lesson') + '</button></div>';
+    if (nextHere) h += '<div class="prose" id="d-next"><p>' + esc(nextLessonSentence(nextHere)) + '</p>' + readyHtml(nextHere, 'd-ready') + '<button class="primary" id="d-next-on" type="button">Switch on ' + esc(nextHere.key || 'No lesson') + '</button></div>';
     if (!own && s.lessons.length) h += '<div class="stack" style="margin-top:12px"><button class="ghost" id="d-lessons" type="button"><span>New cards by lesson</span></button></div>';
     h += '<ul class="list">' + s.lessons.map(function (row) {
       var L = row.lesson || (own ? 'Ungrouped' : 'No lesson');
@@ -7545,6 +8134,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       // (item 81, 2026-09-20). A deck that came by class code, by someone else's share code or from a
       // file is somebody else's body: no button, and shareDeck itself refuses it below.
       (own || (r.url && !retired) ? '<button class="ghost" id="d-share" type="button"><span>Share deck</span></button>' : '') +
+      // 0.11.6: cards copied from a course deck are not shared; one plain line says so where Share is.
+      (own && pk.notes.some(function (note) { return !!note.from; }) ? '<p class="note" id="d-sharenote">Sharing sends only the cards you wrote. Cards you added from a course deck stay with you.</p>' : '') +
+      (own && favoriteCards().length ? '<button class="ghost" id="d-fav" type="button"><span>Favorites</span></button>' : '') +
       (own ? '<button class="ghost" id="d-cards" type="button"><span>Open cards</span></button>' : '') +
       (updateDoor ? '<button class="ghost" id="d-update" type="button"><span>' + (catUpdate ? 'Update deck' : 'Check for update') + '</span></button>' : '') +
       (own ? '' : '<button class="ghost" id="d-remove" type="button"><span>Remove deck</span></button>') +
@@ -7564,6 +8156,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     $('d-browse').addEventListener('click', function () { openBrowse(id, null); });
     var dsh = $('d-share'); if (dsh) dsh.addEventListener('click', function () { shareDeck(id, dsh); });
     var dc = $('d-cards'); if (dc) dc.addEventListener('click', function () { goTab('cards'); });
+    var dfav = $('d-fav'); if (dfav) dfav.addEventListener('click', function () { favoritesSheet(dfav); });
     var du = $('d-update'); if (du) du.addEventListener('click', function () {
       // A catalog deck signed out (or whose session expired since install) meets the same sheet a
       // fresh catalog tap would show, not an error (item 84's neighbour, item 90): the account is
@@ -7628,10 +8221,18 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     }
     var doc = packStore.get(id);
     if (!doc) { setMsg('d-msg', 'This deck has nothing to share yet.', false); return; }
+    // 0.11.6: cards copied from a course deck stay out of a share; the cards the learner wrote go as before.
+    if (id === OWN_PACK_ID) {
+      doc = withoutCopies(doc);
+      if (!doc.notes.length) { setMsg('d-msg', 'Sharing sends only the cards you wrote, and every card here came from a course deck.', false); return; }
+    }
     if (id === OWN_PACK_ID) {
       // The reader's copy is titled after its author, never "your cards"; without an author it names the shared deck and its size.
       var who = (account.displayName || '').trim();
-      doc = Object.assign({}, doc, { title: who ? who + '\u2019s cards' : 'Shared deck · ' + plural(deriveCards(doc).length, 'card') });
+      // was: doc = Object.assign({}, doc, { title: who ? who + '\u2019s cards' : 'Shared deck · ' + plural(deriveCards(doc).length, 'card') });
+      // 0.11.6: a deck the learner named goes out under that name.
+      var named = doc.title && doc.title !== 'My cards' ? doc.title : '';
+      doc = Object.assign({}, doc, { title: named || (who ? who + '\u2019s cards' : 'Shared deck · ' + plural(deriveCards(doc).length, 'card')) });
     }
     busy(btn, 'Making the link…');
     sync.sharePack(doc).then(function (res) {
@@ -8965,6 +9566,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<div class="cnt" id="qa-count" role="status"' + (cardsView.added ? '' : ' hidden') + '><span class="micro">' + plural(cardsView.added, 'card') + ' added</span></div>' +
       '<div class="acts" style="margin-top:12px"><button class="ghost" id="mc-other" type="button">More card types</button><button class="ghost" id="mc-import" type="button">Import cards</button></div>' +
       '</div>';
+    // 0.11.6: the Favorites list opens from here once a card is marked.
+    var favN = favoriteCards().length;
+    if (favN) h += '<div class="stack" style="margin-top:12px"><button class="ghost" id="mc-fav" type="button"><span>Favorites · ' + esc(plural(favN, 'card')) + '</span></button></div>';
     if (cardsView.notice) { h += '<div class="prose" style="padding-top:0"><div class="msg">' + esc(cardsView.notice) + '</div></div>'; cardsView.notice = null; }
     if (repairedRows) { h += '<div class="prose" style="padding-top:0"><div class="msg">' + esc(repairWords(repairedRows, repairedSaved)) + '</div></div>'; repairedRows = 0; }
     if (!pack) {
@@ -9006,6 +9610,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       cardsView.importing = { text: '', type: 'basic', lesson: '', headerRow: false, mapping: [], parsed: null }; renderCards();
     });
     var exportButton = $('mc-export'); if (exportButton) exportButton.addEventListener('click', exportOwnCards);
+    var favButton = $('mc-fav'); if (favButton) favButton.addEventListener('click', function () { favoritesSheet(favButton); });
     var q = $('mc-q'); if (q) q.addEventListener('input', function () {
       cardsView.q = q.value; cardsView.listOffset = 0;
       if (cardsView.searchTimer) clearTimeout(cardsView.searchTimer);
@@ -10015,7 +10620,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     $('ab-body').innerHTML = '<div class="prose paper">' +
       '<p>Kurikaeshi, <span lang="ja">繰り返し</span>, means repetition. It shows you a few cards each day and brings back the ones you get wrong sooner, the ones you know later. Finishing the day’s cards is the whole job; coming back tomorrow is the point.</p>' +
       '<p>The daily number comes from the minutes you set, divided by how long a card takes you and how many reviews each new card brings. Until you have answered thirty cards, starting figures stand in for your own.</p>' +
-      '<p>Tapping a deck or a lesson offers more than the day asks: new cards past the allowance, cards due in the next few days, or practice. Offered, never pushed; there is no streak to keep.</p>' +
+      '<p>Tapping a deck or a lesson offers more than the day asks: new cards past the allowance, cards due in the next few days, practice, or a flip through every card with no grades. Offered, never pushed; there is no streak to keep.</p>' +
       '<h2 class="sec">What the grades mean</h2>' +
       '<p><b>Again</b> — You did not recall it. It comes back in this session.</p>' +
       '<p><b>Hard</b> — You recalled it, slowly or with doubt. It comes back sooner than Good would bring it.</p>' +
@@ -11185,6 +11790,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   });
   $('r-card').addEventListener('click', function (ev) {
     if (ev.target.closest('button,a,input')) return;
+    if (session && session.mode === 'flip') { flipTurn(); return; }   // 0.11.7: a flip-through card turns both ways
     if (!revealed) reveal();
   });
 
@@ -11200,7 +11806,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 
   $('r-more').addEventListener('click', function () {
-    openReviewMore($('r-more'));
+    if (session && session.mode === 'flip') openFlipMore($('r-more')); else openReviewMore($('r-more'));   // 0.11.7
   });
   $('r-stop').addEventListener('click', function () { finish('stopped'); });
   $('r-undo').addEventListener('click', useUndoSlot);
@@ -11216,6 +11822,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       var next = ev.shiftKey ? (i <= 0 ? acts.length - 1 : i - 1) : (i < 0 || i === acts.length - 1 ? 0 : i + 1);
       ev.preventDefault(); acts[next].focus(); return;
     }
+    if (!$('s-check').hidden && $('sheet').hidden) { checkKey(ev); return; }   // 0.11.5: Check yourself's keys
     if ($('s-review').hidden) return;
     if (!$('sheet').hidden) return;   // 0.11 F5a (B-178): a sheet is modal; the review's keys grade nothing beneath it
     if ((ev.key === ' ' || ev.key === 'Enter') && ev.target && ev.target.nodeType === 1 && ev.target.closest('button,a,input,textarea,select')) return;
@@ -11224,6 +11831,15 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     // Escape stops the session from the review surface whatever the shortcut switch says: the
     // switch governs the single-character shortcuts only (review of P07).
     if (ev.key === 'Escape') { ev.preventDefault(); finish('stopped'); return; }
+    // 0.11.7, flip through: Space turns the card, the arrows move on and back, Enter turns and then moves on
+    if (session && session.mode === 'flip') {
+      if (ev.key === 'Enter') { ev.preventDefault(); if (revealed) flipNext(); else flipTurn(); return; }
+      if (store.prefs.keyboardShortcuts === false) return;
+      if (ev.key === ' ') { ev.preventDefault(); flipTurn(); return; }
+      if (ev.key === 'ArrowRight') { ev.preventDefault(); flipNext(); return; }
+      if (ev.key === 'ArrowLeft') { ev.preventDefault(); flipPrev(); return; }
+      return;
+    }
     if (store.prefs.keyboardShortcuts === false) return;
     if (revealed && ev.key >= '1' && ev.key <= '4') { ev.preventDefault(); answer(parseInt(ev.key, 10)); return; }
     if ((ev.key === 'z' || ev.key === 'Z') && session.answered > 0) { ev.preventDefault(); undoAnswer(); return; }
@@ -11292,6 +11908,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     else if (id === 's-add') renderAdd();
     else if (id === 's-catalog') renderCatalog();
     else if (id === 's-first') renderFirst();
+    else if (id === 's-check') { if (checkRound) drawCheck(); else { renderToday(); id = 's-today'; } }   // 0.11.5: a round is not kept past a reload
     show(id, { fromHistory: true });
   });
   var lastResumeAt = Date.now(), lastResumeDay = store.dayKey(Date.now()), resumeTimer = null;
@@ -11390,7 +12007,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.11.3";
+  var APP_V = "0.11.7";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
