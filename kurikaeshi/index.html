@@ -4086,7 +4086,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 (function () {
   'use strict';
   // was: the version line named 0.11.5
-  var APP_VERSION = '0.11.8';
+  var APP_VERSION = '0.11.9';   // was: '0.11.8'
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -4269,12 +4269,15 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     root.setAttribute('data-theme', t);
     root.style.colorScheme = t;
     syncThemeColor();
-    var sw = document.getElementById('i-theme'); if (sw) sw.setAttribute('aria-checked', t === 'dark' ? 'true' : 'false');   // the switch says what is on screen
+    // 0.11.9: the You screen's Dark theme switch is gone, so there is no switch to keep in step; Settings' Appearance draws
+    // its radios from the saved choice each time it opens. was:
+    // var sw = document.getElementById('i-theme'); if (sw) sw.setAttribute('aria-checked', t === 'dark' ? 'true' : 'false');   // the switch says what is on screen
   }
   applyTheme();
   function followDevice() { if (store.prefs.theme !== 'dark' && store.prefs.theme !== 'light') applyTheme(); }
   if (deviceQuery) { if (deviceQuery.addEventListener) deviceQuery.addEventListener('change', followDevice); else if (deviceQuery.addListener) deviceQuery.addListener(followDevice); }   // the second: Safari before 14
   function currentTheme() { return root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'; }
+  // 0.11.9: no caller since the You switch went (Settings' Appearance saves the choice itself, device included); kept, unused.
   function toggleTheme() {
     var next = currentTheme() === 'dark' ? 'light' : 'dark';
     if (!store.setPrefs({ theme: next })) {
@@ -4355,13 +4358,18 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // (the learner's own Again rate before today), rounded. Printed as "about"; printed at all only once
   // the pace is the learner's own — until then the tile says "a few minutes" (P13 item 3). Both come
   // from the answers given before the study day began, so the estimate holds for the day (2026-09-15).
+  // 0.11.9 (B-92): n is SHOWINGS, not cards. The median pace is the time one showing takes (one timed answer), and a
+  // first-sight card in a scheduling sitting owes two of them, the once-more promise; counting it once made a new-heavy
+  // day's tile read about half the time beside a review counter that printed showings. paceLine takes the cards and counts
+  // their showings with sittingWork (queue.js), the one count the counter and the stop screen print.
   function minutesFor(n) {
     var b = store.intakeBudget(), before = store.dayStart(store.dayKey(Date.now()));
     var a = store.answers().filter(function (e) { return e.t < before; });
     var again = a.length ? a.filter(function (e) { return e.g === 1; }).length / a.length : 0;
     return Math.max(1, Math.round(n * (1 + again) * b.secondsPerCard.value / 60));
   }
-  function paceLine(n) { return store.intakeBudget().own ? 'about ' + plural(minutesFor(n), 'min', 'min') : 'a few minutes'; }
+  // was: function paceLine(n) { return store.intakeBudget().own ? 'about ' + plural(minutesFor(n), 'min', 'min') : 'a few minutes'; }
+  function paceLine(cards) { return store.intakeBudget().own ? 'about ' + plural(minutesFor(sittingWork(cards, store, { schedules: true }).showings), 'min', 'min') : 'a few minutes'; }
   function paceHint() {
     var b = store.intakeBudget();
     return (b.own ? 'About ' + plural(b.perDay, 'new card') + ' a day at your pace so far.' : 'Starting estimate: about ' + plural(b.perDay, 'new card') + ' a day, until the day after 30 of your answers have been timed.') +
@@ -7619,7 +7627,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     h += '<div class="hero" id="t-hero"><div class="hero-card">';
     if (continuing) {
       h += '<p class="t-k">Waiting for you</p><p class="t-big">' + continuing + '<small>' + (continuing === 1 ? 'card' : 'cards') + ' left in this session</small></p>';
-      h += '<button class="tile" id="t-start" type="button"><span class="t1">Continue this session (' + continuing + ')</span><span class="fold"></span><span class="t2">' + paceLine(continuing) + '</span></button>';
+      // 0.11.9 (B-92): the minutes are the stopped sitting's own showings, the stop screen's figure. was: ... + paceLine(continuing) + ...
+      h += '<button class="tile" id="t-start" type="button"><span class="t1">Continue this session (' + continuing + ')</span><span class="fold"></span><span class="t2">' + paceLine(stopped.queue.concat(stopped.repeat, stopped.learning.map(function (x) { return x.card; }))) + '</span></button>';
       // B-132 (0.9.1): the tile counts this session and a Decks row counts today's set, which a lesson
       // switched on grows while an open session keeps the queue it started with (run 18). When today's
       // set holds cards the session does not, the line says so in the Decks row's own words.
@@ -7638,7 +7647,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       var fresh = b.queue.filter(function (c) { return store.state(c.id).state === 'new'; }).length;
       h += '<p class="t-k">Waiting for you</p><p class="t-big">' + n + '<small>' + (n === 1 ? 'card' : 'cards') + '</small></p>' +
         '<p class="t-split"><span><b>' + fresh + '</b> new</span><span><b>' + (n - fresh) + '</b> review</span></p>';
-      h += '<button class="tile" id="t-start" type="button"><span class="t1">Start today’s ' + plural(n, 'card') + '</span><span class="fold"></span><span class="t2">' + paceLine(n) + '</span></button>';
+      // 0.11.9 (B-92): the minutes count today's set in showings, as the review counter will. was: ... + paceLine(n) + ...
+      h += '<button class="tile" id="t-start" type="button"><span class="t1">Start today’s ' + plural(n, 'card') + '</span><span class="fold"></span><span class="t2">' + paceLine(b.queue) + '</span></button>';
       if (b.intakePaused && b.gapDays >= 3 && b.backlog > 0) {
         h += '<p class="micro" id="t-gap">' + breakLine(b, n, plan) + '</p>';
       }
@@ -9998,7 +10008,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (SYNC_READY) h += '<button class="group-row nav" id="yo-classes" type="button"><span>Classes</span>' + chev + '</button>';
     h += '<button class="group-row nav" id="yo-progress" type="button"><span>Progress</span>' + chev + '</button>' +
       '<button class="group-row nav" id="yo-settings" type="button"><span>Settings</span>' + chev + '</button>' +
-      '<button class="group-row" id="i-theme" type="button" role="switch" aria-label="Dark theme" aria-checked="' + (currentTheme() === 'dark' ? 'true' : 'false') + '"><span>Dark theme</span><span class="theme-switch" aria-hidden="true"></span></button>' +
+      // 0.11.9: one home for the theme. Settings' Appearance (Match this device, Light, Dark) is it; this two-state switch could
+      // not say Match this device, so a tap on it saved light or dark and silently dropped following the device. was:
+      // '<button class="group-row" id="i-theme" type="button" role="switch" aria-label="Dark theme" aria-checked="' + (currentTheme() === 'dark' ? 'true' : 'false') + '"><span>Dark theme</span><span class="theme-switch" aria-hidden="true"></span></button>' +
       '<button class="group-row nav" id="yo-about" type="button"><span>About Kurikaeshi</span>' + chev + '</button>' +
       '</div>' +
       // 0.11 F3 (row-L critique 12; HIG Managing accounts, "a clear way to initiate account deletion within your app"):
@@ -10013,11 +10025,12 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var cl = $('yo-classes'); if (cl) cl.addEventListener('click', function () { show('s-classes'); renderClasses(); });   // show first: show() bumps the render generation, and the list's completion checks it
     $('yo-progress').addEventListener('click', function () { renderStats(); show('s-stats'); });
     $('yo-settings').addEventListener('click', function () { renderSettings(); show('s-settings'); });
-    $('i-theme').addEventListener('click', function () {
-      toggleTheme();
-      var sw = $('i-theme'); if (sw) sw.setAttribute('aria-checked', currentTheme() === 'dark' ? 'true' : 'false');   // in place: focus and the announced state stay on the switch
-      showStorageProblem();
-    });
+    // 0.11.9: the switch is gone (above), and its handler with it. was:
+    // $('i-theme').addEventListener('click', function () {
+    //   toggleTheme();
+    //   var sw = $('i-theme'); if (sw) sw.setAttribute('aria-checked', currentTheme() === 'dark' ? 'true' : 'false');   // in place: focus and the announced state stay on the switch
+    //   showStorageProblem();
+    // });
     $('yo-about').addEventListener('click', function () { renderAbout(); show('s-about'); });
   }
   function signIn(btn) {
@@ -10363,6 +10376,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<label class="chk"><input type="checkbox" id="i-autoplay"' + (store.prefs.autoplay === true ? ' checked' : '') + '><span>Autoplay</span></label>' +
       '<p class="note">Play Japanese after you reveal an answer. Off by default.</p>' +
       // The audit's finding: once the You switch was used there was no way back to following the device.
+      // 0.11.9: the You switch is gone, and this group is the theme's one control.
       '<h2 class="sec">Appearance</h2>' +
       '<div class="english-choices" role="radiogroup" aria-label="Appearance">' +
       '<label class="english-choice"><input type="radio" name="appearance" value="device"' + (themeValue === 'device' ? ' checked' : '') + '><span>Match this device</span></label>' +
@@ -12024,7 +12038,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.11.8";
+  var APP_V = "0.11.9";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
