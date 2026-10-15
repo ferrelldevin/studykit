@@ -87,6 +87,8 @@
   --t-display:1.625rem; --t-title:1.125rem; --t-body:1.0625rem; --t-label:.875rem; --t-micro:.8125rem;
   --t-ja-reading:1.5rem; --t-ja-sentence:1.25rem;
   --t-specimen:2rem; --t-blank:.85em;
+  /* 0.11.12: a field's floor. Safari on iPhone zooms the page into a text field set under 16px when it takes focus */
+  --t-field:max(16px,.875rem);
   /* 0.11 step 2B: the welcome's brush title (in its drawing's own units), line, sample card and choices; Done's head, next day,
      its count, the figures and the seal. Two Japanese labels the drawings set at 14 and 17px sit at 20px, the page's floor for Japanese */
   --t-wl-brush:86px; --t-wl-said:1rem; --t-wl-line:1.25rem; --t-lede:1.5rem; --t-cue:1rem; --t-choice:1.25rem;
@@ -596,7 +598,9 @@ ul.list{gap:var(--s-3);padding:0 var(--s-4)}
 .textin::placeholder{color:var(--ink-mute);opacity:1}
 .textin:focus-visible{outline:none;border-color:var(--focus);box-shadow:0 0 0 var(--line) var(--focus), var(--e-inset)}
 
-textarea.textin{min-height:5rem;font-family:var(--f-mono);font-size:var(--t-label);resize:vertical}
+/* was: textarea.textin{min-height:5rem;font-family:var(--f-mono);font-size:var(--t-label);resize:vertical} */
+/* 0.11.12: Safari on iPhone zooms the page into any field set under 16px when it takes focus; the paste boxes were 14px */
+textarea.textin{min-height:5rem;font-family:var(--f-mono);font-size:var(--t-field);resize:vertical}
 textarea.textin.plain{font-family:inherit;font-size:var(--t-body);min-height:3.4rem}
 select.textin{appearance:auto;-webkit-appearance:auto}
 input[type=range]{width:100%;margin:var(--s-2) 0;accent-color:var(--accent);height:var(--tap);min-height:var(--tap);touch-action:pan-y}
@@ -624,7 +628,9 @@ button.row:active{background:var(--paper-press)}
 .bigcode{font-family:var(--f-mono);font-size:var(--t-specimen);letter-spacing:.25em;text-align:center;padding:var(--s-3);border:var(--line) dashed var(--rule);border-radius:var(--r-control);margin:var(--s-2) 0;user-select:all;-webkit-user-select:all}
 .samples{display:flex;gap:var(--s-4);justify-content:center;flex-wrap:wrap;margin:var(--s-5) 0;font-size:var(--t-specimen);line-height:1.3}
 .exportbox{border:var(--line) solid var(--card-edge);border-radius:var(--r-card);padding:var(--s-3);margin:var(--s-2) 0;background:var(--surface);box-shadow:var(--e1);display:flex;flex-direction:column;gap:var(--s-2)}
-.exportbox textarea{width:100%;font-family:var(--f-mono);font-size:var(--t-micro);border:var(--line) solid var(--rule);border-radius:var(--r-control);padding:var(--s-2);background:var(--surface-2);color:var(--ink-soft);resize:vertical}
+/* was: .exportbox textarea{width:100%;font-family:var(--f-mono);font-size:var(--t-micro);…} */
+/* 0.11.12: the export boxes are read-only, but a tap still focuses them; 16px, as every field */
+.exportbox textarea{width:100%;font-family:var(--f-mono);font-size:var(--t-field);border:var(--line) solid var(--rule);border-radius:var(--r-control);padding:var(--s-2);background:var(--surface-2);color:var(--ink-soft);resize:vertical}
 .exportbox .dl{display:inline-flex;align-items:center;justify-content:center;min-height:var(--tap);padding:0 var(--s-4);font-size:var(--t-label);font-weight:500;color:var(--accent);text-align:center;transition:background-color var(--d-press) var(--ease-standard)}
 .exportbox .dl:active{background:var(--surface-2);border-radius:var(--r-control)}
 .packrow{border:var(--line) solid var(--card-edge);border-radius:var(--r-card);padding:var(--s-3) var(--s-4);margin:var(--s-2) 0 var(--s-3);background:var(--surface);box-shadow:var(--e2)}
@@ -3570,6 +3576,8 @@ function memoryTransport(server, user) {
   const stamp = () => new Date(1e12 + (++server.clock) * 1000).toISOString();
 
   const requireUser = () => { if (!user) throw new Error('missing authentication credentials: required authorization bearer token in JWT format'); };
+  
+  const localDay = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   const classForCode = (code) => [...server.classes.values()].find((row) => row.code === String(code || '').trim().toUpperCase()) || null;
   const canReadClass = (row) => row.instructor_id === user || server.enrollments.has(`${row.id}|${user}`);
   const instructorCanRead = (student, card) => {
@@ -3653,13 +3661,18 @@ function memoryTransport(server, user) {
       }
       if (name === 'peek_class') {
         const row = classForCode(args.p_code);
-        if (!row) return [];
+
+        if (!row) throw new Error('no class has that code');
+        if (row.ends_on && row.ends_on < localDay()) throw new Error('that class has ended');
         const profile = server.profiles.get(row.instructor_id);
         return [{ id: row.id, code: row.code, title: row.title, ends_on: row.ends_on, instructor: profile ? profile.display_name : '' }];
       }
       if (name === 'join_class') {
         const row = classForCode(args.p_code);
         if (!row) throw new Error('no class has that code');
+        
+        if (row.ends_on && row.ends_on < localDay()) throw new Error('that class has ended');
+        if (row.instructor_id === user) throw new Error('you teach this class');
         const key = `${row.id}|${user}`;
         const prior = server.enrollments.get(key);
         const joined = prior && prior.joined_at ? prior.joined_at : stamp();
@@ -4176,7 +4189,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 (function () {
   'use strict';
   // was: the version line named 0.11.5
-  var APP_VERSION = '0.11.11';   // was: '0.11.10'; before that '0.11.9', '0.11.8'
+  var APP_VERSION = '0.11.12';   // was: '0.11.11'; before that '0.11.10', '0.11.9', '0.11.8'
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -5405,7 +5418,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       (ownDoc ? '<div class="fgroup"><label class="field"><span class="lbl">Deck name</span><input class="textin" id="dopt-title" type="text" maxlength="60" autocomplete="off" value="' + esc(ownDoc.title || 'My cards') + '" aria-describedby="h-dopt-title"></label><span class="hint" id="h-dopt-title">Leave blank to use My cards.</span></div>' : '') +
       '<div class="fgroup"><label class="field"><span class="lbl">New cards a day</span><input class="textin" id="dopt-new" type="number" min="1" max="999" inputmode="numeric" value="' + esc(options.newPerDay == null ? '' : options.newPerDay) + '" placeholder="Use the minutes setting" aria-describedby="h-dopt-new"></label><span class="hint" id="h-dopt-new">Leave blank to use your daily minutes.</span></div>' +
       '<label class="chk"><input id="dopt-pause" type="checkbox"' + (options.paused ? ' checked' : '') + '><span>Pause this deck</span></label>' +
-      '<p class="note">Review limit: ' + esc(store.prefs.maxReviewsPerDay) + ' cards a day.</p>' +
+      // was: '<p class="note">Review limit: ' + esc(store.prefs.maxReviewsPerDay) + ' cards a day.</p>' +
+      '<p class="note">Review limit: ' + esc(plural(store.prefs.maxReviewsPerDay, 'card')) + ' a day.</p>' +   // 0.11.12: the limit can be 1
       '<div id="dopt-msg" class="msg bad" hidden></div><button class="primary" id="dopt-save" type="button">Save deck options</button></div>';
     sh.setAttribute('aria-label', 'Deck options');
     sc.hidden = false; sh.hidden = false; sh.classList.remove('closing', 'closing-from-drag');
@@ -6375,6 +6389,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // The study screen's keys, on this screen: 1 to 4 choose (the shortcut switch governs them, as it does the grades),
   // Enter moves on, Escape leaves. A key on a focused button is that button's own.
   function checkKey(ev) {
+    if (ev.isComposing || ev.keyCode === 229) return;   // 0.11.12: a key an input method is still composing is the IME's
     var tag = (ev.target && ev.target.tagName) || '';
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
     if (ev.key === 'Escape') { ev.preventDefault(); leaveCheck(); return; }
@@ -7805,9 +7820,12 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       // instruction they can follow to no effect. The engine says which brake is binding; when it is
       // the limit, name it and drop the reach and the instruction rather than printing a number the
       // dial cannot reach. Anki's manual (Deck Options): "the review limit also applies to new cards".
+      // was: ? '<p class="micro" id="t-milestone">By ' + esc(target.label) + ': ' + target.row.covered + ' cards. New cards wait: the cards already due take all of today’s review limit of ' + esc(store.prefs.maxReviewsPerDay) + '.</p>'
+      // was: : '<button class="textbtn micro" id="t-milestone" type="button">By ' + esc(target.label) + ': ' + target.row.covered + ' cards; at this pace you reach ' + reached + '. Change the minutes</button>';
+      // 0.11.12: one card reads "1 card", through plural() as every other count in the app.
       h += b.newHeldByLimit
-        ? '<p class="micro" id="t-milestone">By ' + esc(target.label) + ': ' + target.row.covered + ' cards. New cards wait: the cards already due take all of today’s review limit of ' + esc(store.prefs.maxReviewsPerDay) + '.</p>'
-        : '<button class="textbtn micro" id="t-milestone" type="button">By ' + esc(target.label) + ': ' + target.row.covered + ' cards; at this pace you reach ' + reached + '. Change the minutes</button>';
+        ? '<p class="micro" id="t-milestone">By ' + esc(target.label) + ': ' + plural(target.row.covered, 'card') + '. New cards wait: the cards already due take all of today’s review limit of ' + esc(store.prefs.maxReviewsPerDay) + '.</p>'
+        : '<button class="textbtn micro" id="t-milestone" type="button">By ' + esc(target.label) + ': ' + plural(target.row.covered, 'card') + '; at this pace you reach ' + reached + '. Change the minutes</button>';
     }
     // 2026-09-12: the caveat is a note, not a figure. .status is the mono Micro role, which carries
     // counts and one-line facts; a 190-character sentence set in it ran six lines of monospace.
@@ -8810,7 +8828,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     focusUnasked($('ps-in'));   // 0.11.3: was always focused; a touch screen keeps the hint in view, the keyboard closed
     var go = function () { resolvePasted(($('ps-in').value || '').trim()); };
     $('ps-go').addEventListener('click', go);
-    $('ps-in').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); go(); } });
+    // was: $('ps-in').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); go(); } });
+    // 0.11.12: the Return that confirms a Japanese input method's conversion is the IME's, not ours (isComposing, or
+    // keyCode 229 where Safari sends the keydown after compositionend). It neither submits nor moves on.
+    $('ps-in').addEventListener('keydown', function (ev) { if (ev.isComposing || ev.keyCode === 229) return; if (ev.key === 'Enter') { ev.preventDefault(); go(); } });
     $('ps-in').addEventListener('input', function () { $('ps-go').textContent = pastedDeckText(($('ps-in').value || '').trim()) ? 'Add pasted deck' : 'Open link'; });
   }
   // 0.11.2 (field fix): a deck's own text is a JSON object; nothing else the field takes starts with {
@@ -9728,9 +9749,13 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     $('mc-body').innerHTML = h;
     $('qa-add').addEventListener('click', function () { quickAdd(false); });   // never the event object as the force flag
     $('qa-type').addEventListener('change', function () { cardsView.quick.type = $('qa-type').value; relabelQuickFields(); });
-    $('qa-front').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); (quickSlots(cardsView.quick.type || 'basic').mid ? $('qa-mid') : $('qa-back')).focus(); } });
-    $('qa-mid').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); $('qa-back').focus(); } });
-    $('qa-back').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); quickAdd(false); } });
+    // was: $('qa-front').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); (quickSlots(cardsView.quick.type || 'basic').mid ? $('qa-mid') : $('qa-back')).focus(); } });
+    // was: $('qa-mid').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); $('qa-back').focus(); } });
+    // was: $('qa-back').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); quickAdd(false); } });
+    // 0.11.12: as Paste's field: the Return that confirms an IME conversion neither moves on nor adds the card.
+    $('qa-front').addEventListener('keydown', function (ev) { if (ev.isComposing || ev.keyCode === 229) return; if (ev.key === 'Enter') { ev.preventDefault(); (quickSlots(cardsView.quick.type || 'basic').mid ? $('qa-mid') : $('qa-back')).focus(); } });
+    $('qa-mid').addEventListener('keydown', function (ev) { if (ev.isComposing || ev.keyCode === 229) return; if (ev.key === 'Enter') { ev.preventDefault(); $('qa-back').focus(); } });
+    $('qa-back').addEventListener('keydown', function (ev) { if (ev.isComposing || ev.keyCode === 229) return; if (ev.key === 'Enter') { ev.preventDefault(); quickAdd(false); } });
     // No cards yet: the form is the whole screen. With a mouse and a keyboard Front is already focused, so the first card
     // is the tab, Back and Add card. 0.11.3: on a touch screen the tab opens with the keyboard closed and the learner taps
     // into Front (the operator, 2026-10-13). Once cards exist the list is what the tab opens on, unfocused.
@@ -10179,7 +10204,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     // 0.11 F5b (B-168): the hand-off is written down before the page leaves, so a learner who comes back without the
     // sign-in page's answer (no network, so the browser's own error page; or Back from the sign-in page) is told.
     saveAccount({ handoffAt: Date.now() });
-    authClient().then(function (c) { return c.loginWithRedirect({ appState: st }); })
+    // was: authClient().then(function (c) { return c.loginWithRedirect({ appState: st }); })
+    // 0.11.12: after a sign-out made offline (signOutOffline), the sign-in page was never told and still holds its session
+    // for this device; the next sign-in asks it to ask who it is again (OIDC prompt=login) rather than reuse that session.
+    var signInOptions = account.forgetPending ? { appState: st, authorizationParams: { prompt: 'login' } } : { appState: st };
+    authClient().then(function (c) { return c.loginWithRedirect(signInOptions); })
       .catch(function (e) { saveAccount({ lastError: friendlyError(e), handoffAt: null }); renderAccount(); show('s-account'); });
   }
 
@@ -10310,7 +10339,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       box.hidden = false;
       var ta = box.querySelector('textarea');
       ta.value = '';
-      box.querySelector('.cnt').textContent = store.log.length + ' reviews · ' + (text.length / 1024).toFixed(0) + ' KB';
+      // was: box.querySelector('.cnt').textContent = store.log.length + ' reviews · ' + (text.length / 1024).toFixed(0) + ' KB';
+      box.querySelector('.cnt').textContent = plural(store.log.length, 'review') + ' · ' + (text.length / 1024).toFixed(0) + ' KB';   // 0.11.12
       var copy = box.querySelector('.copybtn');
       copy.innerHTML = '<span>Copy to clipboard</span>';
       copy.onclick = function () {
@@ -10591,7 +10621,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     });
     host.innerHTML = cards.length
       ? '<div class="list">' + cards.map(slippingRowHtml).join('') + '</div>'
-      : '<div class="prose"><p>Nothing is slipping. A card comes here after it has been forgotten ' + esc(store.prefs.leechThreshold) + ' times.</p></div>';
+      // was: : '<div class="prose"><p>Nothing is slipping. A card comes here after it has been forgotten ' + esc(store.prefs.leechThreshold) + ' times.</p></div>';
+      : '<div class="prose"><p>Nothing is slipping. A card comes here after it has been forgotten ' + esc(plural(store.prefs.leechThreshold, 'time')) + '.</p></div>';   // 0.11.12: the threshold can be 1
     if (!host._slippingDelegated) {
       host._slippingDelegated = true;
       host.addEventListener('click', function (ev) {
@@ -10672,7 +10703,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         var state = states.get(current.id);
         if (state && state.state !== 'new') started++;
       });
-      return row(esc(pack.title), started + ' of ' + total + ' cards started');
+      // was: return row(esc(pack.title), started + ' of ' + total + ' cards started');
+      return row(esc(pack.title), started + ' of ' + plural(total, 'card') + ' started');   // 0.11.12: a one-card deck reads 0 of 1 card
     }).join('');
     var recentRows = '';
     for (var ri = 0; ri < 7; ri++) {
@@ -10702,7 +10734,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       '<h2 class="sec">Today</h2><div class="rows">' +
       // Every figure here is today's (countsToday). Days studied is an all-time count and sits under
       // All-time only; it used to print here too, under a heading that said otherwise (2026-09-20).
-      row('Cards answered', t.cards + ' cards · ' + t.answers + ' answers') + row('New introduced', t.newCards) +
+      // was: row('Cards answered', t.cards + ' cards · ' + t.answers + ' answers') + row('New introduced', t.newCards) +
+      row('Cards answered', plural(t.cards, 'card') + ' · ' + plural(t.answers, 'answer')) + row('New introduced', t.newCards) +   // 0.11.12
       row('Time', fmtSpent(t.ms)) + '</div>' +
       '<h2 class="sec">All decks</h2><div class="rows">' +
       row('Decks', packStore.list().length) + row('Cards', DECK.cards.length) +
@@ -11018,9 +11051,24 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     }, function () { authInit = null; authUnavailable = true; throw appError('Sign-in is not available right now; your answers are kept here.'); });
     return authInit;
   }
+  // 0.11.12: the schema's own refusals to a class code (server/schema.sql peek_class and join_class), in the learner's
+  // words. The transport prefixes the function's name (peek_class: …); the in-memory server does not, so both read.
+  // Each says what happened and what to do next (MC-62 principle 5). Before this, all three fell through to the
+  // generic sign-in-page sentence below, which blamed the wrong thing and told the student to wait.
+  var CLASS_REFUSALS = [
+    [/(?:^|: )no class has that code$/, 'No class has that code. Check it with your instructor.'],
+    [/(?:^|: )that class has ended$/, 'That class has ended. Ask your instructor for this term’s code.'],
+    [/(?:^|: )you teach this class$/, 'You teach this class, so you cannot join it as a student. It is already in Classes.']
+  ];
+  function classRefusal(e) {
+    var m = String((e && e.message) || e || '');
+    for (var i = 0; i < CLASS_REFUSALS.length; i++) if (CLASS_REFUSALS[i][0].test(m)) return CLASS_REFUSALS[i][1];
+    return '';
+  }
   function friendlyError(e) {
     var m = (e && e.message) || String(e);
     if (e && e.appSentence) return m;
+    if (classRefusal(e)) return classRefusal(e);   // 0.11.12
     if (m === 'The class did not record your leaving; nothing changed. Try again, or check the roster status above.') { if (e) e.appSentence = true; return m; }
     if ((e && e.name === 'AbortError') || /Failed to fetch|NetworkError|Load failed|Timeout|network|operation was aborted|abort/i.test(m)) return 'No connection. Try again when you are online.';
     if (/login_required|missing_refresh_token|invalid_grant|Login required/i.test(m)) return 'Your sign-in expired. Sign in again to keep syncing.';
@@ -11164,7 +11212,15 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     names.forEach(function (name) {
       var original = target[name];
       if (typeof original !== 'function') return;
-      target[name] = function () { return authenticatedCall(original.apply(target, arguments)); };
+      // was: target[name] = function () { return authenticatedCall(original.apply(target, arguments)); };
+      // 0.11.12: a class code the server refuses (no such class, ended, your own class) is an answer about the code, not a
+      // sync that failed: it is said beside the code field and never written to lastError, which the ring, Today and You
+      // read as not synced. Anything else from these two calls (offline, an expired sign-in) is reported as before.
+      var classCall = name === 'peekClass' || name === 'joinClass';
+      target[name] = function () {
+        if (!classCall) return authenticatedCall(original.apply(target, arguments));
+        return Promise.resolve(original.apply(target, arguments)).catch(function (e) { if (classRefusal(e)) throw e; return reportAuthenticatedFailure(e); });
+      };
     });
   }
   function syncNow() {
@@ -11215,6 +11271,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         if (r.shortfall) patch.shortfallNotice = plural(r.shortfall, 'answer') + ' from before the erase ' + (r.shortfall === 1 ? 'was' : 'were') + ' not kept.';
         if (r.packs !== 'failed' && r.saved !== false) { patch.lastSync = Date.now(); patch.lastError = null; patch.lastResult = r; }
         else patch.lastResult = r;
+        // 0.11.12 (review of 0.11.11): eraseNoticeShown was set once and never cleared, so an erase made later on another device
+        // never got its toast. A new erase notice makes the toast due again.
+        if (patch.eraseNotice) patch.eraseNoticeShown = false;
         saveAccount(patch);
         if (patch.eraseNotice && !account.eraseNoticeShown) {
           if (saveAccount({ eraseNoticeShown: true })) toast(patch.eraseNotice, { label: 'Dismiss', on: function () {} });
@@ -11315,7 +11374,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       }
       var finishSignIn = function () {
         accountSaid = null;   // signing in answers whatever the last account left on this screen
-        saveAccount({ signedIn: true, expired: false, sub: u.sub || '', lastSub: '', name: u.name || u.nickname || '', email: u.email || '', lastError: null, goneNotice: null });
+        // was: saveAccount({ signedIn: true, expired: false, sub: u.sub || '', lastSub: '', name: u.name || u.nickname || '', email: u.email || '', lastError: null, goneNotice: null });
+        saveAccount({ signedIn: true, expired: false, sub: u.sub || '', lastSub: '', name: u.name || u.nickname || '', email: u.email || '', lastError: null, goneNotice: null, forgetPending: null });   // 0.11.12: the sign-in that asked again is done
         // 0.9.3 G1 (state-driven, every sign-in, no id): the only line that says the sign-in worked.
         toast('Signed in. Your answers now save to your account.');
         if (appState && appState.join) pendingJoin = appState.join;
@@ -11413,7 +11473,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         var again = $('ac-sync'); if (again) { try { again.focus({ preventScroll: true }); } catch (e) { again.focus(); } }
       };
       syncNow().then(function (r) {
-        if (r && r.detached) { renderAccount(); return; }   // the account is gone; the screen is the signed-out one now
+        // was: if (r && r.detached) { renderAccount(); return; }   // the account is gone; the screen is the signed-out one now
+        // 0.11.12 (review of 0.11.11): a sync stopped under it (an erase or a sign-out mid-sync: abandoned) sent and received
+        // nothing worth a sentence; the screen is redrawn as it now stands, with no Synced line.
+        if (r && (r.detached || r.abandoned)) { renderAccount(); return; }   // the account is gone, or the sync was stopped
         if (r && r.saved === false) settleSync(STORAGE_BAD, true);
         else settleSync('Synced: ' + plural((r && r.pushed) || 0, 'answer') + ' sent, ' + plural((r && r.pulled) || 0, 'review') + ' received.', false);
       }, function () { settleSync(account.lastError || 'The sync did not finish. Try again.', true); });
@@ -11429,8 +11492,26 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (account.notice) { var n = account.notice; saveAccount({ notice: null }); $('ac-body').firstChild.insertAdjacentHTML('afterbegin', '<div class="msg">' + esc(n) + '</div>'); }
   }
   // One sign-out, from You's card and from the Account screen alike (0.11 F3: You carries Sign out now too).
+  var SIGNED_OUT_OFFLINE = 'Signed out on this device. You are offline, so the sign-in page has not been told; the next sign-in here will ask who you are again.';
+  function signOutOffline() {
+    var client = auth;
+    signOutLocal();
+    saveAccount({ forgetPending: true });   // read by signIn(): the next sign-in asks again (prompt=login)
+    accountSaid = SIGNED_OUT_OFFLINE;
+    if (client && typeof client.logout === 'function') {
+      try { Promise.resolve(client.logout({ openUrl: false })).catch(function () { /* the device is signed out either way */ }); } catch (e) { /* as above */ }
+    }
+    renderStatus();
+    if (screen === 's-account') renderAccount(); else if (screen === 's-you') renderYou();
+    toast(SIGNED_OUT_OFFLINE);
+  }
   function confirmSignOut(anchor) {
     confirmSheet({ anchor: anchor, title: 'Signing out keeps everything on this device. Nothing is deleted anywhere.', action: 'Sign out', cancel: 'Keep signed in', onConfirm: function () {
+      // 0.11.12: offline, the sign-in page's logout address cannot load, and going there left the app for the browser's
+      // own error page. The device signs out here and stays in the app; the SDK forgets its session without leaving
+      // (logout with openUrl: false, auth0-spa-js 2.24.1). The sign-in page keeps its own session, so the next sign-in
+      // here asks it to ask again (prompt=login, in signIn()). The learner is told that in one line.
+      if (navigator.onLine === false) { signOutOffline(); return; }
       authClient().then(function (c) { signOutLocal(); return c.logout({ logoutParams: { returnTo: appUrl() } }); })
         .catch(function () { signOutLocal(); renderAccount(); });
     } });
@@ -11833,6 +11914,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         var packIds = Object.create(null); packs.forEach(function (p) { if (/^[a-z0-9][a-z0-9-]{0,63}$/.test(String(p.pack_id))) packIds[p.pack_id] = true; });
         var active = Object.create(null); enr.forEach(function (e) { if (e.status === 'active') active[e.user_id] = e.label || 'student'; });
         sync.classReviews(null).then(function (rows) {
+          // 0.11.12 (review of 0.11.11): this completion checked nothing, so a read still on its way when the device signed out
+          // without leaving the page (offline Sign out, an expired sign-in, a sign-in client that failed) drew the students'
+          // reviews on a signed-out page. Like every other completion here, it now lands only where it was asked for: the same
+          // render, the same signed-in account, the same class still open.
+          if (gen !== renderGeneration || who !== account.sub || !account.signedIn || !classesView.open || classesView.open.id !== c.id) return;
           // The policy already limits rows to this instructor's active students and class decks;
           // this narrows them to ONE class, since an instructor may teach several.
           var byUser = {};
@@ -11964,6 +12050,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
   // Keyboard, for anyone reviewing at a desk: space reveals, 1 to 4 grade; Esc closes a sheet.
   document.addEventListener('keydown', function (ev) {
+    if (ev.isComposing || ev.keyCode === 229) return;   // 0.11.12: a key an input method is still composing (Enter, Escape) is the IME's
     if (ev.key === 'Escape' && !$('sheet').hidden) { ev.preventDefault(); closeSheet(false); return; }
     if (ev.key === 'Tab' && !$('sheet').hidden) {
       // the sheet is modal: Tab cycles its actions and never leaves it
@@ -12158,7 +12245,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.11.11";
+  var APP_V = "0.11.12";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
