@@ -4189,7 +4189,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 (function () {
   'use strict';
   // was: the version line named 0.11.5
-  var APP_VERSION = '0.11.12';   // was: '0.11.11'; before that '0.11.10', '0.11.9', '0.11.8'
+  var APP_VERSION = '0.11.13';   // was: '0.11.12'; before that '0.11.11', '0.11.10', '0.11.9', '0.11.8'
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -10207,7 +10207,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     // was: authClient().then(function (c) { return c.loginWithRedirect({ appState: st }); })
     // 0.11.12: after a sign-out made offline (signOutOffline), the sign-in page was never told and still holds its session
     // for this device; the next sign-in asks it to ask who it is again (OIDC prompt=login) rather than reuse that session.
-    var signInOptions = account.forgetPending ? { appState: st, authorizationParams: { prompt: 'login' } } : { appState: st };
+    // was: var signInOptions = account.forgetPending ? { appState: st, authorizationParams: { prompt: 'login' } } : { appState: st };
+    // 0.11.13: read from the account record or its own key (forgetIsPending), so a reset that failed to write keeps it.
+    var signInOptions = forgetIsPending() ? { appState: st, authorizationParams: { prompt: 'login' } } : { appState: st };
     authClient().then(function (c) { return c.loginWithRedirect(signInOptions); })
       .catch(function (e) { saveAccount({ lastError: friendlyError(e), handoffAt: null }); renderAccount(); show('s-account'); });
   }
@@ -11026,6 +11028,25 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // signed in or not at all. The transport is kept beside sync for that one read.
   var pendingDeck = null, authTransport = null;
   function appError(message) { var error = new Error(message); error.appSentence = true; return error; }
+  // 0.11.13 (review of 0.11.12, privacy): counts the sign-outs made on this page. A sign-in client still on its way when
+  // the device signed out (the startup's, most often) is not handed the page when it arrives: it is told to forget its
+  // session (logout with openUrl: false) instead, so the account's tokens are not kept, and no sync starts with them.
+  var signOutGeneration = 0;
+  // 0.11.13 (review of 0.11.12, privacy): the identity SDK's own cache in this device's storage (auth0-spa-js 2.24.1,
+  // cacheLocation 'localstorage': '@@auth0spajs@@::<clientId>::<audience>::<scope>' holds the refresh and access tokens,
+  // '@@auth0spajs@@::<clientId>::@@user@@' the ID token with the name and address). Removed here directly, so a sign-out
+  // forgets the account even when the client never arrived or could not be made.
+  function forgetIdentityCache() {
+    try {
+      var prefix = '@@auth0spajs@@::' + ((CONFIG.auth0 && CONFIG.auth0.clientId) || '') + '::', drop = [];
+      for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && k.indexOf(prefix) === 0) drop.push(k); }
+      drop.forEach(function (k) { localStorage.removeItem(k); });
+    } catch (e) { /* storage unreadable: nothing of the account can be read back from it either */ }
+  }
+  function forgetClientSession(c) {
+    if (!c || typeof c.logout !== 'function') return;
+    try { Promise.resolve(c.logout({ openUrl: false })).catch(function () { /* the device is signed out either way */ }); } catch (e) { /* as above */ }
+  }
 
   function appUrl() { return location.origin + location.pathname; }
   function authClient() {
@@ -11035,14 +11056,20 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     // The provider's own SDK, its documented options: refresh tokens because third-party cookies
     // are blocked on phones and there is no custom domain; the cache in localStorage so a reload
     // does not need the network to know who you are.
+    var outs = signOutGeneration;
     authInit = auth0.createAuth0Client({
       domain: CONFIG.auth0.domain, clientId: CONFIG.auth0.clientId,
       authorizationParams: { redirect_uri: appUrl(), audience: CONFIG.auth0.audience },
       cacheLocation: 'localstorage', useRefreshTokens: true
     }).then(function (c) {
       authUnavailable = false;
+      // 0.11.13: the device signed out while this client was on its way; it forgets the session and serves nothing.
+      if (outs !== signOutGeneration) { forgetClientSession(c); forgetIdentityCache(); throw appError('Not signed in.'); }
       auth = c;
-      authTransport = neonTransport(CONFIG.dataApi, function () { return c.getTokenSilently(); });
+      // was: authTransport = neonTransport(CONFIG.dataApi, function () { return c.getTokenSilently(); });
+      // 0.11.13 (review of 0.11.12, privacy): a call made, or still on its way, while this device is signed out carries no
+      // token, whatever the identity client still holds; the Data API answers a token-less call with nothing.
+      authTransport = neonTransport(CONFIG.dataApi, function () { return account.signedIn ? c.getTokenSilently() : Promise.resolve(null); });
       // was: sync = makeSync(store, authTransport, { adapter: adapter });   // the client applies the account's erase itself (P55)
       // 0.11.10 (B-103): the pull measures the same room the Today and Progress lines do, with the same keys beside the store's.
       sync = makeSync(store, authTransport, { adapter: adapter, roomKeys: ['bw08.packs.v1', 'bw08.account.v1', 'bw08.sync.v1'] });   // the client applies the account's erase itself (P55)
@@ -11191,7 +11218,12 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     sync = null;
     return true;
   }
-  function reportAuthenticatedFailure(e) {
+  function reportAuthenticatedFailure(e, who) {
+    // 0.11.13 (review of 0.11.12): a call made for one account that fails after the device signed out, or signed in as
+    // someone else, is not that account's error to record: lastError on the signed-out record read as not synced, and a
+    // later expiry note would mark a sign-out that already happened. It still fails for its caller. (who is the account
+    // the call was made for; wrapAuthenticatedCalls passes it.)
+    if (arguments.length > 1 && (!account.signedIn || who !== account.sub)) throw e;
     if (e && e.storage) {
       storageBroken = true;
       showStorageProblem();
@@ -11204,8 +11236,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (screen === 's-account') renderAccount();
     throw e;
   }
-  function authenticatedCall(promise) {
-    return Promise.resolve(promise).catch(reportAuthenticatedFailure);
+  // was: function authenticatedCall(promise) { return Promise.resolve(promise).catch(reportAuthenticatedFailure); }
+  // 0.11.13: the account the call was made for rides with it, for reportAuthenticatedFailure's check.
+  function authenticatedCall(promise, who) {
+    return Promise.resolve(promise).catch(function (e) { return reportAuthenticatedFailure(e, who); });
   }
   function wrapAuthenticatedCalls(target) {
     var names = ['push', 'pull', 'pushPack', 'flushOwnPacks', 'pullPacks', 'peekClass', 'myProfile', 'setDisplayName', 'createClass', 'joinClass', 'resetClassCode', 'sharePack', 'unsharePack', 'sharedPack', 'myClasses', 'enrollments', 'setEnrollment', 'leaveClass', 'classPacks', 'publishClassPack', 'classReviews', 'eraseReviews', 'deleteMe', 'accountGone'];
@@ -11218,8 +11252,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       // read as not synced. Anything else from these two calls (offline, an expired sign-in) is reported as before.
       var classCall = name === 'peekClass' || name === 'joinClass';
       target[name] = function () {
-        if (!classCall) return authenticatedCall(original.apply(target, arguments));
-        return Promise.resolve(original.apply(target, arguments)).catch(function (e) { if (classRefusal(e)) throw e; return reportAuthenticatedFailure(e); });
+        // was: if (!classCall) return authenticatedCall(original.apply(target, arguments));
+        // was: return Promise.resolve(original.apply(target, arguments)).catch(function (e) { if (classRefusal(e)) throw e; return reportAuthenticatedFailure(e); });
+        var who = account.sub;   // 0.11.13: the account this call is made for
+        if (!classCall) return authenticatedCall(original.apply(target, arguments), who);
+        return Promise.resolve(original.apply(target, arguments)).catch(function (e) { if (classRefusal(e)) throw e; return reportAuthenticatedFailure(e, who); });
       };
     });
   }
@@ -11336,6 +11373,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var trackingCleared = !sync || sync.reset();
     if (!trackingCleared) { storageBroken = true; showStorageProblem(); }
     var accountCleared = saveAccount({ signedIn: false, lastSub: account.sub || account.lastSub || '', sub: '', name: '', email: '', lastSync: null, lastResult: null, lastError: null, goneNotice: null });
+    // 0.11.13 (review of 0.11.12, privacy): the identity SDK's cache went only when its client had arrived (auth set) and was
+    // told to log out. Every sign-out now removes it here, and a client still on its way forgets its session when it lands.
+    signOutGeneration++;
+    forgetIdentityCache();
     sync = null; auth = null; authInit = null;
     return trackingCleared && accountCleared;
   }
@@ -11358,6 +11399,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       lastSub: account.sub || account.lastSub || '', sub: '', name: '', email: '', lastSync: null, lastResult: null, lastError: null });
     var trackingCleared = !sync || sync.detach();
     if (!accountCleared || !trackingCleared) { storageBroken = true; showStorageProblem(); }
+    signOutGeneration++;   // 0.11.13: as in signOutLocal, the identity SDK's cache goes with the account
+    forgetIdentityCache();
     sync = null; auth = null; authInit = null;
     return { recorded: accountCleared && trackingCleared, signedOut: accountCleared, client: client };
   }
@@ -11376,6 +11419,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         accountSaid = null;   // signing in answers whatever the last account left on this screen
         // was: saveAccount({ signedIn: true, expired: false, sub: u.sub || '', lastSub: '', name: u.name || u.nickname || '', email: u.email || '', lastError: null, goneNotice: null });
         saveAccount({ signedIn: true, expired: false, sub: u.sub || '', lastSub: '', name: u.name || u.nickname || '', email: u.email || '', lastError: null, goneNotice: null, forgetPending: null });   // 0.11.12: the sign-in that asked again is done
+        adapter.set(FORGET_KEY, '');   // 0.11.13: and its own key with it
         // 0.9.3 G1 (state-driven, every sign-in, no id): the only line that says the sign-in worked.
         toast('Signed in. Your answers now save to your account.');
         if (appState && appState.join) pendingJoin = appState.join;
@@ -11492,15 +11536,21 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (account.notice) { var n = account.notice; saveAccount({ notice: null }); $('ac-body').firstChild.insertAdjacentHTML('afterbegin', '<div class="msg">' + esc(n) + '</div>'); }
   }
   // One sign-out, from You's card and from the Account screen alike (0.11 F3: You carries Sign out now too).
+  // 0.11.13: the offline sign-out's "ask who you are again", kept beside the account record (see signOutOffline).
+  var FORGET_KEY = 'bw08.forget.v1';
+  function forgetIsPending() { return !!account.forgetPending || adapter.get(FORGET_KEY) === '1'; }
   var SIGNED_OUT_OFFLINE = 'Signed out on this device. You are offline, so the sign-in page has not been told; the next sign-in here will ask who you are again.';
   function signOutOffline() {
     var client = auth;
+    // 0.11.13 (review of 0.11.12): forgetPending rode only in the account record, written after the reset, so a reset whose
+    // write failed lost it with the rest. Its own small key is written first; the record keeps it too, as before.
+    adapter.set(FORGET_KEY, '1');
     signOutLocal();
     saveAccount({ forgetPending: true });   // read by signIn(): the next sign-in asks again (prompt=login)
     accountSaid = SIGNED_OUT_OFFLINE;
-    if (client && typeof client.logout === 'function') {
-      try { Promise.resolve(client.logout({ openUrl: false })).catch(function () { /* the device is signed out either way */ }); } catch (e) { /* as above */ }
-    }
+    // was: if (client && typeof client.logout === 'function') { try { Promise.resolve(client.logout({ openUrl: false })).catch(…); } catch (e) {} }
+    // 0.11.13: the same, through forgetClientSession; a client not yet arrived is told when it lands (signOutGeneration).
+    forgetClientSession(client);
     renderStatus();
     if (screen === 's-account') renderAccount(); else if (screen === 's-you') renderYou();
     toast(SIGNED_OUT_OFFLINE);
@@ -11651,8 +11701,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       if (pendingJoin) {
         classesView.join = { code: pendingJoin, step: 1 }; pendingJoin = null; renderClasses(); show('s-classes');
       }
+      // was: authClient().then(function () { return syncNow(); }).catch(function (e) { saveAccount({ lastError: friendlyError(e) }); renderStatus(); });
+      // 0.11.13: a sign-out made while the client was on its way stops this sync (authClient refuses); nothing is written to
+      // the signed-out record for it.
       authClient().then(function () { return syncNow(); })
-        .catch(function (e) { saveAccount({ lastError: friendlyError(e) }); renderStatus(); });
+        .catch(function (e) { if (!account.signedIn) return; saveAccount({ lastError: friendlyError(e) }); renderStatus(); });
       return !!jm;
     } else if (pendingJoin) {
       renderAccount(); show('s-account');   // the link brought them; sign in first, the code waits
@@ -11936,7 +11989,13 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
           loadedPacks = packs.map(function (p) { return p.pack; }).filter(function (pk) { try { validatePack(pk); return true; } catch (e) { unreadable++; return false; } });
           show('s-class'); renderClass();
           if (unreadable) toast(unreadable === 1 ? 'One of this class’s decks could not be read, so its cards are not named below.' : unreadable + ' of this class’s decks could not be read, so their cards are not named below.');
-        }).catch(function (e) { fail(e); rp.disabled = false; rp.textContent = 'Open the class view'; });
+        // was: }).catch(function (e) { fail(e); rp.disabled = false; rp.textContent = 'Open the class view'; });
+        // 0.11.13 (review of 0.11.12): the failure lands under the same check as the answer, so a read that fails after a
+        // sign-out writes nothing to a signed-out page or record.
+        }).catch(function (e) {
+          if (gen !== renderGeneration || who !== account.sub || !account.signedIn || !classesView.open || classesView.open.id !== c.id) return;
+          fail(e); rp.disabled = false; rp.textContent = 'Open the class view';
+        });
       });
     }).catch(function (e) {
       body.innerHTML = '<div class="prose"><div class="msg bad">' + esc(friendlyError(e)) + '</div><button class="ghost" id="cd-back" type="button"><span>Back to classes</span></button></div>';
@@ -12245,7 +12304,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.11.12";
+  var APP_V = "0.11.13";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
