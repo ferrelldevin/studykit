@@ -2715,6 +2715,9 @@ function buildQueue(deck, store, opts = {}) {
   const allowance = Math.max(0, p.maxReviewsPerDay - used);
   const intakePaused = !opts.ahead && gapDays >= 3 && backlog > allowance;
   if (intakePaused) newLeft = 0;
+
+  const historyArriving = !!opts.holdNew;
+  if (historyArriving) newLeft = 0;
   const learnAheadMs = (p.learnAheadMinutes ?? 20) * 60000;
   if (!due.length && !learn.length && !learnInter.length && !owed.length && Math.min(fresh.length, newLeft) === 0) {
     for (const c of pool) {
@@ -2772,15 +2775,16 @@ function buildQueue(deck, store, opts = {}) {
     if (!gap) while (di < dueQ.length) out.push(dueQ[di++]);
   }
 
-  const newHeldByLimit = newLeft === 0 && allowanceLeft > 0 && !intakePaused
+  const newHeldByLimit = newLeft === 0 && allowanceLeft > 0 && !intakePaused && !historyArriving
     && !opts.ahead && !opts.aheadDays && !p.newCardsIgnoreReviewLimit;
 
-  const newCutByLimit = newLeft < allowanceLeft && !intakePaused
+  const newCutByLimit = newLeft < allowanceLeft && !intakePaused && !historyArriving
     && !opts.ahead && !opts.aheadDays && !p.newCardsIgnoreReviewLimit;
 
   return {
     queue: out,
-    newLeft, reviewsLeft, budget, gapDays, backlog, intakePaused, newHeldByLimit, newCutByLimit,
+    
+    newLeft, reviewsLeft, budget, gapDays, backlog, intakePaused, newHeldByLimit, newCutByLimit, historyArriving,
 
     counts: { fresh: fresh.length, newToday: freshQ.length, toStudyToday: out.length, due: due.length, learn: learn.length + learnInter.length + owed.length, soon, learningLater, buried, overCap, sameNote, outOfRotation, freshBuried },
   };
@@ -3105,12 +3109,21 @@ const flushOwnPush = (state) => {
 
 const PULL_OVERLAP_MS = 60000;   
 
+const PULL_CAP = 5000;
+const PULL_RESERVE = 3000;
+
 function makeSync(store, transport, opts = {}) {
   const batch = opts.batch || 500;
   const pageSize = opts.pullLimit || 500;
+  const pullCap = opts.pullCap || PULL_CAP;   
+  const pullReserve = opts.pullReserve == null ? PULL_RESERVE : opts.pullReserve;   
+  const roomKeys = opts.roomKeys || [];   
   const adapter = opts.adapter || { get: () => null, set: () => true };
   let st = { mark: null, above: [], below: [], cursor: null, packCursor: null, erasedSeen: 0 };   
   let compareNextPush = false;   
+
+  let epoch = 0;
+  const ABANDONED = { abandoned: true };
   const ownPush = { transport, delay: opts.packDebounce == null ? 2000 : opts.packDebounce, queued: new Map(), waiters: new Map(), timer: null, running: null, onSent: null };
   try { const raw = adapter.get(SYNC_KEY); if (raw) st = { ...st, ...JSON.parse(raw) }; } catch (e) {  }
 
@@ -3147,6 +3160,7 @@ function makeSync(store, transport, opts = {}) {
 
   const detachLocally = () => {
     detachedFromServer = true;
+    epoch++;
     above.clear(); below.clear(); known.clear(); lastNoted = [];
     if (ownPush.timer) { clearTimeout(ownPush.timer); ownPush.timer = null; }
     ownPush.queued.clear();
@@ -3212,11 +3226,18 @@ function makeSync(store, transport, opts = {}) {
       above.clear(); below.clear(); known.clear(); lastNoted = [];
       for (const e of store.log) known.add(clientId(e));
       st = { mark: null, above: [], below: [], cursor: null, packCursor: null, erasedSeen: point };
+      epoch++;
       if (!persist()) return { changed: true, saved: false, erasedAt: point };
       compareNextPush = true;
       return { changed: true, saved: true, erasedAt: point };
     },
     eraseState() { return { erasedSeen: Number(st.erasedSeen) || 0 }; },
+    
+    historyState() {
+      
+      const arriving = st.backfill === 'arriving';
+      return { arriving: !detachedFromServer && arriving, heldForRoom: st.backfill === 'room' };
+    },
     
     pending() {
       noteLocalChanges();
@@ -3266,7 +3287,15 @@ function makeSync(store, transport, opts = {}) {
       const cursorMs = st.cursor ? Date.parse(st.cursor.receivedAt) : NaN;   
       let scan = Number.isFinite(cursorMs) ? { receivedAt: new Date(cursorMs - PULL_OVERLAP_MS).toISOString(), clientId: '' } : null;
       let skipTies = !!scan;
-      const importPage = (page) => {
+      
+      if (!Number.isFinite(cursorMs)) { st.cursor = null; st.floor = null; st.backfill = 'arriving'; }
+      let capLeft = pullCap, more = false, full = false;
+      let floor = st.floor || null;   
+      const filling = !!st.backfill;
+      const myEpoch = epoch;
+
+      const readLog = async (q) => { const rows = await transport.select('review_log', q); if (myEpoch !== epoch) throw ABANDONED; return rows; };
+      const importPage = (page, desc = false) => {
 
         const fresh = page.filter((r) => !known.has(`${r.card}|${Number(r.t)}`));
         const entries = fresh.map(rowToEntry);
@@ -3277,8 +3306,19 @@ function makeSync(store, transport, opts = {}) {
 
         if (entries.length) acknowledge(entries);
         const last = page[page.length - 1];
-        scan = { receivedAt: last.received_at, clientId: String(last.client_id) };
-        if (cursorAfter(scan, st.cursor)) st.cursor = { ...scan };
+
+        capLeft -= fresh.length;
+        if (desc) {
+          
+          const top = { receivedAt: page[0].received_at, clientId: String(page[0].client_id) };
+          if (cursorAfter(top, st.cursor)) st.cursor = top;
+          floor = { receivedAt: last.received_at, clientId: String(last.client_id) };
+          st.floor = floor;
+          st.backfill = 'arriving';   
+        } else {
+          scan = { receivedAt: last.received_at, clientId: String(last.client_id) };
+          if (cursorAfter(scan, st.cursor)) st.cursor = { ...scan };
+        }
         pages++; rowsSeen += fresh.length; added += res.added; skipped += res.rejected;
         if (!trackingFailed && !persist()) {
           saved = false;
@@ -3288,21 +3328,63 @@ function makeSync(store, transport, opts = {}) {
         } else if (trackingFailed) restoreTracking();
         if (opts.onPage) opts.onPage({ pages, rows: rowsSeen, added, skipped });
       };
-      while (true) {
-        if (scan && !skipTies) {
+
+      const take = () => Math.min(pageSize, capLeft);
+      try {
+      while (st.cursor && scan) {
+        if (take() <= 0) { more = true; break; }
+        if (!skipTies) {
+          let tiesFull = false;
           while (true) {
-            const ties = await transport.select('review_log', { select: 'card,t,g,k,s,d,i,u,e,v,received_at,client_id', order: 'received_at.asc,client_id.asc', filters: [['received_at', 'eq', scan.receivedAt], ['client_id', 'gt', scan.clientId]], limit: pageSize });
+            const lim = take();
+            if (lim <= 0) { tiesFull = true; break; }
+            const ties = await readLog({ select: 'card,t,g,k,s,d,i,u,e,v,received_at,client_id', order: 'received_at.asc,client_id.asc', filters: [['received_at', 'eq', scan.receivedAt], ['client_id', 'gt', scan.clientId]], limit: lim });
             if (ties.length) importPage(ties);
-            if (ties.length < pageSize) break;
+            if (ties.length < lim) break;
           }
+          if (tiesFull) { more = true; break; }
         }
         skipTies = false;
-        const filters = scan ? [['received_at', 'gt', scan.receivedAt]] : [];
-        const rows = await transport.select('review_log', { select: 'card,t,g,k,s,d,i,u,e,v,received_at,client_id', order: 'received_at.asc,client_id.asc', filters, limit: pageSize });
+        const lim = take();
+        if (lim <= 0) { more = true; break; }
+        const rows = await readLog({ select: 'card,t,g,k,s,d,i,u,e,v,received_at,client_id', order: 'received_at.asc,client_id.asc', filters: [['received_at', 'gt', scan.receivedAt]], limit: lim });
         if (!rows.length) break;
         importPage(rows);
       }
-      return { added, total: store.log.length, pages, rows: rowsSeen, skipped, saved };
+
+      if (filling && !more) {
+        let tiesDone = !floor;
+        while (true) {
+          const room = store.roomLeft(roomKeys).answers - pullReserve;
+          const lim = Math.min(pageSize, capLeft, room);
+          if (capLeft <= 0) { more = true; break; }
+          if (lim <= 0) { full = true; st.backfill = 'room'; if (!trackingFailed && !persist()) { saved = false; trackingFailed = true; restoreTracking(); } break; }
+          if (st.backfill === 'room') st.backfill = 'arriving';
+          let rows;
+          if (!tiesDone) {
+            rows = await readLog({ select: 'card,t,g,k,s,d,i,u,e,v,received_at,client_id', order: 'received_at.desc,client_id.desc', filters: [['received_at', 'eq', floor.receivedAt], ['client_id', 'lt', floor.clientId]], limit: lim });
+            if (rows.length) importPage(rows, true);
+            if (rows.length < lim) tiesDone = true;
+            continue;
+          }
+          rows = await readLog({ select: 'card,t,g,k,s,d,i,u,e,v,received_at,client_id', order: 'received_at.desc,client_id.desc', filters: floor ? [['received_at', 'lt', floor.receivedAt]] : [], limit: lim });
+          if (rows.length) importPage(rows, true);
+          if (rows.length < lim) {
+            
+            st.backfill = null; st.floor = null;
+            if (!trackingFailed && !persist()) { saved = false; trackingFailed = true; restoreTracking(); }
+            break;
+          }
+          tiesDone = false;   
+        }
+      }
+      } catch (error) {
+        
+        if (error === ABANDONED) return { added, total: store.log.length, pages, rows: rowsSeen, skipped, saved, more: false, full: false, arriving: false, abandoned: true };
+        throw error;
+      }
+      
+      return { added, total: store.log.length, pages, rows: rowsSeen, skipped, saved, more, full, arriving: st.backfill === 'arriving' };
     },
 
     pushPack(pack) {
@@ -3381,7 +3463,7 @@ function makeSync(store, transport, opts = {}) {
       return !decks.length;
     },
 
-    reset() { detachedFromServer = false; above.clear(); below.clear(); known.clear(); st = { mark: null, above: [], below: [], cursor: null, packCursor: null }; return persist(); },
+    reset() { detachedFromServer = false; epoch++; above.clear(); below.clear(); known.clear(); st = { mark: null, above: [], below: [], cursor: null, packCursor: null }; return persist(); },
     state() { return { sent: above.size + (st.mark == null ? 0 : store.log.filter((e) => atOrBefore(e) && !below.has(clientId(e))).length), cursor: st.cursor, mark: st.mark }; },
   };
 }
@@ -4086,7 +4168,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 (function () {
   'use strict';
   // was: the version line named 0.11.5
-  var APP_VERSION = '0.11.9';   // was: '0.11.8'
+  var APP_VERSION = '0.11.10';   // was: '0.11.9'; before that '0.11.8'
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -5546,7 +5628,20 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     opts = opts || {};
     // was: return buildQueue(DECK, store, { pack: scope.pack, lesson: scope.lesson, ahead: opts.ahead || 0, aheadDays: opts.aheadDays || 0, deckOptions: opts.deckOptions || deckOptionsFor(), ctx: opts.ctx });
     // 0.11.6: the Favorites scope is every deck, narrowed to the cards the learner marked; the schedule is the usual one.
-    return buildQueue(DECK, store, { pack: scope.pack, lesson: scope.lesson, ids: scope.favorites ? store.favorites() : null, ahead: opts.ahead || 0, aheadDays: opts.aheadDays || 0, deckOptions: opts.deckOptions || deckOptionsFor(), ctx: opts.ctx });
+    // was: return buildQueue(DECK, store, { pack: scope.pack, lesson: scope.lesson, ids: scope.favorites ? store.favorites() : null, ahead: opts.ahead || 0, aheadDays: opts.aheadDays || 0, deckOptions: opts.deckOptions || deckOptionsFor(), ctx: opts.ctx });
+    // 0.11.10 (B-103): new cards wait while a first sign-in's history is still coming down.
+    return buildQueue(DECK, store, { pack: scope.pack, lesson: scope.lesson, ids: scope.favorites ? store.favorites() : null, ahead: opts.ahead || 0, aheadDays: opts.aheadDays || 0, deckOptions: opts.deckOptions || deckOptionsFor(), ctx: opts.ctx, holdNew: historyArriving() });
+  }
+  // 0.11.10 (B-103): is the account's history still coming down to this device? The sync says so once it exists; before
+  // it does (the sign-in client still arriving), its saved record says the same thing, read the same way: a pull started
+  // and not yet at the bottom. Before any pull has started nothing is held: a sign-in whose client never arrives would
+  // otherwise hold new cards for good. Signed out, nothing is arriving.
+  function historyArriving() {
+    if (!SYNC_READY || !account.signedIn) return false;
+    if (sync && sync.historyState) return !!sync.historyState().arriving;
+    var held = null;
+    try { held = JSON.parse(adapter.get('bw08.sync.v1') || 'null'); } catch (e) { held = null; }
+    return !!(held && !held.detached && held.backfill === 'arriving');
   }
   /* ── lessons in your daily set: which lessons supply new cards ─────── */
   // options.lessonsOut on the install record, on this device only. No key reads as every lesson in.
@@ -5723,6 +5818,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // Settings served that card the same day. A day is named only where the schedule names one (§G.1).
   function newCardHold(b) {
     var full = b.queue.filter(function (c) { return (store.state(c.id) || { state: 'new' }).state === 'new'; }).length >= b.newLeft;
+    if (b.historyArriving) return { words: 'new cards wait while your history comes to this device' };   // 0.11.10 (B-103)
     if (full && b.newCutByLimit) return { words: b.newLeft ? 'today’s review limit leaves room for only ' + plural(b.newLeft, 'new card') : 'today’s review limit leaves no room for new cards' };
     if (full && b.intakePaused) return { words: 'new cards pause: more cards are waiting from your time away than today’s review limit leaves room for' };
     if (b.newLeft === 0) return { words: 'today’s new cards are done' };
@@ -7835,7 +7931,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var state = syncState(), synced = account.lastSync ? 'synced ' + relTime(account.lastSync) : 'not synced yet';
     if (!sync) { el.textContent = 'Signed in · ' + (state === 'offline' ? 'offline' : synced) + ' · checking what is waiting…'; return; }
     var left = sync.pending().length, waiting = left ? ' · ' + plural(left, 'answer') + ' waiting' : '';
-    if (state === 'syncing') el.textContent = 'Signed in · syncing now' + waiting + '.';
+    // was: if (state === 'syncing') el.textContent = 'Signed in · syncing now' + waiting + '.';
+    if (state === 'syncing') el.textContent = 'Signed in · ' + (historyArriving() ? 'bringing your history here' : 'syncing now') + waiting + '.';
     else if (state === 'offline') el.textContent = 'Signed in · ' + (navigator.onLine === false ? 'offline' : 'not synced') + waiting + '.';
     else el.textContent = 'Signed in · ' + synced + waiting + '.';
   }
@@ -10905,7 +11002,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       authUnavailable = false;
       auth = c;
       authTransport = neonTransport(CONFIG.dataApi, function () { return c.getTokenSilently(); });
-      sync = makeSync(store, authTransport, { adapter: adapter });   // the client applies the account's erase itself (P55)
+      // was: sync = makeSync(store, authTransport, { adapter: adapter });   // the client applies the account's erase itself (P55)
+      // 0.11.10 (B-103): the pull measures the same room the Today and Progress lines do, with the same keys beside the store's.
+      sync = makeSync(store, authTransport, { adapter: adapter, roomKeys: ['bw08.packs.v1', 'bw08.account.v1', 'bw08.sync.v1'] });   // the client applies the account's erase itself (P55)
       wrapAuthenticatedCalls(sync);
       return c;
     }, function () { authInit = null; authUnavailable = true; throw appError('Sign-in is not available right now; your answers are kept here.'); });
@@ -11087,7 +11186,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
           q = q || { added: 0, saved: false };
           var saved = p.saved !== false && q.saved !== false;
           if (!saved) { storageBroken = true; showStorageProblem(); }
-          return { pushed: p.uploaded, pulled: q.added, skipped: q.skipped || 0, saved: saved, eraseMatch: matched, shortfall: p.shortfall || 0 };
+          // was: return { pushed: p.uploaded, pulled: q.added, skipped: q.skipped || 0, saved: saved, eraseMatch: matched, shortfall: p.shortfall || 0 };
+          return { pushed: p.uploaded, pulled: q.added, skipped: q.skipped || 0, saved: saved, eraseMatch: matched, shortfall: p.shortfall || 0, more: !!q.more, full: !!q.full };
         }); });
       })
       .then(function (r) { if (r.detached || r.saved === false) return r; return syncPacks().then(function (pk) { r.packs = pk; return r; }); })
@@ -11109,7 +11209,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         if (screen === 's-account') renderAccount();
         return r;
       })
-      .then(function (r) { syncing = null; renderStatus(); return r; }, function (e) { syncing = null; renderStatus(); throw e; });
+      // was: .then(function (r) { syncing = null; renderStatus(); return r; }, function (e) { syncing = null; renderStatus(); throw e; });
+      // 0.11.10 (B-103): a pull is one cycle of at most a few thousand rows; while the account has more to send and the
+      // device has room for it, the next cycle starts as soon as this one is done, with a render between the two.
+      .then(function (r) { syncing = null; renderStatus(); if (r && r.more && !r.full) setTimeout(syncSoon, 0); return r; }, function (e) { syncing = null; renderStatus(); throw e; });
     renderStatus();   // 0.11 F1 (N2): syncing is a state of its own; the ring, Today and You show it from the start
     return syncing;
   }
@@ -11126,6 +11229,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (navigator.onLine === false) return 'offline';
     if (syncing || !sync) return 'syncing';
     if (account.lastError) return 'offline';
+    if (historyArriving()) return 'syncing';   // 0.11.10 (B-103): between the cycles of a first sign-in's pull, still syncing
     return 'synced';
   }
   // The ring's accessible name per state (MC-62: what the learner's state is, in their words; the ring is never the
@@ -11268,6 +11372,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         '<div class="rows">' + row('Last sync', account.lastSync ? relTime(account.lastSync) : 'not yet') +
         row('Waiting to upload', pend == null ? '…' : String(pend)) +
         (r ? row('Last sync brought', plural(r.pulled || 0, 'review') + (r.packs === 'pulled' ? ', your cards' : '') + (r.skipped ? '; ' + plural(r.skipped, 'row') + ' could not be read' : '')) : '') + '</div>' +
+        // 0.11.10 (B-103): a first sign-in's pull stops while this device still has room for new answers; the rest is kept in the account.
+        (sync && sync.historyState && sync.historyState().heldForRoom ? '<p class="note" id="ac-held">Your newest answers are on this device. Older ones stay in your account, to keep room here for new answers.</p>' : '') +
         (account.lastError ? '<div class="msg bad">' + esc(account.lastError) + '</div>' : '') +
         '<button class="primary" id="ac-sync" type="button"' + (sync ? '' : ' disabled') + '>Sync now</button>' +
         '<p class="note">Syncing also happens by itself: when you open the app signed in, and after each session. Reviews upload once each; the server keeps one copy of every review no matter how many times it is sent.</p>' +
@@ -12038,7 +12144,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.11.9";
+  var APP_V = "0.11.10";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
