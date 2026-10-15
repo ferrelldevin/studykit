@@ -3073,8 +3073,11 @@ const runOwnPush = (state) => {
       state.queued.delete(id);
       state.waiters.delete(id);
       try {
+
+        const sentUnder = state.tag ? state.tag() : null;
         await state.transport.upsert('user_packs', [{ pack_id: pack.id, version: pack.version, pack, updated_at: new Date().toISOString() }], 'user_id,pack_id');
-        if (state.onSent) state.onSent();
+        
+        if (state.onSent) state.onSent(sentUnder);
         for (const waiter of waiters) waiter.resolve(1);
         sent++;
       } catch (error) {
@@ -3156,7 +3159,9 @@ function makeSync(store, transport, opts = {}) {
   };
 
   const reachedServer = () => !!(st.reached || st.mark || st.cursor || above.size || below.size || Number(st.erasedSeen));
-  ownPush.onSent = () => { if (!st.reached) { st.reached = true; persist(); } };
+  
+  ownPush.tag = () => epoch;
+  ownPush.onSent = (sentUnder) => { if (sentUnder !== epoch) return; if (!st.reached) { st.reached = true; persist(); } };
 
   const detachLocally = () => {
     detachedFromServer = true;
@@ -3259,9 +3264,12 @@ function makeSync(store, transport, opts = {}) {
       if (!saved) restoreTracking();
       const todo = pendingRows();
       let batches = 0, uploaded = 0;
+
+      const myEpoch = epoch;
       for (let i = 0; i < todo.length; i += batch) {
         const rows = todo.slice(i, i + batch);
         const n = await transport.rpc('append_reviews', { p_rows: rows.map(toRow), p_seen: st.erasedSeen ? new Date(st.erasedSeen).toISOString() : null });
+        if (myEpoch !== epoch) return { pending: todo.length, batches: batches + 1, uploaded: uploaded + (Number(n) || 0), saved, shortfall: 0, abandoned: true };
         acknowledge(rows);
         batches++; uploaded += Number(n) || 0;
         if (!persist()) { saved = false; restoreTracking(); }
@@ -4168,7 +4176,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 (function () {
   'use strict';
   // was: the version line named 0.11.5
-  var APP_VERSION = '0.11.10';   // was: '0.11.9'; before that '0.11.8'
+  var APP_VERSION = '0.11.11';   // was: '0.11.10'; before that '0.11.9', '0.11.8'
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -11181,18 +11189,24 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
           showStorageProblem(matched.partial ? FAILED_REVERT : null);
           return { pushed: 0, pulled: 0, skipped: 0, saved: false, eraseMatch: matched };
         }
-        return sync.push().then(function (p) { return sync.pull().then(function (q) {
+        // was: return sync.push().then(function (p) { return sync.pull().then(function (q) {
+        // 0.11.11: a push or a pull that stopped because the account record was reset under it (a sign-out, or Erase my
+        // progress) is not a sync: nothing more is read, the account keeps what the reset wrote, and no Last sync brought.
+        return sync.push().then(function (p) { if (p && p.abandoned) return { pushed: p.uploaded, pulled: 0, skipped: 0, saved: true, eraseMatch: matched, abandoned: true }; return sync.pull().then(function (q) {
           p = p || { uploaded: 0, saved: false };
           q = q || { added: 0, saved: false };
           var saved = p.saved !== false && q.saved !== false;
           if (!saved) { storageBroken = true; showStorageProblem(); }
           // was: return { pushed: p.uploaded, pulled: q.added, skipped: q.skipped || 0, saved: saved, eraseMatch: matched, shortfall: p.shortfall || 0 };
-          return { pushed: p.uploaded, pulled: q.added, skipped: q.skipped || 0, saved: saved, eraseMatch: matched, shortfall: p.shortfall || 0, more: !!q.more, full: !!q.full };
+          // was: return { pushed: p.uploaded, pulled: q.added, skipped: q.skipped || 0, saved: saved, eraseMatch: matched, shortfall: p.shortfall || 0, more: !!q.more, full: !!q.full };
+          return { pushed: p.uploaded, pulled: q.added, skipped: q.skipped || 0, saved: saved, eraseMatch: matched, shortfall: p.shortfall || 0, more: !!q.more, full: !!q.full, abandoned: !!q.abandoned };
         }); });
       })
-      .then(function (r) { if (r.detached || r.saved === false) return r; return syncPacks().then(function (pk) { r.packs = pk; return r; }); })
+      // was: .then(function (r) { if (r.detached || r.saved === false) return r; return syncPacks().then(function (pk) { r.packs = pk; return r; }); })
+      .then(function (r) { if (r.detached || r.abandoned || r.saved === false) return r; return syncPacks().then(function (pk) { r.packs = pk; return r; }); })
       .then(function (r) {
-        if (r.detached) return r;
+        // was: if (r.detached) return r;
+        if (r.detached || r.abandoned) return r;
         var patch = {};
         if (r.eraseMatch && r.eraseMatch.changed) {
           var date = fmtCardDate(r.eraseMatch.erasedAt);
@@ -12144,7 +12158,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.11.10";
+  var APP_V = "0.11.11";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
