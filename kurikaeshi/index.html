@@ -3077,6 +3077,12 @@ const runOwnPush = (state) => {
   if (state.running) return state.running;
   if (!state.queued.size) return Promise.resolve(0);
   state.running = (async () => {
+
+    if (state.gate) {
+      let go;
+      try { go = await state.gate(); } catch (error) { dropOwnPush(state, (w) => w.reject(error)); throw error; }
+      if (!go) { dropOwnPush(state, (w) => w.resolve(0)); return 0; }
+    }
     let sent = 0;
     while (state.queued.size) {
       const id = state.queued.keys().next().value;
@@ -3100,6 +3106,11 @@ const runOwnPush = (state) => {
     return sent;
   })().finally(() => { state.running = null; });
   return state.running;
+};
+
+const dropOwnPush = (state, tell) => {
+  state.queued.clear();
+  for (const [id, waiters] of [...state.waiters]) { state.waiters.delete(id); for (const waiter of waiters) tell(waiter); }
 };
 
 const queueOwnPush = (state, pack) => {
@@ -3486,6 +3497,8 @@ function makeSync(store, transport, opts = {}) {
     reset() { detachedFromServer = false; epoch++; above.clear(); below.clear(); known.clear(); st = { mark: null, above: [], below: [], cursor: null, packCursor: null }; return persist(); },
     
     abandon() { epoch++; },
+    
+    gateOwnPacks(gate) { ownPush.gate = typeof gate === 'function' ? gate : null; },
     state() { return { sent: above.size + (st.mark == null ? 0 : store.log.filter((e) => atOrBefore(e) && !below.has(clientId(e))).length), cursor: st.cursor, mark: st.mark }; },
   };
 }
@@ -4197,7 +4210,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 (function () {
   'use strict';
   // was: the version line named 0.11.5
-  var APP_VERSION = '0.11.14';   // was: '0.11.13'; before that '0.11.12', '0.11.11', '0.11.10', '0.11.9', '0.11.8'
+  var APP_VERSION = '0.11.15';   // was: '0.11.14'; before that '0.11.13', '0.11.12', '0.11.11', '0.11.10', '0.11.9', '0.11.8'
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -4789,7 +4802,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (id !== 's-done' && id !== 's-review') doneUndo = null;   // the done screen's Undo lives only there
     if (toastAction) hideToast();   // a real screen change withdraws the offer it covered (item 38)
     var outgoing = $(screen), incoming = $(id), before = document.activeElement;
-    if (screen === 's-class' || screen === 's-classes') clearClassView();
+    // Leaving the class view clears what it read, and so does leaving Classes for anywhere but the class view. Classes is
+    // where the instructor's Open the class view loads the students' reviews before it shows s-class, so clearing on that
+    // step emptied every live report (tracker item 97, reported 2026-10-15 from the teacher-guide screenshots).
+    // was: if (screen === 's-class' || screen === 's-classes') clearClassView();
+    if (screen === 's-class' || (screen === 's-classes' && id !== 's-class')) clearClassView();
     closeSheet(true, true);
     renderGeneration++;
     if (screenTimer) { clearTimeout(screenTimer); screenTimer = null; }
@@ -10489,7 +10506,14 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         // the server confirmed. Own cards and classes stay.
         confirmSheet({ anchor: btn, title: 'This erases every review here and in your account. Your own cards and classes stay. This cannot be undone.', action: 'Erase progress', cancel: 'Keep progress', onConfirm: function () {
           var restore = busy(btn, 'Erasing…');
-          sync.eraseReviews().then(function () {
+          // was: sync.eraseReviews().then(function () {
+          // 0.11.15 (review of 0.11.15): erase_my_reviews inserts a profile row; asked first, as Save name is. Gone: nothing is
+          // erased anywhere (the account's reviews are already gone with it), and the sync steps away from the account.
+          var es = sync;
+          accountStillThere(es).then(function (here) {
+            if (!here) { var g = new Error('gone'); g.goneElsewhere = true; throw g; }
+            return es.eraseReviews();
+          }).then(function () {
             var result = store.resetReviews();
             if (result !== true) {
               storageBroken = true;
@@ -10502,6 +10526,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
             goTab('today');
           }).catch(function (e) {
             restore();
+            if (e && e.goneElsewhere) { goneElsewhere(); return; }   // 0.11.15
             noticeSheet('Nothing was erased on this device. ' + friendlyError(e) + ' Whether your account was erased is not known yet: sync, then check Progress, and try the erase again online so it is the same everywhere.');
           });
         } });
@@ -11116,6 +11141,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       // 0.11.10 (B-103): the pull measures the same room the Today and Progress lines do, with the same keys beside the store's.
       sync = makeSync(store, authTransport, { adapter: adapter, roomKeys: ['bw08.packs.v1', 'bw08.account.v1', 'bw08.sync.v1'] });   // the client applies the account's erase itself (P55)
       wrapAuthenticatedCalls(sync);
+      // 0.11.15 (P112): every own-deck upload asks first whether the account is still on the server.
+      if (typeof sync.gateOwnPacks === 'function') sync.gateOwnPacks(ownPackGate(sync));
       return c;
     }, function () { authInit = null; authUnavailable = true; throw appError('Sign-in is not available right now; your answers are kept here.'); });
     return authInit;
@@ -11239,8 +11266,14 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   }
   function pushOwnPack(pack) {
     if (!sync || !account.signedIn || !pack) return;
-    sync.pushPack(pack).then(function () { saveAccount({ lastPackSync: Date.now() }); renderStatus(); })
-      .catch(function (e) { saveAccount({ lastError: 'Your cards did not reach the server: ' + friendlyError(e) }); renderStatus(); });
+    var s = sync;   // 0.11.15
+    // was: sync.pushPack(pack).then(function () { saveAccount({ lastPackSync: Date.now() }); renderStatus(); })
+    // 0.11.15 (P112): an upload the account-gone check held back (0) was not sent, and is not recorded as sent.
+    sync.pushPack(pack).then(function (n) { if (n === 0) return; saveAccount({ lastPackSync: Date.now() }); renderStatus(); })
+      // was: .catch(function (e) { saveAccount({ lastError: 'Your cards did not reach the server: ' + friendlyError(e) }); renderStatus(); });
+      // 0.11.15 (P112): an upload of a sync the page has since let go of (another tab signed in as someone else while its
+      // account check was on its way) fails for want of a token; that is not the new account's error to record.
+      .catch(function (e) { if (s !== sync || !account.signedIn) return; saveAccount({ lastError: 'Your cards did not reach the server: ' + friendlyError(e) }); renderStatus(); });
   }
   window.__kurikaeshiNoteExpiry = noteExpiry;
 
@@ -11435,6 +11468,34 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       .catch(function () { /* in silence: the end of the sitting sends them again */ })
       .then(function () { sittingPushing = null; });
   }
+  // 0.11.15 (P112): the own deck went up without the check syncNow and pushDuringSitting run first. An edit queues an
+  // upload that sends two seconds later (pushOwnPack, through sync.js's own-deck queue), and pagehide flushes it at once
+  // (flushOwnPacks); neither asked whether the account was still on the server, so on a device whose account was deleted
+  // on another device, an edit put a deck back, and the next sync read the account as not gone: the deletion undone in
+  // silence. sync.js now asks this check once before any own-deck upload: the same myProfile then accountGone, unreported,
+  // as pushDuringSitting asks. Gone, no longer this page's sync, or signed out by then: nothing is sent, nothing is said,
+  // and the deck stays on the device; the next sync finds the account gone and steps away, as before.
+  // A sync this page has let go of (another tab signed in as someone else, or a sign-out) asks nothing: its reads would
+  // carry no token, fail, and that failure would be recorded as the new account's error.
+  // 0.11.15 (review of 0.11.15): the same question, for the two acts of the learner's that write a profile row (Save name,
+  // and Erase my progress, whose erase_my_reviews inserts one): a profile row back makes accountGone read not gone, and the
+  // next sync sends the reviews and the deck back. Answers true when the account is still there and this sync the page's.
+  // When it is gone, the act writes nothing and goneElsewhere() lets the sync step away, as it does when it finds it.
+  function accountStillThere(s) {
+    if (!s || s !== sync || !account.signedIn) return Promise.resolve(false);
+    return Promise.resolve().then(function () { return s.quietProfile(); })
+      .then(function (profile) { return s.quietAccountGone(profile); })
+      .then(function (gone) { return !gone && s === sync && account.signedIn; });
+  }
+  function goneElsewhere() { if (sync && account.signedIn) return syncNow().catch(function () { /* the sync carries its own sentence */ }); return Promise.resolve(); }
+  function ownPackGate(s) {
+    return function () {
+      if (s !== sync || !account.signedIn) return Promise.resolve(false);
+      return Promise.resolve().then(function () { return s.quietProfile(); })
+        .then(function (profile) { return s.quietAccountGone(profile); })
+        .then(function (gone) { return !gone && s === sync && account.signedIn; });
+    };
+  }
   function signOutLocal() {
     clearClassView();
     accountSaid = null;
@@ -11622,7 +11683,13 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var sn = $('ac-savename'); if (sn) sn.addEventListener('click', function () {
       var v = ($('ac-name').value || '').trim();
       busy(sn, 'Saving…');
-      sync.setDisplayName(v).then(function () { saveAccount({ displayName: v }); renderAccount(); setMsg('ac-status', 'Saved.', false); })
+      // was: sync.setDisplayName(v).then(function () { saveAccount({ displayName: v }); renderAccount(); setMsg('ac-status', 'Saved.', false); })
+      // 0.11.15 (review of 0.11.15): asks first whether the account is still there; gone, nothing is written and the sync steps away.
+      var sv = sync;
+      accountStillThere(sv).then(function (here) {
+        if (!here) { sn.disabled = false; sn.innerHTML = '<span>Save name</span>'; return goneElsewhere(); }
+        return sv.setDisplayName(v).then(function () { saveAccount({ displayName: v }); renderAccount(); setMsg('ac-status', 'Saved.', false); });
+      })
         .catch(function (e) { sn.disabled = false; sn.innerHTML = '<span>Save name</span>'; setMsg('ac-status', friendlyError(e), true); });
     });
     var so = $('ac-signout'); if (so) so.addEventListener('click', function () { confirmSignOut(so); });
@@ -11941,12 +12008,17 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       if (!ends) { setMsg('cl-status', 'Choose the day the class ends.', true); return; }
       busy(btn, 'Creating…');
       var nameEl = $('c-name'), nm = nameEl ? (nameEl.value || '').trim() : '';
-      (nm ? sync.setDisplayName(nm).then(function () { saveAccount({ displayName: nm }); }) : Promise.resolve()).then(function () { return sync.createClass(title, ends); }).then(function (r) {
+      // was: (nm ? sync.setDisplayName(nm).then(function () { saveAccount({ displayName: nm }); }) : Promise.resolve()).then(function () { return sync.createClass(title, ends); }).then(function (r) {
+      // 0.11.15 (review of 0.11.15): a name given here is a profile row too; asked first, as Save name is. Gone: neither the
+      // name nor the class is written, and the sync steps away. (Without a name, the class write is as before: a follow-up.)
+      var cs = sync;
+      (nm ? accountStillThere(cs).then(function (here) { if (!here) { var g = new Error('gone'); g.goneElsewhere = true; throw g; } return cs.setDisplayName(nm).then(function () { saveAccount({ displayName: nm }); }); }) : Promise.resolve()).then(function () { return sync.createClass(title, ends); }).then(function (r) {
         classesView.create = false;
         return sync.myClasses().then(function (list) {
           classesView.open = list.filter(function (c) { return c.id === r.id; })[0] || null; renderClasses();
         });
-      }).catch(function (e) { setMsg('cl-status', friendlyError(e), true); btn.disabled = false; btn.textContent = 'Create class'; });
+      // was: }).catch(function (e) { setMsg('cl-status', friendlyError(e), true); btn.disabled = false; btn.textContent = 'Create class'; });
+      }).catch(function (e) { btn.disabled = false; btn.textContent = 'Create class'; if (e && e.goneElsewhere) { goneElsewhere(); return; } setMsg('cl-status', friendlyError(e), true); });
     });
   }
   function classRosterWords(status) {
@@ -12339,6 +12411,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
   window.addEventListener('pagehide', clearClassView);
   window.addEventListener('pagehide', function () { if (sync && account.signedIn) sync.flushOwnPacks().catch(function () { /* the next signed-in sync tries again */ }); });
+  // 0.11.15 (review of 0.11.15): and when the page is hidden, as the sitting push is: with the account check's round trip
+  // first, a flush begun on pagehide alone seldom lands before the page is gone.
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden' && sync && account.signedIn) sync.flushOwnPacks().catch(function () { /* the next signed-in sync tries again */ }); });
   // 0.11.14: a page put away (hidden, or left) sends the answers waiting, as pushDuringSitting does every 20.
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') pushDuringSitting(); });
   window.addEventListener('pagehide', pushDuringSitting);
@@ -12406,7 +12481,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.11.14";
+  var APP_V = "0.11.15";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
