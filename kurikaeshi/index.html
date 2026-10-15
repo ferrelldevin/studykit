@@ -1173,6 +1173,12 @@ ruby[data-reading="hidden"] rt{visibility:hidden}
 /* The region stays in the page for assistive technology (P12); while it is not showing it takes no tap — it sits over a sheet's bottom rows. */
 #toast:not(.in){pointer-events:none}
 #toast.out{transition:opacity var(--d-quick) var(--ease-exit);opacity:0}
+/* 0.11.14: a toast with a title and a detail stacks: the words take the whole width, the buttons the line below, on the right */
+#toast.stacked{flex-wrap:wrap;row-gap:0;padding-top:var(--s-3)}
+#toast .stack{flex:1 1 100%;display:flex;flex-direction:column;gap:0}
+#toast .stack .tt{font-weight:600}
+#toast .stack .td{flex:none;font-weight:400;color:var(--ink-soft)}
+#toast.stacked #toast-act{margin-left:auto}
 #toast span{flex:1;min-width:0;white-space:normal;overflow-wrap:anywhere}
 #toast-dismiss{flex:none;min-width:var(--tap);min-height:var(--tap);font-size:var(--t-title);color:var(--ink-soft)}
 #toast button{min-height:var(--tap);padding:0 var(--s-2);color:var(--accent);font-weight:600;transition:background-color var(--d-press) var(--ease-standard)}
@@ -3478,6 +3484,8 @@ function makeSync(store, transport, opts = {}) {
     },
 
     reset() { detachedFromServer = false; epoch++; above.clear(); below.clear(); known.clear(); st = { mark: null, above: [], below: [], cursor: null, packCursor: null }; return persist(); },
+    
+    abandon() { epoch++; },
     state() { return { sent: above.size + (st.mark == null ? 0 : store.log.filter((e) => atOrBefore(e) && !below.has(clientId(e))).length), cursor: st.cursor, mark: st.mark }; },
   };
 }
@@ -4189,7 +4197,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 (function () {
   'use strict';
   // was: the version line named 0.11.5
-  var APP_VERSION = '0.11.13';   // was: '0.11.12'; before that '0.11.11', '0.11.10', '0.11.9', '0.11.8'
+  var APP_VERSION = '0.11.14';   // was: '0.11.13'; before that '0.11.12', '0.11.11', '0.11.10', '0.11.9', '0.11.8'
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -5499,36 +5507,52 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
   /* ── the toast: says what happened, not that it succeeded ──────── */
   var toastTimer = null, toastAction = false, toastPaused = false, cueFocus = false;
+  var toastHold = 8000;   // 0.11.14: how long a toast with an action stays when it goes by itself (the durable 8 s, or its own)
   // `durable`: the action has another way to reach it (E.13's durable twin — Restore card in
   // Browse's More for an own retired card), so an 8 s clock is not the only way back to it. An
   // action with no twin (a course card's retire or skip) waits for the learner instead, still.
+  // 0.11.14 (the operator's scope for 0.11.14): durable may also be { after: ms, detail: text }. after is how long the
+  // toast stays (paused while hovered or focused, as the 8 s one is); detail is a second line under msg, which then
+  // reads as the title: the toast stacks (.stacked), its words above, its buttons below, so no word sits alone on a
+  // line at 320px. The two read as one sentence (a visually hidden " · " between them (.sr-only)), as they did on one line.
   function toast(msg, action, durable) {
     var t = $('toast');
+    var opts = durable && typeof durable === 'object' ? durable : null;   // 0.11.14
     if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
     toastPaused = false;
-    t.classList.remove('in', 'out');
+    // was: t.classList.remove('in', 'out');
+    t.classList.remove('in', 'out', 'stacked');
     t.innerHTML = '';
     requestAnimationFrame(function () {
-      t.innerHTML = '<span>' + esc(msg) + '</span>' + (action ? '<button type="button" id="toast-act">' + esc(action.label) + '</button><button type="button" id="toast-dismiss" aria-label="Dismiss">×</button>' : '');
+      // was: t.innerHTML = '<span>' + esc(msg) + '</span>' + (action ? '<button type="button" id="toast-act">' + esc(action.label) + '</button><button type="button" id="toast-dismiss" aria-label="Dismiss">×</button>' : '');
+      var words = opts && opts.detail ? '<span class="stack"><b class="tt">' + esc(msg) + '</b><span class="sep sr-only"> · </span><span class="td">' + esc(opts.detail) + '</span></span>' : '<span>' + esc(msg) + '</span>';
+      t.innerHTML = words + (action ? '<button type="button" id="toast-act">' + esc(action.label) + '</button><button type="button" id="toast-dismiss" aria-label="Dismiss">×</button>' : '');
+      if (opts && opts.detail) t.classList.add('stacked');
       t.classList.add('in');
       if (action) { $('toast-act').addEventListener('click', function () { hideToast(); action.on(); }); $('toast-dismiss').addEventListener('click', function () { hideToast(); }); }
     });
     toastAction = !!action;
-    toastTimer = action ? (durable ? setTimeout(hideToast, 8000) : null) : setTimeout(hideToast, 4000);
+    toastHold = opts && opts.after ? opts.after : 8000;   // 0.11.14
+    // was: toastTimer = action ? (durable ? setTimeout(hideToast, 8000) : null) : setTimeout(hideToast, 4000);
+    toastTimer = action ? (durable ? setTimeout(hideToast, toastHold) : null) : setTimeout(hideToast, 4000);
   }
   function hideToast() {
     var t = $('toast');
     toastAction = false; toastPaused = false;
     if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
     t.classList.remove('in'); t.classList.add('out');
-    setTimeout(function () { if (!t.classList.contains('in')) { t.classList.remove('out'); t.innerHTML = ''; } }, 150);
+    // was: setTimeout(function () { if (!t.classList.contains('in')) { t.classList.remove('out'); t.innerHTML = ''; } }, 150);
+    setTimeout(function () { if (!t.classList.contains('in')) { t.classList.remove('out', 'stacked'); t.innerHTML = ''; } }, 150);
   }
   // WCAG 2.2.1 Timing Adjustable: the durable toast's 8 s clock pauses on hover or focus and
   // resumes at 8 s again when both leave (E.13). Plain and non-durable toasts carry no timer here.
   $('toast').addEventListener('mouseenter', function () { if (toastAction && toastTimer) { clearTimeout(toastTimer); toastTimer = null; toastPaused = true; } });
   $('toast').addEventListener('focusin', function () { if (toastAction && toastTimer) { clearTimeout(toastTimer); toastTimer = null; toastPaused = true; } });
-  $('toast').addEventListener('mouseleave', function () { if (toastPaused) { toastPaused = false; toastTimer = setTimeout(hideToast, 8000); } });
-  $('toast').addEventListener('focusout', function () { if (toastPaused) { toastPaused = false; toastTimer = setTimeout(hideToast, 8000); } });
+  // was: $('toast').addEventListener('mouseleave', function () { if (toastPaused) { toastPaused = false; toastTimer = setTimeout(hideToast, 8000); } });
+  // was: $('toast').addEventListener('focusout', function () { if (toastPaused) { toastPaused = false; toastTimer = setTimeout(hideToast, 8000); } });
+  // 0.11.14: resumes at the toast's own hold (toastHold: 8 s, or its own), whole again.
+  $('toast').addEventListener('mouseleave', function () { if (toastPaused) { toastPaused = false; toastTimer = setTimeout(hideToast, toastHold); } });
+  $('toast').addEventListener('focusout', function () { if (toastPaused) { toastPaused = false; toastTimer = setTimeout(hideToast, toastHold); } });
 
   /* ── what broke, written down ──────────────────────────────────────
      2026-09-13: the two window handlers below took no argument, so the message, the file, the
@@ -7374,6 +7398,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       }
     }
     session.done++; session.answered++; session.elapsed += elapsed;
+    // 0.11.14: every 20 answers of a sitting that schedules, the answers waiting go up (pushDuringSitting).
+    if (session.mode !== 'practice' && session.answered % SITTING_PUSH_EVERY === 0) pushDuringSitting();
     session.undoBlocked = false;   // the sitting itself has answered again: Undo reaches this answer
     // Another activity has answered since the parked sitting last did: an Undo there would reach this
     // answer, not its own, so it waits until that sitting answers again (§B). Set on the answer, not on
@@ -8536,8 +8562,14 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (!res.ok) { flash(res); return; }
     renderDecks();
     show('s-decks');
-    toast(res.status === 'unchanged' ? 'You already have this deck' : res.msg, { label: 'Open deck', on: function () { renderDeck(res.id); show('s-deck'); } });
+    // was: toast(res.status === 'unchanged' ? 'You already have this deck' : res.msg, { label: 'Open deck', on: function () { renderDeck(res.id); show('s-deck'); } });
+    // 0.11.14 (the operator's scope): the notice goes by itself after about 8 s (held while hovered or focused), and
+    // stacks: what happened (Deck added) as its title, the counts and lessons under it.
+    var said = res.status === 'unchanged' ? 'You already have this deck' : res.msg, cut = said.indexOf(' · ');
+    toast(cut > 0 ? said.slice(0, cut) : said, { label: 'Open deck', on: function () { renderDeck(res.id); show('s-deck'); } }, { after: DECK_NOTICE_MS, detail: cut > 0 ? said.slice(cut + 3) : '' });
   }
+  // was: var DECK_NOTICE_MS = 6000;   // 0.11.14
+  var DECK_NOTICE_MS = 8000;   // 0.11.14 (review of 0.11.14): 8 s, the durable toast's hold; a screen reader's browsing may not pause it
   /* ── decks you can add: the catalog, inlined at build, never fetched ── */
   // One row per deck the site knows, and every row installs by the same tap (item 91, 2026-09-21).
   // What a tap costs is printed ON the row, before the tap (MC-59): every deck is sent to a signed-in
@@ -11064,12 +11096,22 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     }).then(function (c) {
       authUnavailable = false;
       // 0.11.13: the device signed out while this client was on its way; it forgets the session and serves nothing.
-      if (outs !== signOutGeneration) { forgetClientSession(c); forgetIdentityCache(); throw appError('Not signed in.'); }
+      // was: if (outs !== signOutGeneration) { forgetClientSession(c); forgetIdentityCache(); throw appError('Not signed in.'); }
+      // 0.11.14 (review of 0.11.13): the count also moves when another tab signs in as someone else (accountChangedElsewhere).
+      // The identity cache is then that account's, so a late client is dropped without forgetting it; only a device still
+      // signed out forgets. The refusal is marked superseded, so the startup's sync records nothing for it.
+      if (outs !== signOutGeneration) {
+        if (!account.signedIn) { forgetClientSession(c); forgetIdentityCache(); }
+        var superseded = appError('Not signed in.'); superseded.superseded = true; throw superseded;
+      }
       auth = c;
       // was: authTransport = neonTransport(CONFIG.dataApi, function () { return c.getTokenSilently(); });
       // 0.11.13 (review of 0.11.12, privacy): a call made, or still on its way, while this device is signed out carries no
       // token, whatever the identity client still holds; the Data API answers a token-less call with nothing.
-      authTransport = neonTransport(CONFIG.dataApi, function () { return account.signedIn ? c.getTokenSilently() : Promise.resolve(null); });
+      // was: authTransport = neonTransport(CONFIG.dataApi, function () { return account.signedIn ? c.getTokenSilently() : Promise.resolve(null); });
+      // 0.11.14 (review of 0.11.13): and only while this client is still the page's; a call still on its way when another
+      // tab signed in as someone else (the page dropped this client) carries no token of the account that left.
+      authTransport = neonTransport(CONFIG.dataApi, function () { return account.signedIn && auth === c ? c.getTokenSilently() : Promise.resolve(null); });
       // was: sync = makeSync(store, authTransport, { adapter: adapter });   // the client applies the account's erase itself (P55)
       // 0.11.10 (B-103): the pull measures the same room the Today and Progress lines do, with the same keys beside the store's.
       sync = makeSync(store, authTransport, { adapter: adapter, roomKeys: ['bw08.packs.v1', 'bw08.account.v1', 'bw08.sync.v1'] });   // the client applies the account's erase itself (P55)
@@ -11246,6 +11288,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     names.forEach(function (name) {
       var original = target[name];
       if (typeof original !== 'function') return;
+      // 0.11.14: the push made during a sitting fails in silence (pushDuringSitting); it keeps the push unreported.
+      if (name === 'push') target.quietPush = function () { return original.apply(target, arguments); };
+      // 0.11.14 (review of 0.11.14): and the account-gone check it runs first, as syncNow does, unreported too.
+      if (name === 'myProfile') target.quietProfile = function () { return original.apply(target, arguments); };
+      if (name === 'accountGone') target.quietAccountGone = function () { return original.apply(target, arguments); };
       // was: target[name] = function () { return authenticatedCall(original.apply(target, arguments)); };
       // 0.11.12: a class code the server refuses (no such class, ended, your own class) is an answer about the code, not a
       // sync that failed: it is said beside the code field and never written to lastError, which the ring, Today and You
@@ -11263,6 +11310,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   function syncNow() {
     if (!sync) return Promise.reject(appError('Not signed in.'));
     if (syncing) return syncing;
+    // 0.11.14: a push made during the sitting is on its way; this sync starts when it is done, so two never overlap.
+    if (sittingPushing) { syncing = sittingPushing.then(function () { syncing = null; return syncNow(); }); renderStatus(); return syncing; }
     saveAccount({ lastResult: null });
     syncing = sync.myProfile()
       // Nothing is ever sent to an account the server no longer has. A deletion here whose local
@@ -11365,6 +11414,27 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var row = $('yo-account'); var c = row && row.querySelector('.c'); if (c) c.textContent = syncRowText();
   }
   function syncSoon() { if (sync && account.signedIn) syncNow().catch(function () { /* shown on the Today line */ }); }
+  // 0.11.14 (the operator's scope for 0.11.14): answers went up only when a sitting ended or on the next open, so a
+  // sitting cut short by a closed tab or a phone put away kept them on this device until then. Now every 20 answers
+  // within a sitting, and whenever the page is hidden, the answers waiting go up: signed in only, through sync.js's own
+  // push (its record check stops one that a sign-out or an erase overtook, and it then writes nothing), never two at once
+  // (a sync or a push under way already carries them), and in silence: a failure says nothing and records nothing; the
+  // sync at the end of the sitting sends them, as it always did.
+  var SITTING_PUSH_EVERY = 20, sittingPushing = null;
+  function pushDuringSitting() {
+    if (!sync || !account.signedIn || syncing || sittingPushing || typeof sync.quietPush !== 'function') return;
+    var s = sync;
+    // was: sittingPushing = Promise.resolve().then(function () { return s.quietPush(); })
+    // 0.11.14 (review of 0.11.14, blocker): syncNow asks whether the account is still on the server before it sends; this
+    // push did not, so a sitting on a phone whose account was deleted elsewhere put review rows back, and the end of the
+    // sitting then read the account as not gone. It asks the same (myProfile, then accountGone), in silence, and sends
+    // nothing when the account is gone or this sync is no longer the page's; the end of the sitting's sync then steps away.
+    sittingPushing = Promise.resolve().then(function () { return s.quietProfile(); })
+      .then(function (profile) { return s.quietAccountGone(profile); })
+      .then(function (gone) { if (gone || s !== sync || !account.signedIn) return; return s.quietPush(); })
+      .catch(function () { /* in silence: the end of the sitting sends them again */ })
+      .then(function () { sittingPushing = null; });
+  }
   function signOutLocal() {
     clearClassView();
     accountSaid = null;
@@ -11395,14 +11465,38 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var client = auth;
     clearClassView();
     accountSaid = sentence || null;
+    // 0.11.14 (review of 0.11.13): the sign-in client was returned and never told, so the SDK kept the account in memory
+    // until a reload, and the sign-in page's session was reused by the next sign-in without asking. As signOutOffline
+    // does: the ask-again flag in its own key first, then in the record, and the client forgets its session below.
+    adapter.set(FORGET_KEY, '1');
+    // was: var accountCleared = saveAccount({ signedIn: false, expired: false, detachedAt: Date.now(), openAccount: true, goneNotice: sentence || null,
+    // was:   lastSub: account.sub || account.lastSub || '', sub: '', name: '', email: '', lastSync: null, lastResult: null, lastError: null });
     var accountCleared = saveAccount({ signedIn: false, expired: false, detachedAt: Date.now(), openAccount: true, goneNotice: sentence || null,
-      lastSub: account.sub || account.lastSub || '', sub: '', name: '', email: '', lastSync: null, lastResult: null, lastError: null });
+      lastSub: account.sub || account.lastSub || '', sub: '', name: '', email: '', lastSync: null, lastResult: null, lastError: null, forgetPending: true });
     var trackingCleared = !sync || sync.detach();
     if (!accountCleared || !trackingCleared) { storageBroken = true; showStorageProblem(); }
     signOutGeneration++;   // 0.11.13: as in signOutLocal, the identity SDK's cache goes with the account
     forgetIdentityCache();
+    forgetClientSession(client);   // 0.11.14: and the client forgets its session, without leaving the app
     sync = null; auth = null; authInit = null;
     return { recorded: accountCleared && trackingCleared, signedOut: accountCleared, client: client };
+  }
+  // 0.11.14 (review of 0.11.13): another tab of this device signed out, or signed in as someone else. This tab kept the old
+  // sync and sign-in client and sent with them. It drops both (a client still on its way is refused when it lands, by the
+  // count), redraws, and, signed in, starts a client of its own for the account now on the device. Nothing is logged out
+  // or removed here: the identity cache belongs to whatever the other tab did. A same-account write does not reach here.
+  function accountChangedElsewhere() {
+    signOutGeneration++;
+    // 0.11.14 (review of 0.11.14): a batch of the old sync still on its way would write its "sent" record over the one the
+    // other tab left; abandon() stops it at its record check, and saves nothing.
+    if (sync && typeof sync.abandon === 'function') sync.abandon();
+    clearClassView();
+    if (account.signedIn) accountSaid = null;
+    sync = null; auth = null; authInit = null;
+    renderStatus();
+    if (screen === 's-account') renderAccount();
+    else if (screen === 's-class' || screen === 's-classes' || screen === 's-delete') { renderAccount(); show('s-account'); }
+    if (account.signedIn && SYNC_READY) authClient().then(function () { renderStatus(); if (screen === 's-account') renderAccount(); }, function () { renderStatus(); });
   }
   function afterSignIn(appState) {
     return auth.getUser().then(function (u) {
@@ -11705,7 +11799,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       // 0.11.13: a sign-out made while the client was on its way stops this sync (authClient refuses); nothing is written to
       // the signed-out record for it.
       authClient().then(function () { return syncNow(); })
-        .catch(function (e) { if (!account.signedIn) return; saveAccount({ lastError: friendlyError(e) }); renderStatus(); });
+        // was: .catch(function (e) { if (!account.signedIn) return; saveAccount({ lastError: friendlyError(e) }); renderStatus(); });
+        // 0.11.14: nor for a client dropped because another tab changed the account (superseded); the new account's own client serves it.
+        .catch(function (e) { if (!account.signedIn || (e && e.superseded)) return; saveAccount({ lastError: friendlyError(e) }); renderStatus(); });
       return !!jm;
     } else if (pendingJoin) {
       renderAccount(); show('s-account');   // the link brought them; sign in first, the code waits
@@ -12161,7 +12257,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     packStore.load();
     // Another tab can write back a deck carrying the old rows; what this load put right is said here too.
     if (packStore.repaired) { repairedRows += packStore.repaired; repairedSaved = packStore.repairSaved; }
+    var accountWas = { signedIn: !!account.signedIn, sub: account.sub || '' };   // 0.11.14: who this tab was signed in as
     try { account = JSON.parse(adapter.get(ACCOUNT_KEY) || '{}') || {}; } catch (e) { account = {}; }
+    // 0.11.14 (review of 0.11.13): signed out, or in as someone else, in another tab: this tab drops its sync and client.
+    if (accountWas.signedIn !== !!account.signedIn || accountWas.sub !== (account.sub || '')) accountChangedElsewhere();
     refreshDeck(); indexNotes();
     var missing = (openDeck && !packStore.has(openDeck)) || (session && session.scope && session.scope.pack && !packStore.has(session.scope.pack));
     if (missing) { session = null; openDeck = null; renderDecks(); show('s-decks'); toast('That deck was removed in another tab.'); return; }
@@ -12240,6 +12339,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
   window.addEventListener('pagehide', clearClassView);
   window.addEventListener('pagehide', function () { if (sync && account.signedIn) sync.flushOwnPacks().catch(function () { /* the next signed-in sync tries again */ }); });
+  // 0.11.14: a page put away (hidden, or left) sends the answers waiting, as pushDuringSitting does every 20.
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') pushDuringSitting(); });
+  window.addEventListener('pagehide', pushDuringSitting);
 
   // A course link (sign-in first, 2026-10-11): ?course=<catalog id> is the link an instructor or classmate sends for one
   // course deck. Signed in, it is the deck's own tap in the catalog: added, then the class's lesson, or opened if it is
@@ -12304,7 +12406,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.11.13";
+  var APP_V = "0.11.14";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
