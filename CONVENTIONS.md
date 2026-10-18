@@ -59,4 +59,17 @@ Check, on the live pages, that:
 2. no page scrolls sideways at 320, 390, 768 or 1280px;
 3. no romaji and no personal identifier appears on any sheet.
 
-`verify-studykit.mjs` in the build scratchpad runs all three.
+`npm run check` (`checks/verify.mjs`) runs all three, plus an axe-core WCAG 2.2 AA scan and a
+print check that every tap-to-reveal answer is on paper. `checks/kanji-diff.mjs` diffs every
+reading and stroke count against the KANJIDIC2 and KanjiVG files themselves. GitHub Actions runs
+both, and a link check, on every push and every Monday.
+
+## 9. Japanese is marked as Japanese
+
+Every run of Japanese text sits inside `lang="ja"` (a `<span lang="ja">` or `<ruby lang="ja">`),
+so screen readers switch to a Japanese voice. The check fails any Japanese it finds outside one.
+
+## 10. Archiving a sheet
+
+When the test a sheet was built for is over, the sheet is archived, not moved or deleted: a dated
+notice goes at the top, the card moves under "Archived" on the front door, and the URL stays.
