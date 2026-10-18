@@ -1,0 +1,41 @@
+name: checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 12 * * 1'
+jobs:
+  pages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npm run check
+  kanji:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Fetch KANJIDIC2 and KanjiVG
+        run: |
+          curl -sSfL https://www.edrdg.org/kanjidic/kanjidic2.xml.gz | gunzip > "$RUNNER_TEMP/kanjidic2.xml"
+          curl -sSfL -o "$RUNNER_TEMP/kanjivg.zip" https://github.com/KanjiVG/kanjivg/releases/download/r20250816/kanjivg-20250816-main.zip
+          unzip -q "$RUNNER_TEMP/kanjivg.zip" -d "$RUNNER_TEMP/kanjivg"
+      - run: node checks/kanji-diff.mjs "$RUNNER_TEMP/kanjidic2.xml" "$RUNNER_TEMP/kanjivg/kanji"
+  links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Pages serves the repo under /studykit/, so give root-relative links that root.
+      - run: mkdir -p "$RUNNER_TEMP/site" && ln -s "$GITHUB_WORKSPACE" "$RUNNER_TEMP/site/studykit"
+      - uses: lycheeverse/lychee-action@v2
+        with:
+          args: --no-progress --root-dir ${{ runner.temp }}/site --exclude-path kurikaeshi --exclude '^mailto:' --exclude 'notion\.site' './**/*.html'
+          fail: true

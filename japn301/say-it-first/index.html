@@ -12,11 +12,11 @@
 :root{
   color-scheme:light;
   --paper:#F4F2EC; --sheet:#FFFFFF; --tint:#EDEAE1;
-  --ink:#23212A; --ink2:#56525E; --muted:#857F8C;
+  --ink:#23212A; --ink2:#56525E; --muted:#67616F;
   --line:#E3DFD5; --hair:#EDEAE2;
   --pine:#1C5B48; --pine2:#2A7A61; --pinewash:#EAF3EE; --pineline:#BEDACD;
   --sienna:#A9491F; --siennawash:#FBF0EA; --siennaline:#E7C9B7;
-  --gold:#B08300;
+  --gold:#806000;
   --deep:#23302B;
 }
 *{box-sizing:border-box}
@@ -104,7 +104,7 @@ em{font-style:italic}
   font-family:"Spline Sans Mono",ui-monospace,monospace; font-size:20px; font-weight:500;
   color:var(--pine2); line-height:1.25}
 .pz b{display:block; font-size:16.5px; margin-bottom:1px}
-.pz span{font-size:15px; color:var(--ink2)}
+.pz div > span{font-size:15px; color:var(--ink2)}
 
 /* ---------- the full read-through: the one lifted panel on the page ---------- */
 .through{background:var(--sheet); border:1px solid var(--pineline); border-radius:4px;
@@ -160,14 +160,22 @@ a{color:var(--pine); text-decoration-thickness:1px; text-underline-offset:3px}
   details summary{font-size:12pt}
   details[open] > *{display:revert}
   details:not([open]) > *:not(summary){display:revert}
+  details::details-content{content-visibility:visible;display:block}
   .colophon{margin-top:20pt}
   a{text-decoration:none; color:var(--ink)}
   a[href^="http"]::after{content:" (" attr(href) ")"; font-size:8.5pt; color:var(--muted)}
 }
+
+/* archive notice, 2026-10-18 */
+.archived{background:#FBF0EA;border:1px solid #E7C9B7;border-left:4px solid #A9491F;border-radius:4px;padding:12px 14px;margin:0 0 20px;font-size:15px;line-height:1.5;color:#23212A}
+.archived b{color:#A9491F}
+.archived a{color:#1C5B48}
+.affil{font-size:13px;color:#56525E;text-align:center;margin-top:12px}
 </style>
 </head>
 <body>
 <main>
+<aside class="archived"><b>Archived · Fall 2026.</b> Built for the JAPN 301 Lesson 1 self-introduction. That test is over. This page stays at the same address so saved links and printouts still work. Corrected 2026-10-18. <a href="../../">Back to the Study Kit</a></aside>
 
 <section>
   <span class="kicker">JAPN 301 · Lesson 1 · Speaking</span>
@@ -203,18 +211,18 @@ a{color:var(--pine); text-decoration-thickness:1px; text-underline-offset:3px}
 
   <div class="line">
     <span class="tag">Line 1 <i>· open</i></span>
-    <p class="jp">はじめまして。<span class="sw">〔なまえ〕</span>です。</p>
+    <p class="jp"><span lang="ja">はじめまして。</span><span class="sw"><span lang="ja">〔なまえ〕</span></span><span lang="ja">です。</span></p>
     <p class="gl">“Nice to meet you. I'm ____.”</p>
 
     <div class="menu">
       <span class="lbl">Your name in katakana — write it in once, at the top, then read it from there every time</span>
       <div class="grid">
-        <div class="opt"><span class="oj">マイケル</span><span class="oe">Michael</span></div>
-        <div class="opt"><span class="oj">サラ</span><span class="oe">Sarah</span></div>
-        <div class="opt"><span class="oj">クリス</span><span class="oe">Chris</span></div>
-        <div class="opt"><span class="oj">ジェシカ</span><span class="oe">Jessica</span></div>
-        <div class="opt"><span class="oj">ダニエル</span><span class="oe">Daniel</span></div>
-        <div class="opt"><span class="oj">エミリー</span><span class="oe">Emily</span></div>
+        <div class="opt"><span class="oj"><span lang="ja">マイケル</span></span><span class="oe">Michael</span></div>
+        <div class="opt"><span class="oj"><span lang="ja">サラ</span></span><span class="oe">Sarah</span></div>
+        <div class="opt"><span class="oj"><span lang="ja">クリス</span></span><span class="oe">Chris</span></div>
+        <div class="opt"><span class="oj"><span lang="ja">ジェシカ</span></span><span class="oe">Jessica</span></div>
+        <div class="opt"><span class="oj"><span lang="ja">ダニエル</span></span><span class="oe">Daniel</span></div>
+        <div class="opt"><span class="oj"><span lang="ja">エミリー</span></span><span class="oe">Emily</span></div>
       </div>
     </div>
 
@@ -225,104 +233,104 @@ a{color:var(--pine); text-decoration-thickness:1px; text-underline-offset:3px}
   </div>
 
   <div class="line">
-    <span class="tag">Line 2 <i>· where you're from — uses という</i></span>
-    <p class="jp"><span class="sw">バージニアビーチ</span>という<ruby>町<rt>まち</rt></ruby>から<ruby>来<rt>き</rt></ruby>ました。</p>
+    <span class="tag">Line 2 <i>· where you're from — uses <span lang="ja">という</span></i></span>
+    <p class="jp"><span class="sw"><span lang="ja">バージニアビーチ</span></span><span lang="ja">という</span><ruby lang="ja">町<rt>まち</rt></ruby><span lang="ja">から</span><ruby lang="ja">来<rt>き</rt></ruby><span lang="ja">ました。</span></p>
     <p class="gl">“I come from a town called Virginia Beach.”</p>
 
     <div class="menu">
       <span class="lbl">Swap the town</span>
       <div class="grid">
-        <div class="opt"><span class="oj">バージニアビーチ</span><span class="oe">Virginia Beach</span></div>
-        <div class="opt"><span class="oj">ノーフォーク</span><span class="oe">Norfolk</span></div>
-        <div class="opt"><span class="oj">チェサピーク</span><span class="oe">Chesapeake</span></div>
-        <div class="opt"><span class="oj">ポーツマス</span><span class="oe">Portsmouth</span></div>
-        <div class="opt"><span class="oj">サフォーク</span><span class="oe">Suffolk</span></div>
-        <div class="opt"><span class="oj">ハンプトン</span><span class="oe">Hampton</span></div>
+        <div class="opt"><span class="oj"><span lang="ja">バージニアビーチ</span></span><span class="oe">Virginia Beach</span></div>
+        <div class="opt"><span class="oj"><span lang="ja">ノーフォーク</span></span><span class="oe">Norfolk</span></div>
+        <div class="opt"><span class="oj"><span lang="ja">チェサピーク</span></span><span class="oe">Chesapeake</span></div>
+        <div class="opt"><span class="oj"><span lang="ja">ポーツマス</span></span><span class="oe">Portsmouth</span></div>
+        <div class="opt"><span class="oj"><span lang="ja">サフォーク</span></span><span class="oe">Suffolk</span></div>
+        <div class="opt"><span class="oj"><span lang="ja">ハンプトン</span></span><span class="oe">Hampton</span></div>
       </div>
     </div>
 
     <div class="aside">
       <b class="lbl">The trap</b>
-      Nothing goes between <span class="jp">という</span> and <span class="jp"><ruby>町<rt>まち</rt></ruby></span> — no <span class="jp">は</span>, no <span class="jp">が</span>, no pause. Say <span class="jp">というまち</span> as a single word and you cannot get it wrong.
+      Nothing goes between <span class="jp"><span lang="ja">という</span></span> and <span class="jp"><ruby lang="ja">町<rt>まち</rt></ruby></span> — no <span class="jp"><span lang="ja">は</span></span>, no <span class="jp"><span lang="ja">が</span></span>, no pause. Say <span class="jp"><span lang="ja">というまち</span></span> as a single word and you cannot get it wrong.
     </div>
 
     <div class="src">
       <b class="lbl">The textbook's own sentence · Irodori A2-2 L.1</b>
-      <p class="jp" style="margin:0">ベトナムのダナンという<ruby>町<rt>まち</rt></ruby>から<ruby>来<rt>き</rt></ruby>ました。</p>
+      <p class="jp" style="margin:0"><span lang="ja">ベトナムのダナンという</span><ruby lang="ja">町<rt>まち</rt></ruby><span lang="ja">から</span><ruby lang="ja">来<rt>き</rt></ruby><span lang="ja">ました。</span></p>
       <p class="gl">“I came from a town called Da Nang, in Vietnam.” Line 2 is this sentence with your town dropped in. Same shape, nothing invented.</p>
     </div>
   </div>
 
   <div class="line">
-    <span class="tag">Line 3 <i>· what you're doing now — uses 〜ています</i></span>
-    <p class="jp"><ruby>今<rt>いま</rt></ruby>、<ruby>大学<rt>だいがく</rt></ruby>で<ruby>日本語<rt>にほんご</rt></ruby>を<ruby>勉強<rt>べんきょう</rt></ruby>しています。</p>
+    <span class="tag">Line 3 <i>· what you're doing now — uses <span lang="ja">〜ています</span></i></span>
+    <p class="jp"><ruby lang="ja">今<rt>いま</rt></ruby><span lang="ja">、</span><ruby lang="ja">大学<rt>だいがく</rt></ruby><span lang="ja">で</span><ruby lang="ja">日本語<rt>にほんご</rt></ruby><span lang="ja">を</span><ruby lang="ja">勉強<rt>べんきょう</rt></ruby><span lang="ja">しています。</span></p>
     <p class="gl">“Right now I'm studying Japanese at university.”</p>
   </div>
 
   <div class="line">
-    <span class="tag">Line 4 <i>· what you used to do — uses 〜ていました</i></span>
-    <p class="jp"><ruby>前<rt>まえ</rt></ruby>は、<span class="sw">カフェ</span>で<ruby>働<rt>はたら</rt></ruby>いていました。</p>
+    <span class="tag">Line 4 <i>· what you used to do — uses <span lang="ja">〜ていました</span></i></span>
+    <p class="jp"><ruby lang="ja">前<rt>まえ</rt></ruby><span lang="ja">は、</span><span class="sw"><span lang="ja">カフェ</span></span><span lang="ja">で</span><ruby lang="ja">働<rt>はたら</rt></ruby><span lang="ja">いていました。</span></p>
     <p class="gl">“Before, I was working at a café.”</p>
 
     <div class="menu">
       <span class="lbl">Swap the workplace</span>
       <div class="grid">
-        <div class="opt"><span class="oj">カフェ</span><span class="oe">a café</span></div>
-        <div class="opt"><span class="oj">レストラン</span><span class="oe">a restaurant</span></div>
-        <div class="opt"><span class="oj">スーパー</span><span class="oe">a supermarket</span></div>
-        <div class="opt"><span class="oj"><ruby>店<rt>みせ</rt></ruby></span><span class="oe">a shop</span></div>
-        <div class="opt"><span class="oj"><ruby>病院<rt>びょういん</rt></ruby></span><span class="oe">a hospital</span></div>
-        <div class="opt"><span class="oj"><ruby>会社<rt>かいしゃ</rt></ruby></span><span class="oe">an office</span></div>
+        <div class="opt"><span class="oj"><span lang="ja">カフェ</span></span><span class="oe">a café</span></div>
+        <div class="opt"><span class="oj"><span lang="ja">レストラン</span></span><span class="oe">a restaurant</span></div>
+        <div class="opt"><span class="oj"><span lang="ja">スーパー</span></span><span class="oe">a supermarket</span></div>
+        <div class="opt"><span class="oj"><ruby lang="ja">店<rt>みせ</rt></ruby></span><span class="oe">a shop</span></div>
+        <div class="opt"><span class="oj"><ruby lang="ja">病院<rt>びょういん</rt></ruby></span><span class="oe">a hospital</span></div>
+        <div class="opt"><span class="oj"><ruby lang="ja">会社<rt>かいしゃ</rt></ruby></span><span class="oe">an office</span></div>
       </div>
     </div>
 
     <div class="aside">
       <b class="lbl">The trap in lines 3 and 4</b>
-      These two are one letter apart. <span class="jp">います</span> means still true this morning; <span class="jp">いました</span> means it is over. And don't reach for <span class="jp"><ruby>働<rt>はたら</rt></ruby>きました</span> — that says you worked there for <em>one day</em>.
+      These two are one letter apart. <span class="jp"><span lang="ja">います</span></span> means still true this morning; <span class="jp"><span lang="ja">いました</span></span> means it is over. And don't reach for <span class="jp"><ruby lang="ja">働<rt>はたら</rt></ruby><span lang="ja">きました</span></span> — that says you worked there for <em>one day</em>.
     </div>
 
     <div class="src">
       <b class="lbl">The textbook's own sentences · Irodori A2-2 L.1</b>
-      <p class="jp" style="margin:0">ベトナムでは、ホテルで<ruby>働<rt>はたら</rt></ruby>いていました。</p>
-      <p class="jp" style="margin:0">いけばなを<ruby>習<rt>なら</rt></ruby>っています。</p>
+      <p class="jp" style="margin:0"><span lang="ja">ベトナムでは、ホテルで</span><ruby lang="ja">働<rt>はたら</rt></ruby><span lang="ja">いていました。</span></p>
+      <p class="jp" style="margin:0"><span lang="ja">いけばなを</span><ruby lang="ja">習<rt>なら</rt></ruby><span lang="ja">っています。</span></p>
       <p class="gl">A past stretch, then a present one. The exact pair lines 3 and 4 are built on.</p>
     </div>
   </div>
 
   <div class="line">
-    <span class="tag">Line 5 <i>· your hobby — uses <ruby>趣味<rt>しゅみ</rt></ruby>は…ことです</i></span>
-    <p class="jp"><ruby>趣味<rt>しゅみ</rt></ruby>は<span class="sw"><ruby>音楽<rt>おんがく</rt></ruby>を<ruby>聞<rt>き</rt></ruby>く</span>ことです。</p>
+    <span class="tag">Line 5 <i>· your hobby — uses <ruby lang="ja">趣味<rt>しゅみ</rt></ruby><span lang="ja">は</span>…<span lang="ja">ことです</span></i></span>
+    <p class="jp"><ruby lang="ja">趣味<rt>しゅみ</rt></ruby><span lang="ja">は</span><span class="sw"><ruby lang="ja">音楽<rt>おんがく</rt></ruby><span lang="ja">を</span><ruby lang="ja">聞<rt>き</rt></ruby><span lang="ja">く</span></span><span lang="ja">ことです。</span></p>
     <p class="gl">“My hobby is listening to music.”</p>
 
     <div class="menu">
       <span class="lbl">Swap the hobby — every option is already in dictionary form</span>
       <div class="grid">
-        <div class="opt"><span class="oj"><ruby>音楽<rt>おんがく</rt></ruby>を<ruby>聞<rt>き</rt></ruby>く</span><span class="oe">listening to music</span></div>
-        <div class="opt"><span class="oj"><ruby>映画<rt>えいが</rt></ruby>を<ruby>見<rt>み</rt></ruby>る</span><span class="oe">watching films</span></div>
-        <div class="opt"><span class="oj"><ruby>本<rt>ほん</rt></ruby>を<ruby>読<rt>よ</rt></ruby>む</span><span class="oe">reading books</span></div>
-        <div class="opt"><span class="oj"><ruby>料理<rt>りょうり</rt></ruby>を<ruby>作<rt>つく</rt></ruby>る</span><span class="oe">cooking</span></div>
-        <div class="opt"><span class="oj"><ruby>写真<rt>しゃしん</rt></ruby>を<ruby>撮<rt>と</rt></ruby>る</span><span class="oe">taking photos</span></div>
-        <div class="opt"><span class="oj">ゲームをする</span><span class="oe">playing games</span></div>
-        <div class="opt"><span class="oj"><ruby>絵<rt>え</rt></ruby>を<ruby>描<rt>か</rt></ruby>く</span><span class="oe">drawing</span></div>
-        <div class="opt"><span class="oj"><ruby>歌<rt>うた</rt></ruby>を<ruby>歌<rt>うた</rt></ruby>う</span><span class="oe">singing</span></div>
+        <div class="opt"><span class="oj"><ruby lang="ja">音楽<rt>おんがく</rt></ruby><span lang="ja">を</span><ruby lang="ja">聞<rt>き</rt></ruby><span lang="ja">く</span></span><span class="oe">listening to music</span></div>
+        <div class="opt"><span class="oj"><ruby lang="ja">映画<rt>えいが</rt></ruby><span lang="ja">を</span><ruby lang="ja">見<rt>み</rt></ruby><span lang="ja">る</span></span><span class="oe">watching films</span></div>
+        <div class="opt"><span class="oj"><ruby lang="ja">本<rt>ほん</rt></ruby><span lang="ja">を</span><ruby lang="ja">読<rt>よ</rt></ruby><span lang="ja">む</span></span><span class="oe">reading books</span></div>
+        <div class="opt"><span class="oj"><ruby lang="ja">料理<rt>りょうり</rt></ruby><span lang="ja">を</span><ruby lang="ja">作<rt>つく</rt></ruby><span lang="ja">る</span></span><span class="oe">cooking</span></div>
+        <div class="opt"><span class="oj"><ruby lang="ja">写真<rt>しゃしん</rt></ruby><span lang="ja">を</span><ruby lang="ja">撮<rt>と</rt></ruby><span lang="ja">る</span></span><span class="oe">taking photos</span></div>
+        <div class="opt"><span class="oj"><span lang="ja">ゲームをする</span></span><span class="oe">playing games</span></div>
+        <div class="opt"><span class="oj"><ruby lang="ja">絵<rt>え</rt></ruby><span lang="ja">を</span><ruby lang="ja">描<rt>か</rt></ruby><span lang="ja">く</span></span><span class="oe">drawing</span></div>
+        <div class="opt"><span class="oj"><ruby lang="ja">歌<rt>うた</rt></ruby><span lang="ja">を</span><ruby lang="ja">歌<rt>うた</rt></ruby><span lang="ja">う</span></span><span class="oe">singing</span></div>
       </div>
     </div>
 
     <div class="aside">
       <b class="lbl">The trap</b>
-      <span class="jp">こと</span> only ever attaches to the plain dictionary form — <span class="jp"><ruby>聞<rt>き</rt></ruby>く</span>こと, never <span class="jp"><ruby>聞<rt>き</rt></ruby>きます</span>こと. Every option above is already in the right form, so reading it as printed makes this mistake impossible.
+      <span class="jp"><span lang="ja">こと</span></span> only ever attaches to the plain dictionary form — <span class="jp"><ruby lang="ja">聞<rt>き</rt></ruby><span lang="ja">く</span></span><span lang="ja">こと</span>, never <span class="jp"><ruby lang="ja">聞<rt>き</rt></ruby><span lang="ja">きます</span></span><span lang="ja">こと</span>. Every option above is already in the right form, so reading it as printed makes this mistake impossible.
     </div>
 
     <div class="src">
       <b class="lbl">The textbook's own line · Irodori A2-2 L.1 dialogue</b>
-      <p class="jp" style="margin:0"><ruby>趣味<rt>しゅみ</rt></ruby>？　えっと、<ruby>音楽<rt>おんがく</rt></ruby>を<ruby>聞<rt>き</rt></ruby>くことです。</p>
-      <p class="gl">Note the <span class="jp">えっと</span>. The book prints the hesitation on purpose, because pausing out loud is native rather than a mistake. You're allowed to do it.</p>
+      <p class="jp" style="margin:0"><ruby lang="ja">趣味<rt>しゅみ</rt></ruby><span lang="ja">？　えっと、</span><ruby lang="ja">音楽<rt>おんがく</rt></ruby><span lang="ja">を</span><ruby lang="ja">聞<rt>き</rt></ruby><span lang="ja">くことです。</span></p>
+      <p class="gl">Note the <span class="jp"><span lang="ja">えっと</span></span>. The book prints the hesitation on purpose, because pausing out loud is native rather than a mistake. You're allowed to do it.</p>
     </div>
   </div>
 
   <div class="line">
     <span class="tag">Line 6 <i>· close</i></span>
-    <p class="jp">どうぞよろしくおねがいします。</p>
+    <p class="jp"><span lang="ja">どうぞよろしくおねがいします。</span></p>
     <p class="gl">“Pleased to meet you.”</p>
   </div>
 </section>
@@ -331,12 +339,12 @@ a{color:var(--pine); text-decoration-thickness:1px; text-underline-offset:3px}
   <div class="rule"><h2>The whole thing, no breaks</h2><span class="n">the version you say out loud</span></div>
   <p style="margin-top:0">Once the six lines are comfortable one at a time, read this straight through. This is what you say in the VLT session.</p>
   <div class="through">
-    <p class="jp" style="margin:0">はじめまして。<span class="sw">〔なまえ〕</span>です。<br>
-    バージニアビーチという<ruby>町<rt>まち</rt></ruby>から<ruby>来<rt>き</rt></ruby>ました。<br>
-    <ruby>今<rt>いま</rt></ruby>、<ruby>大学<rt>だいがく</rt></ruby>で<ruby>日本語<rt>にほんご</rt></ruby>を<ruby>勉強<rt>べんきょう</rt></ruby>しています。<br>
-    <ruby>前<rt>まえ</rt></ruby>は、カフェで<ruby>働<rt>はたら</rt></ruby>いていました。<br>
-    <ruby>趣味<rt>しゅみ</rt></ruby>は<ruby>音楽<rt>おんがく</rt></ruby>を<ruby>聞<rt>き</rt></ruby>くことです。<br>
-    どうぞよろしくおねがいします。</p>
+    <p class="jp" style="margin:0"><span lang="ja">はじめまして。</span><span class="sw"><span lang="ja">〔なまえ〕</span></span><span lang="ja">です。</span><br>
+    <span lang="ja">バージニアビーチという</span><ruby lang="ja">町<rt>まち</rt></ruby><span lang="ja">から</span><ruby lang="ja">来<rt>き</rt></ruby><span lang="ja">ました。</span><br>
+    <ruby lang="ja">今<rt>いま</rt></ruby><span lang="ja">、</span><ruby lang="ja">大学<rt>だいがく</rt></ruby><span lang="ja">で</span><ruby lang="ja">日本語<rt>にほんご</rt></ruby><span lang="ja">を</span><ruby lang="ja">勉強<rt>べんきょう</rt></ruby><span lang="ja">しています。</span><br>
+    <ruby lang="ja">前<rt>まえ</rt></ruby><span lang="ja">は、カフェで</span><ruby lang="ja">働<rt>はたら</rt></ruby><span lang="ja">いていました。</span><br>
+    <ruby lang="ja">趣味<rt>しゅみ</rt></ruby><span lang="ja">は</span><ruby lang="ja">音楽<rt>おんがく</rt></ruby><span lang="ja">を</span><ruby lang="ja">聞<rt>き</rt></ruby><span lang="ja">くことです。</span><br>
+    <span lang="ja">どうぞよろしくおねがいします。</span></p>
   </div>
   <p class="note">About 25 seconds at a comfortable pace. Under 15 and you're rushing — the pauses between lines are part of sounding fluent, not gaps to fill.</p>
 </section>
@@ -347,24 +355,24 @@ a{color:var(--pine); text-decoration-thickness:1px; text-underline-offset:3px}
 
   <div class="stuck">
     <p class="why">You need it again, slower</p>
-    <p class="jp">すみません、もう<ruby>一度<rt>いちど</rt></ruby>おねがいします。</p>
+    <p class="jp"><span lang="ja">すみません、もう</span><ruby lang="ja">一度<rt>いちど</rt></ruby><span lang="ja">おねがいします。</span></p>
   </div>
   <div class="stuck">
     <p class="why">You need a second to think</p>
-    <p class="jp">ちょっと<ruby>待<rt>ま</rt></ruby>ってください。</p>
+    <p class="jp"><span lang="ja">ちょっと</span><ruby lang="ja">待<rt>ま</rt></ruby><span lang="ja">ってください。</span></p>
   </div>
   <div class="stuck">
     <p class="why">You don't know the word, so ask for it</p>
-    <p class="jp">それは<ruby>日本語<rt>にほんご</rt></ruby>で<ruby>何<rt>なん</rt></ruby>ですか。</p>
+    <p class="jp"><span lang="ja">それは</span><ruby lang="ja">日本語<rt>にほんご</rt></ruby><span lang="ja">で</span><ruby lang="ja">何<rt>なん</rt></ruby><span lang="ja">ですか。</span></p>
     <p class="gl">This one turns being stuck into a question, which is a real conversational move rather than a failure.</p>
   </div>
   <div class="stuck">
     <p class="why">You genuinely didn't follow</p>
-    <p class="jp">すみません、わかりませんでした。</p>
+    <p class="jp"><span lang="ja">すみません、わかりませんでした。</span></p>
   </div>
   <div class="stuck">
     <p class="why">Buying a beat, the way the book does it</p>
-    <p class="jp">えっと…　そうですね…</p>
+    <p class="jp"><span lang="ja">えっと</span>…<span lang="ja">　そうですね</span>…</p>
     <p class="gl">Both are printed in Irodori. A filled pause reads as fluent; an empty one reads as lost.</p>
   </div>
 </section>
@@ -386,8 +394,8 @@ a{color:var(--pine); text-decoration-thickness:1px; text-underline-offset:3px}
   <div class="rule"><h2>One thing to ask in class</h2><span class="n">worth the question</span></div>
   <div class="src" style="border-left-color:var(--pineline)">
     <b class="lbl" style="color:var(--pine2)">Worth asking in class</b>
-    <p class="jp" style="margin:0"><ruby>働<rt>はたら</rt></ruby>いていました と <ruby>働<rt>はたら</rt></ruby>きました は <ruby>何<rt>なに</rt></ruby>が<ruby>違<rt>ちが</rt></ruby>いますか。</p>
-    <p class="gl">“What's the difference between <span class="jp" style="font-size:16px;line-height:1.75;display:inline"><ruby>働<rt>はたら</rt></ruby>いていました</span> and <span class="jp" style="font-size:16px;line-height:1.75;display:inline"><ruby>働<rt>はたら</rt></ruby>きました</span>?” It's a real ambiguity rather than a softball, and asking it in Japanese is itself speaking practice.</p>
+    <p class="jp" style="margin:0"><ruby lang="ja">働<rt>はたら</rt></ruby><span lang="ja">いていました と</span> <ruby lang="ja">働<rt>はたら</rt></ruby><span lang="ja">きました は</span> <ruby lang="ja">何<rt>なに</rt></ruby><span lang="ja">が</span><ruby lang="ja">違<rt>ちが</rt></ruby><span lang="ja">いますか。</span></p>
+    <p class="gl">“What's the difference between <span class="jp" style="font-size:16px;line-height:1.75;display:inline"><ruby lang="ja">働<rt>はたら</rt></ruby><span lang="ja">いていました</span></span> and <span class="jp" style="font-size:16px;line-height:1.75;display:inline"><ruby lang="ja">働<rt>はたら</rt></ruby><span lang="ja">きました</span></span>?” It's a real ambiguity rather than a softball, and asking it in Japanese is itself speaking practice.</p>
   </div>
 </section>
 
@@ -399,9 +407,11 @@ a{color:var(--pine); text-decoration-thickness:1px; text-underline-offset:3px}
   </details>
 </section>
 
-<p class="colophon">Built from Lesson 1 only · Irodori A2-2 · nothing here sits outside your instructor's prep sheet<br>
+<p class="colophon">Built from Lesson 1 only · nothing here sits outside your instructor's prep sheet<br>
+Model sentences from <a href="https://www.irodori.jpf.go.jp/en/"><i>Irodori: Japanese for Life in Japan</i></a> A2-2, Lesson 1, © The Japan Foundation, used under its <a href="https://www.irodori.jpf.go.jp/en/privacy.html">terms for free study materials</a>.<br>
 Prints as a handout — use your browser's print view.</p>
 
+<p class="affil">Not affiliated with or endorsed by Old Dominion University.</p>
 </main>
 </body>
 </html>

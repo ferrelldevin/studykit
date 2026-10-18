@@ -1,0 +1,14 @@
+{
+  "name": "studykit-checks",
+  "private": true,
+  "type": "module",
+  "description": "Pre-publish checks for the Study Kit. Nothing here is served to students.",
+  "scripts": {
+    "check": "node checks/verify.mjs",
+    "check:kanji": "node checks/kanji-diff.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.11.0",
+    "playwright": "1.56.1"
+  }
+}
