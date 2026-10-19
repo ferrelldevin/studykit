@@ -2945,6 +2945,12 @@ const CAVEAT =
   'would a submitted worksheet: evidence of what was done, not proof. Nothing here detects ' +
   'dishonesty and nothing here is a grade.';
 
+const LIVE_CAVEAT =
+  'Reported by each student’s own device and synced to their account. They chose to share it when ' +
+  'they joined this class, and the sharing stops the moment they leave. Treat it as you would a ' +
+  'submitted worksheet: evidence of what was done, not proof. Nothing here detects dishonesty and ' +
+  'nothing here is a grade.';
+
 const mem = () => { const m = new Map(); return { get: (k) => (m.has(k) ? m.get(k) : null), set: (k, v) => { m.set(k, v); return true; } }; };
 const DAY = 86400e3;
 
@@ -2971,12 +2977,11 @@ function packsFromEntries(entries) {
 
 function summarizeClass(exports, deck, opts = {}) {
   const now = opts.now ?? Date.now();
-  const leechThreshold = opts.leechThreshold ?? 8;
   const dayKey = (ms) => exports[0] ? exports[0].store.dayKey(ms) : new Date(ms).toISOString().slice(0, 10);
   const todayKey = dayKey(now);
   const sevenAgo = now - 7 * DAY;
 
-  const students = exports.map((ex, i) => {
+  const students = exports.map((ex) => {
     const log = ex.log;
     const days = new Set(), days7 = new Set();
     let reviews7 = 0, ms = 0, first = null, last = null;
@@ -2989,40 +2994,75 @@ function summarizeClass(exports, deck, opts = {}) {
       if (first == null || e.t < first) first = e.t;
       if (last == null || e.t > last) last = e.t;
     }
+    const firstGrade = new Map();
+    for (const e of [...log].sort((a, b) => a.t - b.t)) if (!firstGrade.has(e.c)) firstGrade.set(e.c, e.g);
+    const cards = new Map();
+    for (const [cardId, st] of ex.store.allStates()) if (st.reps > 0) cards.set(cardId, { reps: st.reps, lapses: st.lapses, firstGrade: firstGrade.get(cardId) });
+    const referenced = new Set();
+    for (const e of log) { const c = String(e.c), j = c.indexOf('/'); if (j > 0) referenced.add(c.slice(0, j)); }
     return {
-      index: i, label: ex.label,
+      label: ex.label, packs: ex.packs, referenced, cards,
       reviews: log.length, reviews7d: reviews7, daysActive: days.size, daysActive7d: days7.size,
       cardsIntroduced: introduced.size, minutes: Math.round(ms / 60000),
-
       firstActiveOn: first == null ? null : dayKey(first), lastActiveOn: last == null ? null : dayKey(last),
-      stoppedDays: last == null ? null : Math.max(0, Math.round((new Date(todayKey) - new Date(dayKey(last))) / DAY)),
-      packs: ex.packs,
     };
   });
+  return summarizeStudents(students, deck, { ...opts, now, todayKey });
+}
+
+function summarizeReport(report, deck, opts = {}) {
+  const now = opts.now ?? Date.now();
+  const todayKey = opts.todayKey || new Date(now).toISOString().slice(0, 10);
+  const students = ((report && report.students) || []).map((s) => {
+    const cards = new Map(), referenced = new Set();
+    for (const row of Array.isArray(s.cards) ? s.cards : []) {
+      if (!Array.isArray(row) || typeof row[0] !== 'string') continue;
+      cards.set(row[0], { reps: Number(row[1]) || 0, lapses: Number(row[2]) || 0, firstGrade: Number(row[3]) || null });
+      const j = row[0].indexOf('/'); if (j > 0) referenced.add(row[0].slice(0, j));
+    }
+    return {
+      label: opts.labelOf ? opts.labelOf(s) : String(s.label || 'student'), packs: Array.isArray(s.packs) ? s.packs : [], referenced, cards,
+      reviews: Number(s.reviews) || 0, reviews7d: Number(s.reviews_7d) || 0, daysActive: Number(s.days_active) || 0, daysActive7d: Number(s.days_active_7d) || 0,
+      cardsIntroduced: Number(s.introduced) || 0, minutes: Number(s.minutes) || 0,
+      firstActiveOn: s.first_on || null, lastActiveOn: s.last_on || null,
+    };
+  });
+  return summarizeStudents(students, deck, { ...opts, now, todayKey });
+}
+
+function summarizeStudents(norm, deck, opts) {
+  const { now, todayKey } = opts;
+  const leechThreshold = opts.leechThreshold ?? 8;
+
+  const students = norm.map((s, i) => ({
+    index: i, label: s.label,
+    reviews: s.reviews, reviews7d: s.reviews7d, daysActive: s.daysActive, daysActive7d: s.daysActive7d,
+    cardsIntroduced: s.cardsIntroduced, minutes: s.minutes,
+
+    firstActiveOn: s.firstActiveOn, lastActiveOn: s.lastActiveOn,
+    stoppedDays: s.lastActiveOn == null ? null : Math.max(0, Math.round((new Date(todayKey) - new Date(s.lastActiveOn)) / DAY)),
+    packs: s.packs,
+  }));
 
   const byCard = new Map(deck.cards.map((c) => [c.id, c]));
   const noteOf = new Map(deck.notes.map((n) => [`${n.pack}/${n.guid}`, n]));
 
   const referenced = new Set();
-  for (const ex of exports) {
-    for (const p of ex.packs || []) if (p && p.id) referenced.add(p.id);
-    for (const e of ex.log || []) { const s = String(e.c), i = s.indexOf('/'); if (i > 0) referenced.add(s.slice(0, i)); }
+  for (const s of norm) {
+    for (const p of s.packs || []) if (p && p.id) referenced.add(p.id);
+    for (const id of s.referenced) referenced.add(id);
   }
   const missingPacks = [...referenced].filter((id) => !(deck.packs && deck.packs[id]));
   let unmatchedReviews = 0;
   const acc = new Map(); 
-  for (const ex of exports) {
-    const states = ex.store.allStates();
-    
-    const firstGrade = new Map();
-    for (const e of [...ex.log].sort((a, b) => a.t - b.t)) if (!firstGrade.has(e.c)) firstGrade.set(e.c, e.g);
-    for (const [cardId, st] of states) {
+  for (const s of norm) {
+    for (const [cardId, st] of s.cards) {
       if (st.reps === 0) continue;
       if (!byCard.has(cardId)) { unmatchedReviews += st.reps; continue; }
       let a = acc.get(cardId);
       if (!a) { a = { seen: 0, firstAgain: 0, reviews: 0, lapses: [], leeches: 0 }; acc.set(cardId, a); }
       a.seen++; a.reviews += st.reps; a.lapses.push(st.lapses);
-      if (firstGrade.get(cardId) === 1) a.firstAgain++;
+      if (st.firstGrade === 1) a.firstAgain++;
       if (st.lapses >= leechThreshold) a.leeches++;
     }
   }
@@ -3032,7 +3072,7 @@ function summarizeClass(exports, deck, opts = {}) {
       cardId, pack: c.pack, guid: c.guid, ord: c.ord, lesson: c.lesson, fields: n.fields, type: n.type,
       nStudents: a.seen, nReviews: a.reviews,
       firstAgainRate: a.seen ? a.firstAgain / a.seen : 0,
-      meanLapses: a.lapses.reduce((s, x) => s + x, 0) / a.lapses.length,
+      meanLapses: a.lapses.reduce((sum, x) => sum + x, 0) / a.lapses.length,
       pctLeech: a.seen ? a.leeches / a.seen : 0,
     };
   });
@@ -3046,19 +3086,18 @@ function summarizeClass(exports, deck, opts = {}) {
     L.cards++; L.ids.push(c.id);
   }
   const coverage = [...lessons.values()].map((L) => {
-    const perStudent = exports.map((ex) => {
-      const states = ex.store.allStates();
-      const seen = L.ids.filter((id) => { const s = states.get(id); return s && s.reps > 0; }).length;
+    const perStudent = norm.map((s) => {
+      const seen = L.ids.filter((id) => { const st = s.cards.get(id); return st && st.reps > 0; }).length;
       return L.cards ? seen / L.cards : 0;
     });
     const buckets = { none: 0, some: 0, most: 0, all: 0 };
     for (const f of perStudent) { if (f === 0) buckets.none++; else if (f < 0.5) buckets.some++; else if (f < 1) buckets.most++; else buckets.all++; }
-    return { pack: L.pack, lesson: L.lesson, cards: L.cards, students: exports.length, buckets, perStudent };
+    return { pack: L.pack, lesson: L.lesson, cards: L.cards, students: norm.length, buckets, perStudent };
   }).sort((a, b) => a.pack.localeCompare(b.pack) || a.lesson.localeCompare(b.lesson, undefined, { numeric: true }));
 
   const versions = Object.create(null);
   let unmatchedPacks = 0;
-  for (const ex of exports) for (const p of ex.packs || []) {
+  for (const s of norm) for (const p of s.packs || []) {
     if (!p || typeof p.id !== 'string' || !PACK_ID_SHAPE.test(p.id) || typeof p.version !== 'string' || p.version.length > 40) { unmatchedPacks++; continue; }
     versions[p.id] = versions[p.id] || Object.create(null);
     versions[p.id][p.version] = (versions[p.id][p.version] || 0) + 1;
@@ -3067,8 +3106,64 @@ function summarizeClass(exports, deck, opts = {}) {
   return { generatedAt: now, students: students.length, caveat: CAVEAT, studentsList: students, items, coverage, versions, missingPacks, unmatchedReviews, unmatchedPacks };
 }
 
+function dayKeyIn(timeZone) {
+  let fmt;
+  try { fmt = new Intl.DateTimeFormat('en-CA', { timeZone: timeZone || 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' }); }
+  catch (e) { fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' }); }
+  return (ms) => fmt.format(new Date(ms - 4 * 3600e3));
+}
+
+function classReportFromRows(rows, students, opts = {}) {
+  const now = opts.now ?? Date.now();
+  const dayKey = dayKeyIn(opts.timeZone);
+  const sevenAgo = now - 7 * DAY;
+  return {
+    students: students.map((st) => {
+      const mine = rows.filter((r) => r.user_id === st.user_id)
+        .sort((a, b) => (a.card < b.card ? -1 : a.card > b.card ? 1 : 0) || (Number(a.t) - Number(b.t)) || (String(a.client_id) < String(b.client_id) ? -1 : 1));
+      const cards = [];
+      let cur = null, reps = 0, lapses = 0, firstG = null, prev = 'new';
+      for (const r of mine) {
+        if (cur !== r.card) {
+          if (cur !== null) cards.push([cur, reps, lapses, firstG]);
+          cur = r.card; reps = 0; lapses = 0; firstG = r.g; prev = 'new';
+        }
+        reps++;
+        const graduated = prev === 'review' || prev === 'relearning';
+        if (r.g === 1 && prev === 'review') lapses++;
+        if (r.g === 1) prev = graduated ? 'relearning' : 'learning';
+        else prev = r.i >= 1 ? 'review' : (graduated ? 'relearning' : 'learning');
+      }
+      if (cur !== null) cards.push([cur, reps, lapses, firstG]);
+      const days = new Set(), days7 = new Set(), intro = new Set(), latest = new Map();
+      let reviews7 = 0, ms = 0, synced = null;
+      for (const r of mine) {
+        const t = Number(r.t), k = dayKey(t);
+        days.add(k);
+        if (t >= sevenAgo) { reviews7++; days7.add(k); }
+        ms += Number(r.e) || 0;
+        if (r.k === 0) intro.add(r.card);
+        const id = String(r.card).split('/')[0];
+        if (r.v && (!latest.has(id) || t > latest.get(id).t)) latest.set(id, { t, version: String(r.v) });
+        const at = Date.parse(r.received_at); if (Number.isFinite(at) && (synced == null || at > synced)) synced = at;
+      }
+      const sorted = [...days].sort();
+      return {
+        user_id: st.user_id, label: st.label,
+        reviews: mine.length, reviews_7d: reviews7, days_active: days.size, days_active_7d: days7.size,
+        first_on: sorted[0] || null, last_on: sorted[sorted.length - 1] || null,
+        minutes: Math.round(ms / 60000), introduced: intro.size,
+        last_synced: synced == null ? null : dayKey(synced + 4 * 3600e3),
+        packs: [...latest].map(([id, x]) => ({ id, version: x.version })).sort((a, b) => (a.id < b.id ? -1 : 1)),
+        cards,
+      };
+    }),
+  };
+}
+
 
 const SYNC_KEY = 'bw08.sync.v1';
+
 const clientId = (e) => `${e.c}|${e.t}`;
 
 const rowToEntry = (r) => ({ c: r.card, t: Number(r.t), g: r.g, k: r.k, s: r.s, d: r.d, i: r.i, u: r.u == null ? null : Number(r.u), e: r.e, ...(r.v ? { v: String(r.v) } : {}) });
@@ -3452,6 +3547,8 @@ function makeSync(store, transport, opts = {}) {
       ? Promise.reject(new Error('Your own cards are yours; a class deck must be a published deck.'))
       : transport.upsert('class_packs', [{ class_id: classId, pack_id: pack.id, version: pack.version, pack, updated_at: new Date().toISOString() }], 'class_id,pack_id'),
     
+    classReport: (classId, timeZone) => transport.rpc('class_report', { p_class: classId, p_tz: timeZone || 'UTC' }).then((r) => (Array.isArray(r) ? r[0] : r)),
+    
     async classReviews(afterCursor) {
       const out = [];
       let scan = afterCursor ? (typeof afterCursor === 'object' ? { receivedAt: afterCursor.receivedAt, clientId: afterCursor.clientId || '' } : { receivedAt: String(afterCursor), clientId: '' }) : null;
@@ -3673,6 +3770,20 @@ function memoryTransport(server, user) {
         let n = 0; for (const k of [...server.reviews.keys()]) if (k.startsWith(user + '|')) { server.reviews.delete(k); n++; } return n;
       }
       if (name === 'instructor_may_read') return instructorCanRead(args.p_student, args.p_card);
+      
+      if (name === 'class_report') {
+        
+        if (server.legacyInstructorRead) throw new Error('class_report: Could not find the function public.class_report(p_class, p_tz) in the schema cache');
+        const course = server.classes.get(args.p_class);
+        if (!course || course.instructor_id !== user) throw new Error('not your class');
+        if (course.ends_on && course.ends_on < localDay()) throw new Error('that class has ended');
+        const packIds = new Set([...server.classPacks.values()].filter((p) => p.class_id === course.id).map((p) => p.pack_id));
+        const students = [...server.enrollments.values()].filter((e) => e.class_id === course.id && e.status === 'active' && e.consented_at)
+          .sort((a, b) => compare(a.joined_at, b.joined_at) || (a.user_id < b.user_id ? -1 : 1)).map((e) => ({ user_id: e.user_id, label: e.label }));
+        const ids = new Set(students.map((x) => x.user_id));
+        const rows = [...server.reviews.values()].filter((r) => ids.has(r.user_id) && packIds.has(String(r.card).split('/')[0]));
+        return { class_id: course.id, tz: args.p_tz || 'UTC', ...classReportFromRows(rows, students, { timeZone: args.p_tz }) };
+      }
       if (name === 'create_class') {
         const id = 'class-' + String(server.classes.size + 1);
         const code = 'CLS' + String(server.classes.size + 1).padStart(3, '0');
@@ -3710,7 +3821,8 @@ function memoryTransport(server, user) {
       if (table === 'classes') rows = [...server.classes.values()].filter(canReadClass);
       else if (table === 'enrollments') rows = [...server.enrollments.values()].filter((row) => { const course = server.classes.get(row.class_id); return row.user_id === user || !!(course && course.instructor_id === user); });
       else if (table === 'class_packs') rows = [...server.classPacks.values()].filter((row) => { const course = server.classes.get(row.class_id); return !!(course && (course.instructor_id === user || server.enrollments.has(`${course.id}|${user}`))); });
-      else if (table === 'review_log') rows = [...server.reviews.values()].filter((r) => r.user_id === user || instructorCanRead(r.user_id, r.card));
+
+      else if (table === 'review_log') rows = [...server.reviews.values()].filter((r) => r.user_id === user || (server.legacyInstructorRead && instructorCanRead(r.user_id, r.card)));
       else if (table === 'profiles') {
         const saved = server.profiles.get(user);
         const erased = server.erasures.get(user);
@@ -4210,7 +4322,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 (function () {
   'use strict';
   // was: the version line named 0.11.5
-  var APP_VERSION = '0.11.15';   // was: '0.11.14'; before that '0.11.13', '0.11.12', '0.11.11', '0.11.10', '0.11.9', '0.11.8'
+  var APP_VERSION = '0.11.16';   // was: '0.11.15'; before that '0.11.14', '0.11.13', '0.11.12', '0.11.11', '0.11.10', '0.11.9', '0.11.8'
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -4737,6 +4849,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   function clearClassView() {
     loadedExports = [];
     loadedPacks = [];
+    classLive = null;
   }
   // 0.11.3 (the operator, 2026-10-13: on a phone, opening the cards tab "pulls up the keyboard"). Whether a field takes
   // focus unasked is decided by what the field is and what the device has, never by the screen: a field that raises an
@@ -10877,6 +10990,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   // written to this device's storage by the app; close the screen and it is gone.
   var loadedExports = [];
   var loadedPacks = [];
+  // 0.11.16: the class the view was read from, or null when it holds files. Read from a class, the view has no file
+  // loads: the students' devices synced to their accounts and the database decided what the instructor may read.
+  // { cls, readAt, synced: label -> last time the server received a review, waiting: approved students with none }
+  var classLive = null;
   function classDeck() {
     var installed = Object.keys(DECK.packs).map(function (k) { return DECK.packs[k]; });
     return deckFrom(installed.concat(loadedPacks));
@@ -10898,8 +11015,18 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     // checked by every asynchronous completion below before it touches the DOM or the loaded lists.
     var gen = renderGeneration, who = account.sub;
     var body = $('cv-body');
+    var live = classLive;
     var h = '<div class="prose">';
-    h += '<div class="caveat"><b>What this is.</b> ' + esc(CAVEAT) + '</div>';
+    h += '<div class="caveat"><b>What this is.</b> ' + esc(live ? LIVE_CAVEAT : CAVEAT) + '</div>';
+    if (live) {
+      h += '<h2 class="sec">' + esc(live.cls.title) + '</h2>' +
+           '<p class="note">Read from the class ' + esc(relTime(live.readAt)) + ': ' + plural(classCount() - live.waiting, 'student') + ' with reviews of this class’s decks' +
+           (live.waiting ? ', and ' + plural(live.waiting, 'approved student') + ' with none synced yet' : '') + '. ' +
+           'Nobody exports or uploads anything. A student’s newest answers arrive when their app syncs: when they open it, come back online, or tap Sync now. Nothing is kept on this device after you leave the view.</p>' +
+           '<div class="acts"><button class="ghost" id="cv-refresh" type="button">Refresh</button>' +
+           '<button class="ghost" id="cv-backclass" type="button">Back to the class</button></div>' +
+           '<div id="cv-status" class="msg" hidden></div>';
+    } else
     h += '<p class="note">Two loads. First the course deck, the same file you sent the class; the view needs it to name the cards and it is read, not installed. ' +
          'Then the progress files students chose to give you, theirs to offer, not yours to ask for. Their file names are the only labels shown; nothing leaves this device, and it keeps nothing after you leave this screen.</p>' +
          '<div class="acts"><button class="ghost" id="cv-addpack" type="button">Load the course deck</button>' +
@@ -10908,12 +11035,12 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
          (loadedPacks.length ? '<p class="note">Loaded for reading: ' + loadedPacks.map(function (p) { return esc(p.title) + ' v' + esc(p.version); }).join('; ') + '.</p>' : '') +
          '<input type="file" id="cv-files" accept="application/json,.json" multiple hidden>' +
          '<div id="cv-status" class="msg" hidden></div>';
-    if (loadedExports.length) {
+    if (classCount()) {
       var cd = classDeck();
-      h += '<p class="note">' + plural(loadedExports.length, 'export') + ' loaded: ' +
+      if (!live) h += '<p class="note">' + plural(loadedExports.length, 'export') + ' loaded: ' +
            loadedExports.map(function (e) { return esc(e.label); }).join(', ') + '.</p>' +
            '<div class="acts"><button class="ghost" id="cv-clear" type="button">Clear</button></div>';
-      var r = summarizeClass(loadedExports, cd, { now: Date.now(), leechThreshold: store.prefs.leechThreshold });
+      var r = classSummary(cd);
       h += missingNotice(r);
       h += '<h2 class="sec">1 · Which cards is the class failing?</h2>' +
            '<p class="note">Ranked by how often a card was wrong on first sight, then how often it keeps being forgotten. Only cards at least one student has seen.</p>';
@@ -10951,17 +11078,18 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       });
       h += '</tbody></table></div>';
       h += '<h2 class="sec">3 · Who has stopped?</h2>' +
-           '<p class="note">Days active and reviews in the last seven days, and the date each export last shows activity. Dates only.</p>';
-      h += '<div class="cv-wrap"><table class="cv-table"><thead><tr><th>Export</th><th>Reviews, 7 days / all</th><th>Days active<br>of 7</th><th>Last active</th></tr></thead><tbody>';
+           '<p class="note">Days active and reviews in the last seven days, and the date each ' + (live ? 'student' : 'export') + ' last shows activity' + (live ? ', and when their app last sent answers' : '') + '. Dates only.</p>';
+      h += '<div class="cv-wrap"><table class="cv-table"><thead><tr><th>' + (live ? 'Student' : 'Export') + '</th><th>Reviews, 7 days / all</th><th>Days active<br>of 7</th><th>Last active</th>' + (live ? '<th>Last synced</th>' : '') + '</tr></thead><tbody>';
       r.studentsList.slice().sort(function (a, b) { return (b.stoppedDays == null ? 9999 : b.stoppedDays) - (a.stoppedDays == null ? 9999 : a.stoppedDays); }).forEach(function (s) {
         var stopped = s.stoppedDays == null ? 'never started' : (s.stoppedDays === 0 ? 'today' : plural(s.stoppedDays, 'day') + ' ago');
         var cls = s.stoppedDays == null || s.stoppedDays >= 7 ? ' bad' : (s.stoppedDays >= 3 ? ' warn' : '');
         h += '<tr><td>' + esc(s.label) + '</td><td class="n">' + s.reviews7d + ' / ' + s.reviews + '</td><td class="n">' + s.daysActive7d + '</td>' +
-             '<td class="n' + cls + '">' + (s.lastActiveOn ? esc(fmtCardDate(s.lastActiveOn)) + '<br>' : '') + stopped + (cls === ' warn' ? '<span class="micro"> · watch</span>' : '') + '</td></tr>';
+             '<td class="n' + cls + '">' + (s.lastActiveOn ? esc(fmtCardDate(s.lastActiveOn)) + '<br>' : '') + stopped + (cls === ' warn' ? '<span class="micro"> · watch</span>' : '') + '</td>' +
+             (live ? '<td class="n">' + esc(fmtCardDate(live.synced[s.label] || null)) + '</td>' : '') + '</tr>';
       });
       h += '</tbody></table></div>';
       h += '<h2 class="sec">4 · Did my correction land?</h2>' +
-           '<p class="note">Which version of each deck every export was made from. A student on an old version has not received your fix.</p>';
+           '<p class="note">Which version of each deck ' + (live ? 'each student answered under' : 'every export was made from') + '. A student on an old version has not received your fix.</p>';
       var vk = Object.keys(r.versions);
       if (!vk.length) h += '<p class="note">No deck version is recorded in these reviews: an older app made them, or they were synced before each review carried its deck version.</p>';
       else {
@@ -10978,6 +11106,22 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     }
     body.innerHTML = h + '</div>';
 
+    if (live) {
+      $('cv-backclass').addEventListener('click', function () { classesView.open = live.cls; show('s-classes'); renderClasses(); });
+      var rf = $('cv-refresh');
+      rf.addEventListener('click', function () {
+        busy(rf, 'Reading…');
+        readClassLive(live.cls).then(function (got) {
+          if (gen !== renderGeneration || who !== account.sub || !account.signedIn || classLive !== live) return;
+          if (got) applyClassLive(live.cls, got);
+          renderClass();
+          if (!got) setMsg('cv-status', 'Nothing to read now: no approved student has a synced review of this class’s decks.', false);
+        }).catch(function (e) {
+          if (gen !== renderGeneration || who !== account.sub || !account.signedIn || classLive !== live) return;
+          rf.disabled = false; rf.textContent = 'Refresh'; setMsg('cv-status', friendlyError(e), true);
+        });
+      });
+    } else {
     $('cv-addpack').addEventListener('click', function () { $('cv-packfiles').click(); });
     $('cv-packfiles').addEventListener('change', function (ev) {
       var files = Array.prototype.slice.call(ev.target.files || []);
@@ -11045,9 +11189,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         fr.readAsText(f);
       });
     });
+    }
     var clr = $('cv-clear'); if (clr) clr.addEventListener('click', function () { loadedExports = []; loadedPacks = []; renderClass(); });
     var cp = $('cv-copy'); if (cp) cp.addEventListener('click', function () {
-      var r = summarizeClass(loadedExports, classDeck(), { now: Date.now(), leechThreshold: store.prefs.leechThreshold });
+      var r = classSummary(classDeck());
+      if (classLive) r.caveat = LIVE_CAVEAT;
       var text = JSON.stringify(r, null, 1);
       // A failed copy must not say "Copied" (outside read, round 3): it says so beside the stable action, and offers the text.
       var status = cp.nextElementSibling;
@@ -12025,6 +12171,107 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     return status === 'pending' ? 'waiting to join' : status === 'active' ? 'joined' : status === 'left' ? 'left' : status;
   }
 
+  // 0.11.16: one read of a class for the class view, from the class detail and from the view's Refresh. The database
+  // aggregates the class (server/schema.sql class_report): counts, day keys in this device's zone and per-card totals for
+  // each approved student, never a review row. A server the schema change has not reached yet has no such function and
+  // still allows the old read of the rows themselves (review_instructor_read), so the view falls back to that until it
+  // does. Answers null when there is nothing to show: no approved student, or (the old read) none with a synced review.
+  function readClassLive(c) {
+    var tz = 'UTC';
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (e) { tz = 'UTC'; }
+    return Promise.all([sync.classPacks(c.id), sync.enrollments(c.id)]).then(function (res) {
+      var packs = res[0] || [], enr = res[1] || [];
+      var unreadable = 0;
+      var decks = packs.map(function (p) { return p.pack; }).filter(function (pk) { try { validatePack(pk); return true; } catch (e) { unreadable++; return false; } });
+      return sync.classReport(c.id, tz).then(function (report) {
+        var list = (report && Array.isArray(report.students)) ? report.students : [];
+        if (!list.length) return null;
+        var synced = Object.create(null), waiting = 0;
+        list.forEach(function (s) { synced[reportLabel(s)] = s.last_synced || null; if (!s.reviews) waiting++; });
+        return { report: { students: list }, exports: [], decks: decks, unreadable: unreadable, synced: synced, waiting: waiting };
+      }, function (e) {
+        if (!/^class_report: Could not find the function/i.test(String(e && e.message))) throw e;
+        return readClassRows(c, packs, enr, decks, unreadable);
+      });
+    });
+  }
+  function reportLabel(s) { return String(s.label || 'student') + ' · ' + String(s.user_id || '').slice(-4); }
+  // The read before 0.11.16's schema: the rows the old policy lets the instructor read, folded on this device.
+  function readClassRows(c, packs, enr, decks, unreadable) {
+    var packIds = Object.create(null); packs.forEach(function (p) { if (/^[a-z0-9][a-z0-9-]{0,63}$/.test(String(p.pack_id))) packIds[p.pack_id] = true; });
+    var active = Object.create(null); enr.forEach(function (e) { if (e.status === 'active') active[e.user_id] = e.label || 'student'; });
+    return sync.classReviews(null).then(function (rows) {
+      // The policy already limits rows to this instructor's active students and class decks; this narrows them to ONE
+      // class, since an instructor may teach several.
+      var byUser = Object.create(null), last = Object.create(null);
+      rows.forEach(function (r) {
+        var pid = String(r.card).split('/')[0];
+        if (!active[r.user_id] || !packIds[pid]) return;
+        (byUser[r.user_id] = byUser[r.user_id] || []).push(rowToEntry(r));
+        var at = Date.parse(r.received_at);
+        if (Number.isFinite(at) && !(last[r.user_id] >= at)) last[r.user_id] = at;
+      });
+      var uids = Object.keys(byUser);
+      if (!uids.length) return null;
+      var synced = Object.create(null);
+      var exports = uids.map(function (uid) {
+        var label = active[uid] + ' · ' + uid.slice(-4);
+        synced[label] = last[uid] || null;
+        return readExport(JSON.stringify({ format: 'bw08-review-log', version: 1, packs: packsFromEntries(byUser[uid]), log: byUser[uid] }), label);
+      });
+      return { report: null, exports: exports, decks: decks, unreadable: unreadable, synced: synced, waiting: Object.keys(active).length - uids.length };
+    });
+  }
+  function applyClassLive(c, got) {
+    loadedExports = got.exports;
+    loadedPacks = got.decks;
+    classLive = { cls: c, readAt: Date.now(), report: got.report, synced: got.synced, waiting: got.waiting };
+  }
+  // The four answers for what the view holds: a class report, or exports (files, or the old read of a class's rows).
+  function classSummary(cd) {
+    var opts = { now: Date.now(), leechThreshold: store.prefs.leechThreshold };
+    if (classLive && classLive.report) { opts.todayKey = store.dayKey(Date.now()); opts.labelOf = reportLabel; return summarizeReport(classLive.report, cd, opts); }
+    return summarizeClass(loadedExports, cd, opts);
+  }
+  function classCount() { return classLive && classLive.report ? classLive.report.students.length : loadedExports.length; }
+
+  // 0.11.16: the student's side of a class. What the instructor's class view counts about this student, worked out here
+  // from this device's own record (nothing is read from the server and nobody else's answers are involved), and whether
+  // the newest answers have reached the account yet, since the instructor reads only what has synced.
+  function studentClassSummary(packs, status) {
+    var ids = Object.create(null); packs.forEach(function (p) { ids[p.pack_id] = true; });
+    var mineLog = store.log.filter(function (e) { return ids[String(e.c).split('/')[0]]; });
+    var unsent = 0;
+    try { unsent = (sync.pending() || []).filter(function (e) { return ids[String(e.c).split('/')[0]]; }).length; } catch (e) { unsent = 0; }
+    var r = null;
+    try {
+      r = summarizeClass([readExport({ format: 'bw08-review-log', version: 1, packs: [], log: mineLog }, 'you')],
+        deckFrom(packs.map(function (p) { return p.pack; })), { now: Date.now(), leechThreshold: store.prefs.leechThreshold });
+    } catch (e) { r = null; }
+    var h = '<h2 class="sec">' + (status === 'active' ? 'What your instructor sees about you' : 'What your instructor will see once you are approved') + '</h2>';
+    h += '<p class="note">' + (account.lastSync ? 'Your answers last went to your account ' + esc(relTime(account.lastSync)) + '.' : 'Your answers have not gone to your account yet.') +
+      (unsent ? ' ' + plural(unsent, 'answer') + ' on this device ' + (unsent === 1 ? 'has' : 'have') + ' not been sent yet; ' + (unsent === 1 ? 'it goes' : 'they go') + ' the next time the app syncs.' : ' Everything on this device has been sent.') +
+      ' Nothing to export: your instructor reads it from the class.</p>' +
+      (unsent ? '<div class="acts"><button class="ghost" id="cd-syncnow" type="button">Sync now</button></div>' : '');
+    if (!r) return h;
+    var me = r.studentsList[0];
+    h += '<div class="rows">' +
+      '<div class="row"><span class="k">Reviews, last 7 days</span><span class="v">' + me.reviews7d + '</span></div>' +
+      '<div class="row"><span class="k">Days active, last 7</span><span class="v">' + me.daysActive7d + '</span></div>' +
+      '<div class="row"><span class="k">Last active</span><span class="v">' + esc(me.lastActiveOn ? fmtCardDate(me.lastActiveOn) : 'Not yet') + '</span></div></div>';
+    var lessons = r.coverage.filter(function (cv) { return cv.cards > 0; });
+    if (lessons.length) {
+      h += '<div class="cv-wrap"><table class="cv-table"><thead><tr><th>Lesson</th><th>Cards seen</th></tr></thead><tbody>';
+      lessons.forEach(function (cv) {
+        var seen = Math.round((cv.perStudent[0] || 0) * cv.cards);
+        var deckTitle = packs.length > 1 ? (((packs.filter(function (p) { return p.pack_id === cv.pack; })[0] || {}).pack || {}).title || cv.pack) + ' · ' : '';
+        h += '<tr><td>' + esc(deckTitle + (cv.lesson || 'none')) + '</td><td class="n">' + seen + ' of ' + cv.cards + '</td></tr>';
+      });
+      h += '</tbody></table></div>';
+    }
+    return h;
+  }
+
   function renderClassDetail(c) {
     // A completion that resolves after the learner has left this screen, or signed out under it,
     // must not write it back (once-over M4). The generation and the account are captured here and
@@ -12074,6 +12321,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
             (state === 'current' ? ' · installed' : local ? ' · you have v' + esc(local.version) : '') + '</div>' +
             (state === 'current' ? '' : '<div class="acts"><button class="ghost" type="button" data-inst="' + esc(p.pack_id) + '">' + (state === 'install' ? 'Install deck' : 'Update deck') + '</button></div>') + '</div>';
         }).join('') : '<p class="note">Your instructor has not published a deck yet.</p>';
+        if (mine && (mine.status === 'pending' || mine.status === 'active') && packs.length) h += studentClassSummary(packs, mine.status);
         if (mine && (mine.status === 'pending' || mine.status === 'active')) {
           h += '<h2 class="sec">Leave</h2><p class="note">Leaving closes your instructor’s view of your reviews, including what was shared before; a report they already saved stays theirs. Your progress stays yours.</p>' +
             '<button class="danger" id="cd-leave" type="button">Leave this class</button>';
@@ -12121,6 +12369,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
           if (res.ok) { toast(res.msg); renderClassDetail(c); } else setMsg('cl-status', res.msg, true);
         });
       });
+      var sn = $('cd-syncnow'); if (sn) sn.addEventListener('click', function () {
+        busy(sn, 'Syncing…');
+        syncNow().then(function () { if (gen === renderGeneration && who === account.sub) renderClassDetail(c); })
+          .catch(function (e) { if (gen !== renderGeneration || who !== account.sub) return; sn.disabled = false; sn.textContent = 'Sync now'; fail(e); });
+      });
       var lv = $('cd-leave'); if (lv) lv.addEventListener('click', function () {
         confirmSheet({ anchor: lv, title: 'Leaving ' + c.title + ' closes your instructor’s view of your reviews. Your progress stays yours.', action: 'Leave class', cancel: 'Stay in class', onConfirm: function () {
           sync.leaveClass(c.id).then(function (n) {
@@ -12132,31 +12385,16 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       });
       var rp = $('cd-report'); if (rp) rp.addEventListener('click', function () {
         busy(rp, 'Reading…');
-        var packIds = Object.create(null); packs.forEach(function (p) { if (/^[a-z0-9][a-z0-9-]{0,63}$/.test(String(p.pack_id))) packIds[p.pack_id] = true; });
-        var active = Object.create(null); enr.forEach(function (e) { if (e.status === 'active') active[e.user_id] = e.label || 'student'; });
-        sync.classReviews(null).then(function (rows) {
+        // 0.11.16: the read is readClassLive's, shared with the class view's Refresh.
+        readClassLive(c).then(function (got) {
           // 0.11.12 (review of 0.11.11): this completion checked nothing, so a read still on its way when the device signed out
           // without leaving the page (offline Sign out, an expired sign-in, a sign-in client that failed) drew the students'
           // reviews on a signed-out page. Like every other completion here, it now lands only where it was asked for: the same
           // render, the same signed-in account, the same class still open.
           if (gen !== renderGeneration || who !== account.sub || !account.signedIn || !classesView.open || classesView.open.id !== c.id) return;
-          // The policy already limits rows to this instructor's active students and class decks;
-          // this narrows them to ONE class, since an instructor may teach several.
-          var byUser = {};
-          rows.forEach(function (r) {
-            var pid = String(r.card).split('/')[0];
-            if (!active[r.user_id] || !packIds[pid]) return;
-            (byUser[r.user_id] = byUser[r.user_id] || []).push(rowToEntry(r));
-          });
-          var exports = Object.keys(byUser).map(function (uid) {
-            return readExport(JSON.stringify({ format: 'bw08-review-log', version: 1, packs: packsFromEntries(byUser[uid]), log: byUser[uid] }), active[uid] + ' · ' + uid.slice(-4));
-          });
-          if (!exports.length) { setMsg('cl-status', 'Nothing to read yet: no approved student has synced a review of this class’s decks.', false); rp.disabled = false; rp.textContent = 'Open the class view'; return; }
-          loadedExports = exports;
-          var unreadable = 0;
-          loadedPacks = packs.map(function (p) { return p.pack; }).filter(function (pk) { try { validatePack(pk); return true; } catch (e) { unreadable++; return false; } });
-          show('s-class'); renderClass();
-          if (unreadable) toast(unreadable === 1 ? 'One of this class’s decks could not be read, so its cards are not named below.' : unreadable + ' of this class’s decks could not be read, so their cards are not named below.');
+          if (!got) { setMsg('cl-status', 'Nothing to read yet: no approved student has synced a review of this class’s decks.', false); rp.disabled = false; rp.textContent = 'Open the class view'; return; }
+          show('s-class'); applyClassLive(c, got); renderClass();
+          if (got.unreadable) toast(got.unreadable === 1 ? 'One of this class’s decks could not be read, so its cards are not named below.' : got.unreadable + ' of this class’s decks could not be read, so their cards are not named below.');
         // was: }).catch(function (e) { fail(e); rp.disabled = false; rp.textContent = 'Open the class view'; });
         // 0.11.13 (review of 0.11.12): the failure lands under the same check as the answer, so a read that fails after a
         // sign-out writes nothing to a signed-out page or record.
@@ -12481,7 +12719,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.11.15";
+  var APP_V = "0.11.16";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
