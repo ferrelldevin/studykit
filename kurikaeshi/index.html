@@ -959,6 +959,8 @@ ruby[data-reading="hidden"] rt{visibility:hidden}
 .undo{display:flex;justify-content:center;width:100%;min-height:var(--tap);align-items:center;font-size:var(--t-label);font-weight:500;color:var(--accent);transition:background-color var(--d-press) var(--ease-standard)}
 .undo:active{background:var(--surface-2);border-radius:var(--r-control)}
 .undo:disabled{color:var(--ink-off);opacity:1}
+/* 2026-10-20 (F-12): grades disabled after an answer the storage refused look disabled, so a tap cannot seem taken. */
+#r-band .grade:disabled{background:var(--surface-2);color:var(--ink-off);border-color:var(--rule-off);box-shadow:none}
 /* 0.11.2: a sitting's first card hides the slot (nothing to undo) but keeps its room, so the card and band above do not move. */
 .undo[hidden]{display:flex!important;visibility:hidden}
 
@@ -1000,6 +1002,8 @@ ruby[data-reading="hidden"] rt{visibility:hidden}
 #s-done.h6 .centre .dn-next-label{font-size:var(--t-label);font-weight:600;letter-spacing:.18em;text-transform:uppercase}
 #s-done.h6 .centre .dn-day{display:block;width:100%;font-family:var(--f-display);font-size:var(--t-done-day);font-weight:600;line-height:1.05;letter-spacing:-.02em;white-space:nowrap;color:var(--done-ink)}
 #s-done.h6 .centre .dn-due{font-size:var(--t-done-due);color:var(--done-ink)}
+#s-done.h6 .centre .dn-missed{font-size:var(--t-body);line-height:1.5;color:var(--done-ink)}
+#s-done .dn-summary p [lang]{font-family:var(--f-ja);font-size:var(--t-ja-sentence);line-height:1.4}   /* F-09: a missed card's name, nothing Japanese below 20px */
 .rows.dn-figs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s-3);width:100%;max-width:none;margin:0;padding:var(--s-4) 0 0;border:0;border-top:var(--line) solid var(--done-rule);border-radius:0;background:transparent;box-shadow:none;overflow:visible}
 .dn-figs .fig{display:flex;flex-direction:column;gap:var(--s-1);min-width:0}
 .dn-figs .n{font-family:var(--f-display);font-size:var(--t-done-fig);font-weight:600;line-height:1;font-variant-numeric:tabular-nums;color:var(--done-ink)}
@@ -1527,10 +1531,11 @@ const initialStability = (g, w) => clamp(Math.max(w[g - 1], 0.1), S_MIN, S_MAX);
 
 const initialDifficulty = (g, w) => clamp(w[4] - Math.exp(w[5] * (g - 1)) + 1, D_MIN, D_MAX);
 
+const rawInitialDifficulty = (g, w) => w[4] - Math.exp(w[5] * (g - 1)) + 1;
 function nextDifficulty(d, g, w) {
   const deltaD = -w[6] * (g - 3);
   const damped = d + deltaD * ((10 - d) / 9);
-  return clamp(w[7] * initialDifficulty(4, w) + (1 - w[7]) * damped, D_MIN, D_MAX);
+  return clamp(w[7] * rawInitialDifficulty(4, w) + (1 - w[7]) * damped, D_MIN, D_MAX);
 }
 
 function stabilityOnSuccess(d, s, r, g, w) {
@@ -1955,13 +1960,11 @@ function makeStore(adapter) {
 
       let seen = 0, kept = 0;
       for (const entries of byCard.values()) {
-        let prev = 'new', previousReviewDay = null;
+        let prev = 'new', previousDay = null;
         for (const e of entries) {
-          if (prev === 'review') {
-            const key = dayKey(e.t);
-            if (key !== previousReviewDay) { seen++; if (e.g > 1) kept++; }
-            previousReviewDay = key;
-          }
+          const key = dayKey(e.t);
+          if (prev === 'review' && key !== previousDay) { seen++; if (e.g > 1) kept++; }
+          previousDay = key;
           prev = e.g === 1 ? 'relearning' : (e.i >= 1 ? 'review' : 'learning');
         }
       }
@@ -2636,6 +2639,12 @@ function sittingWork(cards, store, opts = {}) {
   }
   return { cards: seen.size, showings };
 }
+
+function orderHash(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return h >>> 0;
+}
 function buildQueue(deck, store, opts = {}) {
   const now = opts.now ?? Date.now();
   const lesson = opts.lesson ?? null;
@@ -2738,7 +2747,10 @@ function buildQueue(deck, store, opts = {}) {
       if (s.due != null && s.due > now && s.due <= now + learnAheadMs) learn.push({ c, due: s.due });
     }
   }
-  due.sort((a, b) => a.due - b.due);
+  
+  const orderSeed = opts.orderSeed != null ? String(opts.orderSeed) : todayK;
+  for (const x of due) { x.day = store.dayKey(x.due); x.mix = orderHash(orderSeed + '|' + x.c.id); }
+  due.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : a.mix - b.mix || (a.c.id < b.c.id ? -1 : 1)));
   learn.sort((a, b) => a.due - b.due);
   
   const learningLater = laterToday.filter((c) => !learn.some((x) => x.c === c)).length;
@@ -4322,7 +4334,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 (function () {
   'use strict';
   // was: the version line named 0.11.5
-  var APP_VERSION = '0.11.16';   // was: '0.11.15'; before that '0.11.14', '0.11.13', '0.11.12', '0.11.11', '0.11.10', '0.11.9', '0.11.8'
+  var APP_VERSION = '0.11.17';   // was: '0.11.16'; before that '0.11.15', '0.11.14', '0.11.13', '0.11.12', '0.11.11', '0.11.10', '0.11.9', '0.11.8'
   // The public address (decision 007): once a hosted address exists it is the one that goes
   // to people, and every artifact points at it so a saved review link is never a dead end.
   var PUBLIC_URL = 'https://ferrelldevin.github.io/studykit/kurikaeshi/';
@@ -4455,10 +4467,27 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var old = current.querySelector('[data-storage-bad]');
     if (old) { if (sentence) old.textContent = sentence; return; }
     var line = document.createElement('div');
-    line.className = 'msg bad'; line.setAttribute('data-storage-bad', '1'); line.textContent = sentence || STORAGE_BAD;
+    line.className = 'msg bad'; line.setAttribute('data-storage-bad', '1'); line.setAttribute('role', 'alert'); line.textContent = sentence || STORAGE_BAD;
     var card = current.querySelector('.cardwrap');
     var host = card ? card.parentNode : (current.querySelector('.scroll, .centre') || current);
     host.insertBefore(line, card || host.firstChild);
+  }
+  // 2026-10-20 (audit F-12): an answer the browser would not write. The card stayed with its grades looking live, each
+  // tap doing nothing, and the line said only Export, which frees no room. Now the line says plainly that the storage is
+  // full, that this answer was not saved, and the way out; the grades are disabled so a tap cannot look taken, and the
+  // focus moves to the line so it is read out. A deck removed afterwards (the line's advice) clears this state.
+  var STORAGE_FULL = 'This device is not saving your progress: its storage for Kurikaeshi is full, so your last answer was not saved. To make room, remove a deck you do not use, under Decks. Export my progress, under You then Settings, keeps a copy.';
+  function answerNotSaved() {
+    storageBroken = true;
+    showStorageProblem(STORAGE_FULL);
+    Array.prototype.forEach.call(document.querySelectorAll('#r-band .grade'), function (b) { b.disabled = true; b.classList.remove('pressed'); });
+    var line = $('s-review').querySelector('[data-storage-bad]');
+    if (line) { line.setAttribute('tabindex', '-1'); try { line.focus({ preventScroll: true }); } catch (e) { line.focus(); } }
+  }
+  function storageRoomBack() {
+    if (storageSentence !== STORAGE_FULL) return;
+    storageBroken = false; storageSentence = null;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-storage-bad]'), function (n) { if (n.parentNode) n.parentNode.removeChild(n); });
   }
   var ALL = { pack: null, lesson: null };
   // The sign-in offer is shown once, after the first finished session EVER: no answer on this
@@ -7260,8 +7289,19 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     sealGhost = ghost;
     sealTimer = setTimeout(function () {
       ghost.classList.add('going');
+      bandDrawnAt = Date.now();   // F-01: the question comes into view now; a tap inside the next 150 ms was aimed before it was seen
       sealTimer = setTimeout(clearSeal, 120);
     }, 720);
+  }
+  // F-01 (audit of 2026-10-20): while the seal lies over the face, the next question is under it, and Show answer is
+  // already live. A press then (Show answer, a tap on the card, Space, Enter; reveal() asks here first) would turn up an
+  // answer whose question was never on screen. So that press lifts the seal instead: the question shows at once, the press reveals nothing, and tapTooSoon's 150 ms
+  // holds the next tap until the question has been in view. A learner who waits the seal out still reveals in one tap.
+  function liftSealFirst() {
+    if (!sealGhost) return false;
+    clearSeal();
+    bandDrawnAt = Date.now();
+    return true;
   }
   function drawCard() {
     glossHeld = false;
@@ -7408,6 +7448,20 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     toast('The card had just changed, so that tap did nothing. Tap again.');
     return true;
   }
+  // F-07 (audit of 2026-10-20): focus after reveal goes to Good (DESIGN-0.7 E.8, kept), so the Space or Enter that turned
+  // the card, pressed again at once, graded Good on an answer not yet read: Space-Space logged a 3. A Space or Enter on a
+  // grade inside 450 ms of the answer appearing is that second half of a double press, and is refused out loud, the way
+  // tapTooSoon refuses a carried-through tap; a deliberate press after it grades Good as E.8 says. Only a key the page saw
+  // go down on this very button counts: a click from anything else carries detail 0 too. A held key's repeats are dropped
+  // in the keydown handler below. 450 ms: a second press of a key comes inside ~300 ms; reading an answer takes longer.
+  var lastActKey = null;
+  document.addEventListener('keydown', function (ev) { if (ev.key === ' ' || ev.key === 'Enter') lastActKey = { t: Date.now(), target: ev.target }; }, true);
+  function keyTooSoon(ev, b) {
+    if (ev.detail || !lastActKey || lastActKey.target !== b || Date.now() - lastActKey.t > 1000) return false;
+    if (Date.now() - bandDrawnAt >= 450) return false;
+    toast('The answer had just appeared, so that key did nothing. Press it again to grade Good.');
+    return true;
+  }
   // 0.11.2: the grade marks, round 3's ✕ △ 〇 ◎ (design-0.11.1/fresh-eyes/round3/round3.html, symbols mx mtri mcir mdbl)
   var GRADE_MARKS = { 1: '<path d="M6 6l12 12M18 6 6 18"/>', 2: '<path d="M12 4.5 20.5 19h-17z"/>', 3: '<circle cx="12" cy="12" r="8"/>',
     4: '<circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="3.9"/>' };
@@ -7427,7 +7481,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       band.innerHTML = '<button class="reveal" id="reveal" type="button">Show answer</button>';
       $('reveal').addEventListener('click', function (ev) {
         if (tapTooSoon(ev)) return;
-        reveal();
+        reveal();   // F-01: reveal() lifts a seal first, for this button, a tap on the card and a key alike
       });
       if (!cueFocus) { try { $('reveal').focus({ preventScroll: true }); } catch (e) { $('reveal').focus(); } }   // a revealed cue keeps the focus it is about to take
       return;
@@ -7453,6 +7507,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     Array.prototype.forEach.call(band.querySelectorAll('.grade'), function (b) {
       b.addEventListener('click', function (ev) {
         if (tapTooSoon(ev)) return;
+        if (keyTooSoon(ev, b)) return;
         b.classList.add('pressed');   // the tap fills the one chosen (round 3)
         answer(parseInt(b.getAttribute('data-g'), 10));
       });
@@ -7463,6 +7518,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
   function reveal() {
     if (!card) return;   // a tap that lands between cards reveals nothing
+    if (liftSealFirst()) return;   // F-01: under a seal the question has not been seen; this press shows it instead
     revealed = true;
     writeIn = true;
     clearSeal();   // the last card's stamp gives way at once to the turn
@@ -7508,10 +7564,10 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       });
     }
     if (!saved) {
-      storageBroken = true;
-      showStorageProblem();
+      answerNotSaved();   // 2026-10-20 (F-12, lane B; was: storageBroken = true; showStorageProblem();)
       return;
     }
+    storageRoomBack();   // 2026-10-20 (F-12, lane B): a write that worked ends the full-storage line
     if (!persistAsked) {
       persistAsked = true;
       try {
@@ -7547,7 +7603,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       var afterLapses = store.state(card.id).lapses;
       var slippingAt = store.prefs.leechThreshold;
       var slippingStep = Math.max(1, Math.floor(slippingAt / 2));
-      if (afterLapses > beforeLapses && afterLapses > slippingAt && (afterLapses - slippingAt) % slippingStep === 0) toast('This card keeps slipping. Try rewriting it.');
+      // 2026-10-20 (F-19, lane B): first at the threshold, when the tag appears (was: afterLapses > slippingAt, first at 12 of 8); only own cards can be rewritten
+      if (afterLapses > beforeLapses && afterLapses >= slippingAt && (afterLapses - slippingAt) % slippingStep === 0) toast(card.pack === OWN_PACK_ID ? 'This card keeps slipping. Try rewriting it.' : 'This card keeps slipping. Under More, Skip today or Retire card gives it a rest.');
       if (next.ivl < 1) holdLearning(card, saved.u);
       else if (wasNew && (grade === 2 || grade === 3)) session.repeat.push(card);
     }
@@ -7709,10 +7766,12 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     else if (s.mode === 'today' && !todayLeft) { head = 'Done for today'; line = t.answers + ' answered today. ' + nextCardsLine(true); dayEnd = true; }
     else {
       head = 'Session finished';
+      // F-09 (audit of 2026-10-20): every finished sitting names what it missed, not Practice's alone. Was: missedLine(s) on
+      // the practice clause only.
       line = (s.mode === 'learn' ? plural(Object.keys(firstSeen).length, 'new card') + ' learned.'
         : s.mode === 'ahead' ? plural(sittingCards, 'card') + ' reviewed ahead.'
-        : s.mode === 'practice' ? plural(sittingCards, 'card') + ' practiced.' + missedLine(s)
-        : plural(sittingCards, 'card') + ' answered.') + waiting;
+        : s.mode === 'practice' ? plural(sittingCards, 'card') + ' practiced.'
+        : plural(sittingCards, 'card') + ' answered.') + missedLine(s) + waiting;
     }
     // 0.9.3 G4 (id 'saved', I2/I3): the first finished session while signed in says the answers are
     // kept and where to find them tomorrow. It is a claim about the account, so it waits for the upload
@@ -7729,6 +7788,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var fig = function (n, unit, label) { return '<div class="fig"><span class="n">' + n + (unit ? '<span class="u">' + unit + '</span>' : '') + '</span><span class="l">' + label + '</span></div>'; };
     var nd = dayEnd ? nextDueDay() : null, spent = fmtSpent(s.elapsed), spentNum = /^(\d+)( .*)$/.exec(spent);
     var rate = s.answered ? Math.round(s.again / s.answered * 100) : 0;
+    // F-09 (audit of 2026-10-20): the day's end counted the sitting's misses (the Again figure) and never named them. It
+    // names them now in Practice's own sentence, under the figures, the same eight-then-how-many-more list.
+    var missed = dayEnd ? missedLine(s).replace(/^ /, '') : '';
     var h = dayEnd ? '<div class="dn-summary dn-h6">' +
       '<div class="dn-head"><div><p class="dn-jp" id="dn-jp" lang="ja">今日はここまで</p><h2 class="display">Done for today.</h2></div><span class="dn-seal" id="dn-seal" lang="ja" aria-hidden="true">済</span></div>' +
       '<div class="dn-next"><p class="dn-next-label" id="dn-next-label">Next cards</p>' +
@@ -7738,7 +7800,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       // figure's scope word still compares the sitting with every answer of the day, practice included: a day with a
       // practice sitting in it is not this one sitting, and "again this sitting" stays true there.
       '<div class="rows dn-figs" id="dn-figs">' + fig(t.scheduled.answers, '', 'answered today' + (t.practice.answers ? ' · ' + plural(t.practice.answers, 'practice answer') : '')) + fig(s.again, ' of ' + s.answered, (s.answered === t.answers ? 'again' : 'again this sitting') + ' · ' + rate + '%') +
-      (spentNum ? fig(spentNum[1], spentNum[2], 'this sitting') : fig('', spent, 'this sitting')) + '</div>' + savedNote + '</div>'
+      (spentNum ? fig(spentNum[1], spentNum[2], 'this sitting') : fig('', spent, 'this sitting')) + '</div>' +
+      (missed ? '<p class="dn-missed" id="dn-missed">' + missed + '</p>' : '') + savedNote + '</div>'
       : '<div class="dn-summary"><h2 class="display">' + head + '</h2><p>' + line + '</p>' + savedNote +
       // Every figure sits under a visible scope word. The rows are this sitting and nothing else; the
       // day is the Today line beneath them. One unlabelled block used to mix the day's answers with the
@@ -8034,6 +8097,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
   var KEEP_SENTENCE = 'Safari clears what is saved here after seven days of browsing in which you do not use Kurikaeshi. To keep it, add Kurikaeshi to your Home Screen and open it from there, or sign in.';
   function renderStatus() {
     paintSync();   // 0.11 F1 (N2): the You ring and the You screen repaint from the one state with this line, never apart
+    signedOutNotice();   // 2026-10-20 (F-14): once, after a dropped session, outside a sitting
     var el = $('t-status'); if (!el) return;
     // The seven-day warning lives BENEATH the status line, not in it: the status is one line at
     // 390px (the phone pass holds it there), and the warning does not fit beside the sentence.
@@ -8502,6 +8566,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       confirmSheet({ anchor: dr, title: (retired ? 'Removing this deck keeps your answers. Once removed, it cannot be added again.' : 'Removing this deck keeps your answers, so adding it again resumes where you were.') + (lessonsOutFor(id).length ? ' Your choice of lessons for new cards is not kept.' : ''), action: 'Remove deck', cancel: 'Keep deck', onConfirm: function () {
         // A removal the browser could not write is not a removal (once-over m5): say so and stay.
         if (!packStore.remove(id)) { storageBroken = true; showStorageProblem(); return; }
+        storageRoomBack();   // 2026-10-20 (F-12): the room the full-storage line asked for
         refreshDeck(); indexNotes();
         goTab('decks'); toast('Deck removed');
       } });
@@ -9105,7 +9170,9 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       if (kind === 'unreachable') $('ld-retry').addEventListener('click', function () { openDeckLink(value); });
       $('ld-choose').addEventListener('click', choose);
     };
-    var kindOf = function (e) { if (e && e.deckLinkKind) return e.deckLinkKind; var sentence = friendlyError(e); return /^No connection\./.test(sentence) ? 'unreachable' : sentence; };
+    // was: var kindOf = function (e) { if (e && e.deckLinkKind) return e.deckLinkKind; var sentence = friendlyError(e); return /^No connection\./.test(sentence) ? 'unreachable' : sentence; };
+    // 2026-10-20 (F-11): a link that timed out is unreachable too, now that a timeout has its own sentence.
+    var kindOf = function (e) { if (e && e.deckLinkKind) return e.deckLinkKind; var sentence = friendlyError(e); return sentence === SAID_OFFLINE || sentence === SAID_SLOW || sentence === SAID_SLOW_SYNC ? 'unreachable' : sentence; };
     var landingError = function (kind) { var e = new Error(kind); e.deckLinkKind = kind; return e; };
     var land = function (title, cards, lessons, samples, lang, install) {
       if (token !== landingToken) return;
@@ -11307,17 +11374,44 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     for (var i = 0; i < CLASS_REFUSALS.length; i++) if (CLASS_REFUSALS[i][0].test(m)) return CLASS_REFUSALS[i][1];
     return '';
   }
+  // 2026-10-20 (audit F-11): three different troubles, three sentences. Before, a timeout read "No connection" on a phone
+  // that was online, and every server error nobody mapped blamed the sign-in page. Offline is the device's; a call that
+  // gave up waiting is the server being slow, and the answers wait here for the next sync; anything else is said plainly,
+  // without naming a page that was not involved.
+  var SAID_OFFLINE = 'No connection. Try again when you are online.';
+  // was (review of this change): one slow sentence promised kept answers and a retry on every path, class join and erase included.
+  var SAID_SLOW = 'The server is slow to answer. Nothing was lost. Try again in a minute.';
+  var SAID_SLOW_SYNC = 'The server is slow to answer. Your answers are kept on this device, and syncing tries again later.';
+  var SAID_UNKNOWN = 'Something went wrong. Nothing was lost. Try again in a minute.';
+  var SAID_SIGNIN_PAGE = 'Something went wrong on the sign-in page. Nothing was lost. Try again in a minute.';
+  // 'offline' when the device has no connection or the request never left; 'slow' when it left and gave up waiting
+  // (sync.js's timeoutSignal aborts, withTimeout rejects with 'Timeout'); '' for anything else.
+  function errorKind(e) {
+    var m = (e && e.message) || String(e);
+    if (navigator.onLine === false) return 'offline';
+    if (/Failed to fetch|NetworkError|Load failed|network/i.test(m)) return 'offline';
+    if ((e && (e.name === 'AbortError' || e.name === 'TimeoutError')) || /Timeout|timed out|operation was aborted|abort/i.test(m)) return 'slow';
+    return '';
+  }
+  // The sync's own failures (what Sync now, the startup sync and the end of a sitting record as lastError): there, a slow
+  // server means the answers wait on this device for the next sync, and the sentence says so.
+  function syncError(e) { var w = friendlyError(e); return w === SAID_SLOW ? SAID_SLOW_SYNC : w; }
+  var SYNC_CALLS = ['push', 'pull', 'myProfile', 'accountGone'];
   function friendlyError(e) {
     var m = (e && e.message) || String(e);
     if (e && e.appSentence) return m;
     if (classRefusal(e)) return classRefusal(e);   // 0.11.12
     if (m === 'The class did not record your leaving; nothing changed. Try again, or check the roster status above.') { if (e) e.appSentence = true; return m; }
-    if ((e && e.name === 'AbortError') || /Failed to fetch|NetworkError|Load failed|Timeout|network|operation was aborted|abort/i.test(m)) return 'No connection. Try again when you are online.';
+    // was: if ((e && e.name === 'AbortError') || /Failed to fetch|NetworkError|Load failed|Timeout|network|operation was aborted|abort/i.test(m)) return 'No connection. Try again when you are online.';
+    var kind = errorKind(e);
+    if (kind === 'offline') return SAID_OFFLINE;
+    if (kind === 'slow') return SAID_SLOW;
     if (/login_required|missing_refresh_token|invalid_grant|Login required/i.test(m)) return 'Your sign-in expired. Sign in again to keep syncing.';
     // The token was accepted but the database ran the request as a role with no rights: the
     // site's sign-in setup is missing the role claim. Not the learner's to fix.
     if (/permission denied for (function|table|schema)|not signed in/i.test(m)) return 'The sign-in page refused this account: the site’s sign-in setup is incomplete. Nothing is lost here; whoever runs this site has to finish it.';
-    return 'Something went wrong on the sign-in page. Nothing was lost. Try again in a minute.';
+    // was: return 'Something went wrong on the sign-in page. Nothing was lost. Try again in a minute.';
+    return SAID_UNKNOWN;
   }
   function adoptOwnPack(r) {
     var l = ownPack();
@@ -11430,16 +11524,32 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     var m = String(e && (e.message || e.error) || e || '');
     if (!/login_required|missing_refresh_token|invalid_grant|Login required/i.test(m)) return false;
     clearClassView();
-    if (!saveAccount({ signedIn: false, expired: true, lastSub: account.sub || account.lastSub || '', sub: '' })) {
+    var wasIn = !!account.signedIn;   // 2026-10-20 (F-14): a session that dropped, not one already marked signed out
+    // was: if (!saveAccount({ signedIn: false, expired: true, lastSub: account.sub || account.lastSub || '', sub: '' })) {
+    if (!saveAccount({ signedIn: false, expired: true, lastSub: account.sub || account.lastSub || '', sub: '', signedOutNotice: wasIn || !!account.signedOutNotice })) {
       storageBroken = true;
       showStorageProblem();
       sync = null;
       return true;
     }
     sync = null;
+    signedOutNotice();
     return true;
   }
-  function reportAuthenticatedFailure(e, who) {
+  // 2026-10-20 (audit F-14): a session that dropped mid-study switched Today's line to "Saved here until you sign in" and
+  // said nothing else. It is said once, as a toast with the way back, on a settled screen (a sitting is not interrupted:
+  // Today's line repaints after it, and that repaint shows it). The flag rides in the account record, so a reload before
+  // it was shown still shows it; Account itself already says the sign-in expired and offers Sign in again.
+  function signedOutNotice() {   // its words are inline: renderStatus can run before a var here is assigned
+    if (!account.signedOutNotice || account.signedIn) return;
+    if (screen === 's-account') { saveAccount({ signedOutNotice: null }); return; }
+    // A settled screen only: a toast with an action is withdrawn by the next screen change, so on the sitting's end
+    // screen it would go with the tap to Today; Today, You and Decks each repaint the status line when shown.
+    if (['s-today', 's-you', 's-decks'].indexOf(screen) < 0) return;
+    if (!saveAccount({ signedOutNotice: null })) return;
+    toast('You were signed out. Nothing on this device was lost. Sign in to sync.', { label: 'Sign in', on: function () { signIn(null); } });
+  }
+  function reportAuthenticatedFailure(e, who, name) {   // name: the sync call that failed (2026-10-20, F-11)
     // 0.11.13 (review of 0.11.12): a call made for one account that fails after the device signed out, or signed in as
     // someone else, is not that account's error to record: lastError on the signed-out record read as not synced, and a
     // later expiry note would mark a sign-out that already happened. It still fails for its caller. (who is the account
@@ -11452,15 +11562,16 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       return;
     }
     noteExpiry(e);
-    saveAccount({ lastError: friendlyError(e) });
+    // was: saveAccount({ lastError: friendlyError(e) });
+    saveAccount({ lastError: SYNC_CALLS.indexOf(name) >= 0 ? syncError(e) : friendlyError(e) });   // 2026-10-20 (F-11)
     renderStatus();
     if (screen === 's-account') renderAccount();
     throw e;
   }
   // was: function authenticatedCall(promise) { return Promise.resolve(promise).catch(reportAuthenticatedFailure); }
   // 0.11.13: the account the call was made for rides with it, for reportAuthenticatedFailure's check.
-  function authenticatedCall(promise, who) {
-    return Promise.resolve(promise).catch(function (e) { return reportAuthenticatedFailure(e, who); });
+  function authenticatedCall(promise, who, name) {
+    return Promise.resolve(promise).catch(function (e) { return reportAuthenticatedFailure(e, who, name); });
   }
   function wrapAuthenticatedCalls(target) {
     var names = ['push', 'pull', 'pushPack', 'flushOwnPacks', 'pullPacks', 'peekClass', 'myProfile', 'setDisplayName', 'createClass', 'joinClass', 'resetClassCode', 'sharePack', 'unsharePack', 'sharedPack', 'myClasses', 'enrollments', 'setEnrollment', 'leaveClass', 'classPacks', 'publishClassPack', 'classReviews', 'eraseReviews', 'deleteMe', 'accountGone'];
@@ -11481,7 +11592,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         // was: if (!classCall) return authenticatedCall(original.apply(target, arguments));
         // was: return Promise.resolve(original.apply(target, arguments)).catch(function (e) { if (classRefusal(e)) throw e; return reportAuthenticatedFailure(e); });
         var who = account.sub;   // 0.11.13: the account this call is made for
-        if (!classCall) return authenticatedCall(original.apply(target, arguments), who);
+        if (!classCall) return authenticatedCall(original.apply(target, arguments), who, name);
         return Promise.resolve(original.apply(target, arguments)).catch(function (e) { if (classRefusal(e)) throw e; return reportAuthenticatedFailure(e, who); });
       };
     });
@@ -11719,7 +11830,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       var finishSignIn = function () {
         accountSaid = null;   // signing in answers whatever the last account left on this screen
         // was: saveAccount({ signedIn: true, expired: false, sub: u.sub || '', lastSub: '', name: u.name || u.nickname || '', email: u.email || '', lastError: null, goneNotice: null });
-        saveAccount({ signedIn: true, expired: false, sub: u.sub || '', lastSub: '', name: u.name || u.nickname || '', email: u.email || '', lastError: null, goneNotice: null, forgetPending: null });   // 0.11.12: the sign-in that asked again is done
+        saveAccount({ signedIn: true, expired: false, sub: u.sub || '', lastSub: '', name: u.name || u.nickname || '', email: u.email || '', lastError: null, goneNotice: null, forgetPending: null, signedOutNotice: null });   // 0.11.12: the sign-in that asked again is done (2026-10-20: and a dropped session's notice is moot)
         adapter.set(FORGET_KEY, '');   // 0.11.13: and its own key with it
         // 0.9.3 G1 (state-driven, every sign-in, no id): the only line that says the sign-in worked.
         toast('Signed in. Your answers now save to your account.');
@@ -11779,7 +11890,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         '<p class="note">With one, your progress and your own cards follow you to another device, and you can join a class with a code from your instructor.</p>' +
         '<h2 class="sec">What is stored</h2>' +
         '<p class="note">Your reviews (which card, when, the grade you gave, how long it took), the cards you wrote yourself, and which classes you joined. Nothing else: not your settings, not the course decks, and never a password. You sign in on the sign-in page, with a passkey or a one-time code sent to your email.</p>' +
-        (account.lastError ? '<div class="msg bad">' + esc(account.lastError) + '</div>' : '') +
+        (account.lastError ? '<div class="msg bad" id="ac-error">' + esc(account.lastError) + '</div>' : '') +
         '<button class="primary" id="ac-signin" type="button">' + (account.expired ? 'Sign in again' : 'Sign in') + '</button>' +
         '<p class="note">' + (isStandalone() ? 'Sign-in opens in your browser. ' : 'Signing in leaves this page and comes back. ') + 'If it does not come back, nothing here is lost.</p>';
     } else {
@@ -11793,7 +11904,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         (r ? row('Last sync brought', plural(r.pulled || 0, 'review') + (r.packs === 'pulled' ? ', your cards' : '') + (r.skipped ? '; ' + plural(r.skipped, 'row') + ' could not be read' : '')) : '') + '</div>' +
         // 0.11.10 (B-103): a first sign-in's pull stops while this device still has room for new answers; the rest is kept in the account.
         (sync && sync.historyState && sync.historyState().heldForRoom ? '<p class="note" id="ac-held">Your newest answers are on this device. Older ones stay in your account, to keep room here for new answers.</p>' : '') +
-        (account.lastError ? '<div class="msg bad">' + esc(account.lastError) + '</div>' : '') +
+        (account.lastError ? '<div class="msg bad" id="ac-error">' + esc(account.lastError) + '</div>' : '') +
         '<button class="primary" id="ac-sync" type="button"' + (sync ? '' : ' disabled') + '>Sync now</button>' +
         '<p class="note">Syncing also happens by itself: when you open the app signed in, and after each session. Reviews upload once each; the server keeps one copy of every review no matter how many times it is sent.</p>' +
         '<h2 class="sec">Your name</h2><p class="note">Shown on the roster of a class you join, and to students before they consent to join a class you teach.</p>' +
@@ -11824,7 +11935,14 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
         if (r && (r.detached || r.abandoned)) { renderAccount(); return; }   // the account is gone, or the sync was stopped
         if (r && r.saved === false) settleSync(STORAGE_BAD, true);
         else settleSync('Synced: ' + plural((r && r.pushed) || 0, 'answer') + ' sent, ' + plural((r && r.pulled) || 0, 'review') + ' received.', false);
-      }, function () { settleSync(account.lastError || 'The sync did not finish. Try again.', true); });
+      // was: }, function () { settleSync(account.lastError || 'The sync did not finish. Try again.', true); });
+      // 2026-10-20 (audit F-22): the error the sync recorded is already drawn above Sync now (ac-error); it was said a
+      // second time in the status line under Save name. It is said once, in its own box, announced as an alert there.
+      }, function () {
+        if (!account.lastError) { settleSync('The sync did not finish. Try again.', true); return; }
+        settleSync('', false);
+        setMsg('ac-error', account.lastError, true);
+      });
     });
     var sn = $('ac-savename'); if (sn) sn.addEventListener('click', function () {
       var v = ($('ac-name').value || '').trim();
@@ -11946,7 +12064,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       var words = friendlyError(e);
       // A refusal (expired sign-in, a server error) means nothing happened; a silence (no answer, a timeout)
       // means the client does not know, and says so.
-      var unsure = /^No connection/.test(words);
+      // was: var unsure = /^No connection/.test(words);
+      var unsure = words === SAID_OFFLINE || words === SAID_SLOW || words === SAID_SLOW_SYNC;   // 2026-10-20 (F-11): a timeout is a silence too
       saveAccount({ lastError: unsure ? 'The server did not answer, so the deletion may or may not have happened. When you are online, tap Sync now: if your data is gone there, sign out here; if it is still there, delete again.' : 'Nothing was deleted. ' + words });
       toAccount();
     });
@@ -11998,7 +12117,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       var cancelled = code === 'access_denied' || code === 'login_required' || code === 'interaction_required';
       history.replaceState(history.state || {}, '', appUrl());
       if (account.handoffAt) saveAccount({ handoffAt: null });
-      saveAccount({ lastError: detail === null || code === null ? 'The sign-in page returned a damaged message. Sign in again.' : cancelled ? 'Sign-in was cancelled. Sign in again when you are ready.' : friendlyError(new Error('sign-in callback')) });
+      saveAccount({ lastError: detail === null || code === null ? 'The sign-in page returned a damaged message. Sign in again.' : cancelled ? 'Sign-in was cancelled. Sign in again when you are ready.' : SAID_SIGNIN_PAGE });   // was: friendlyError(new Error('sign-in callback')); the sign-in page's own error keeps naming it (F-11)
       renderAccount(); show('s-account'); return true;
     }
     if (handoffReturned()) return true;
@@ -12014,7 +12133,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       authClient().then(function () { return syncNow(); })
         // was: .catch(function (e) { if (!account.signedIn) return; saveAccount({ lastError: friendlyError(e) }); renderStatus(); });
         // 0.11.14: nor for a client dropped because another tab changed the account (superseded); the new account's own client serves it.
-        .catch(function (e) { if (!account.signedIn || (e && e.superseded)) return; saveAccount({ lastError: friendlyError(e) }); renderStatus(); });
+        // 2026-10-20 (F-11): the startup sync's own words (was: lastError: friendlyError(e))
+        .catch(function (e) { if (!account.signedIn || (e && e.superseded)) return; saveAccount({ lastError: syncError(e) }); renderStatus(); });
       return !!jm;
     } else if (pendingJoin) {
       renderAccount(); show('s-account');   // the link brought them; sign in first, the code waits
@@ -12528,6 +12648,8 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     if (!$('s-check').hidden && $('sheet').hidden) { checkKey(ev); return; }   // 0.11.5: Check yourself's keys
     if ($('s-review').hidden) return;
     if (!$('sheet').hidden) return;   // 0.11 F5a (B-178): a sheet is modal; the review's keys grade nothing beneath it
+    // F-07: a held Space or Enter repeats; a repeat that lands on a grade the reveal just focused grades nothing
+    if ((ev.key === ' ' || ev.key === 'Enter') && ev.repeat && ev.target && ev.target.nodeType === 1 && ev.target.closest('#r-band')) { ev.preventDefault(); return; }
     if ((ev.key === ' ' || ev.key === 'Enter') && ev.target && ev.target.nodeType === 1 && ev.target.closest('button,a,input,textarea,select')) return;
     var tag = (ev.target && ev.target.tagName) || '';
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (ev.target && ev.target.nodeType === 1 && ev.target.hasAttribute('contenteditable'))) return;
@@ -12544,7 +12666,12 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
       return;
     }
     if (store.prefs.keyboardShortcuts === false) return;
-    if (revealed && ev.key >= '1' && ev.key <= '4') { ev.preventDefault(); answer(parseInt(ev.key, 10)); return; }
+    if (revealed && ev.key >= '1' && ev.key <= '4') {
+      ev.preventDefault();
+      var keyGrade = document.querySelector('#r-band .grade[data-g="' + ev.key + '"]');
+      if (keyGrade && keyGrade.disabled) return;   // 2026-10-20 (F-12): a grade the storage refused stays refused from the keyboard too
+      answer(parseInt(ev.key, 10)); return;
+    }
     if ((ev.key === 'z' || ev.key === 'Z') && session.answered > 0) { ev.preventDefault(); undoAnswer(); return; }
     if ((ev.key === 'h' || ev.key === 'H') && $('r-hint')) { ev.preventDefault(); hintShown = true; drawCard(); return; }
   });
@@ -12561,9 +12688,33 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     try { recordProblem('a promise nothing caught', null, ev); } catch (ignore) { /* as above */ }
     toast('The app hit a problem. Reload to try again.', { label: 'Reload', on: function () { location.reload(); } });
   });
+  // F-13: the live sitting after another tab wrote. Queued cards answered there leave the sitting; the card on show, if
+  // it was answered there, gives way to the next one, and a short toast says why.
+  function reconcileLiveSitting(s, shown, shownMark) {
+    // Only cards whose record changed (an answer elsewhere) are counted for the toast; a skip, retire or deck change made
+    // in another tab leaves the sitting the same way, but is not an answer and is not called one.
+    var answeredThere = {};
+    s.queue.concat(s.repeat, s.learning.map(function (x) { return x.card; })).forEach(function (c) {
+      if (c && s.mark && Object.prototype.hasOwnProperty.call(s.mark, c.id) && s.mark[c.id] !== sittingMark(c.id)) answeredThere[c.id] = true;
+    });
+    reconcileSitting(s);
+    s.mark = null;   // a live sitting carries no mark; only a stopped one does
+    var dropped = Object.keys(answeredThere).length;
+    var shownGone = !!shown && card === shown && sittingMark(shown.id) !== shownMark;
+    if (shownGone) { clearSeal(); nextCard(); }
+    if (shownGone) toast('Answered in another tab, so skipped here.');
+    else if (dropped) toast(plural(dropped, 'card') + ' answered in another tab, so skipped here.');
+  }
   window.addEventListener('storage', function (ev) {
     if ([LOG_KEY, PREVIEW_KEY, PREFS_KEY, SUSPENDED_KEY, RETIRED_KEY, SKIPPED_KEY, PACKS_KEY, ACCOUNT_KEY].indexOf(ev.key) < 0) return;
-    if (store.load({ legacyPackId: LEGACY_PACK_ID }) === false) storageBroken = true;
+    // 2026-10-20 (audit F-13): two tabs showed the same card and both answers were logged; this load read the other tab's
+    // answers but the live sitting kept its cards. What each card of the sitting read before the load is marked here, so
+    // the sitting can drop what was answered elsewhere (reconcileSitting, as a resumed sitting does) once it has loaded.
+    var liveSitting = screen === 's-review' && session && card && session.mode !== 'practice' && session.mode !== 'flip' ? session : null;
+    var liveCard = liveSitting ? card : null, liveCardMark = liveCard ? sittingMark(liveCard.id) : null;
+    if (liveSitting) markSitting(liveSitting);
+    var loadRefused = store.load({ legacyPackId: LEGACY_PACK_ID }) === false;   // was: if (store.load(…) === false) storageBroken = true;
+    if (loadRefused) storageBroken = true;
     packStore.load();
     // Another tab can write back a deck carrying the old rows; what this load put right is said here too.
     if (packStore.repaired) { repairedRows += packStore.repaired; repairedSaved = packStore.repairSaved; }
@@ -12574,6 +12725,11 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
     refreshDeck(); indexNotes();
     var missing = (openDeck && !packStore.has(openDeck)) || (session && session.scope && session.scope.pack && !packStore.has(session.scope.pack));
     if (missing) { session = null; openDeck = null; renderDecks(); show('s-decks'); toast('That deck was removed in another tab.'); return; }
+    if (ev.key === PACKS_KEY && !loadRefused) storageRoomBack();   // 2026-10-20 (F-12): a deck removed in another tab may be the room asked for
+    if (liveSitting) {
+      if (session === liveSitting && screen === 's-review') reconcileLiveSitting(liveSitting, liveCard, liveCardMark);
+      else liveSitting.mark = null;
+    }
     if (screen === 's-today') renderToday();
     else if (screen === 's-decks') renderDecks();
     else if (screen === 's-deck' && openDeck) renderDeck(openDeck);
@@ -12719,7 +12875,7 @@ function rowsToNotes(rows, { type, mapping, lesson, tagsForAll = [], tagsColumn 
 
 <script>
 if ('serviceWorker' in navigator) {
-  var APP_V = "0.11.16";
+  var APP_V = "0.11.17";
   var hadController = !!navigator.serviceWorker.controller;
   var pending = false, timer = null, viaHook = false;
 
