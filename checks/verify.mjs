@@ -85,10 +85,24 @@ for (const p of PAGES) {
   await page.close();
 }
 
+// Kurikaeshi's pages are an app, not sheets, so the romaji rule doesn't apply to them, but the layout and axe rules do.
+for (const p of ALSO_SERVED) {
+  const page = await context.newPage();
+  for (const w of WIDTHS) {
+    await page.setViewportSize({ width: w, height: 900 });
+    await page.goto(origin + BASE + p);
+    const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    if (over > 0) fail(p, `scrolls sideways by ${over}px at ${w}px wide`);
+  }
+  const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  for (const v of axe.violations) fail(p, `axe ${v.id} (${v.impact}): ${v.nodes.length} element(s), e.g. ${v.nodes[0].target.join(' ')}`);
+  await page.close();
+}
+
 await browser.close();
 server.close();
 if (failures.length) {
   console.error(`${failures.length} problem(s):\n- ` + failures.join('\n- '));
   process.exit(1);
 }
-console.log(`All checks passed: ${PAGES.length + ALSO_SERVED.length} URLs, 2 missing URLs 404, ${PAGES.length} pages x ${WIDTHS.length} widths, lang, axe, print.`);
+console.log(`All checks passed: ${PAGES.length + ALSO_SERVED.length} URLs, 2 missing URLs 404, ${PAGES.length + ALSO_SERVED.length} pages x ${WIDTHS.length} widths, lang, axe, print.`);
